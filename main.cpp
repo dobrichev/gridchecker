@@ -6,7 +6,7 @@
 
 const char *versionString = "GridChecker v1.24";
 
-#define DIRTY_TEST
+//#define DIRTY_TEST	//in this mode function "test" is run w/o processing the command line parameters
 
 #ifdef DIRTY_TEST
 extern void test(); //debug

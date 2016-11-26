@@ -533,7 +533,8 @@ void grid::findUA6cells() {
 	for(i = 0; i < 81; i++) {
 		bm[i] = val2bm[digits[i]];
 	}
-	for(i = j = k = 0; i < 27; i++, j += 3, k = gr6_3y[i]) {
+	for(i = j = k = 0; i < 27; i++, j += 3) {
+		k = gr6_3y[i];
 		triplets_x[i] = bm[j] | bm[j + 1] | bm[j + 2];	//3 triplets per row
 		triplets_y[i] = bm[k] | bm[k + 9] | bm[k + 18];	//3 triplets per column
 		//duets_x[j] = bm[j] | bm[j + 1];					//3 duets per row per stack
