@@ -2,7 +2,7 @@
 #include "solver.h"
 #include "rowminlex.h"
 #include "options.h"
-#include "rate.h"
+//#include "rate.h"
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -825,7 +825,7 @@ int enumerate(const char* pattern, const char* fixclues) {
 
 	return err;
 }
-#if 1
+#if 0 //patterns game
 class pgGotchi {
 	//for 16+4+4 there is 3550103402/83=42772330 puzzles capacity
 public:
