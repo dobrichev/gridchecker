@@ -88,7 +88,7 @@ options::options() {
 	anyopt.setFlag("scanfixedbandstack");
 	anyopt.addUsage("   --scanunav            Scans for puzzles large UA sets given by completion");
 	anyopt.setFlag("scanunav");
-	anyopt.addUsage("   --fastscan            Scans for puzzles using McGuire's method");
+	anyopt.addUsage("   --fastscan            Scans stdin for puzzles using McGuire's method");
 	anyopt.setFlag("fastscan");
 
 	anyopt.addUsage(" --solve             Solve puzzles");

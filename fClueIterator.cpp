@@ -23,100 +23,91 @@
 using namespace std;
 
 struct reusableUA {
-	sizedUsetVector clique[21]; //0..15
+	sizedUsetList clique[21]; //0..15
 	int mcn; //6797" for 120K calls in 14x17, 2136" for mcn-1 < 3
 	int populate(int stopAt) { //expects previous level 0 is already done
-		for(mcn = 1; /*mcn < 3 &&*/ mcn <= stopAt && clique[mcn - 1].size(); mcn++) {
-			if(populateLevel(mcn, mcn == stopAt)) {
+		for(mcn = 1; /*mcn < 3 &&*/ mcn < stopAt && clique[mcn - 1].size(); mcn++) {
+			if(populateLevel(mcn)) {
 				return 1; //too high mcn
 			}
 		}
 		return 0;
 	}
-	void searchForMoreUA(grid &g) {
-		g.usetsBySize.clear();
-		g.setBM();
-		unsigned char unknowns[81];
-		for(int i = 0; i < clique[mcn - 1].size(); i++) {
-			sizedUset u(clique[mcn - 1][i]);
-			int n = 0;
-			for(int j = 0; j < 81; j++) {
-				if(!u.isBitSet(j)) {
-					unknowns[n++] = j;
-				}
-			}
-			g.findUaBySolving(unknowns, n);
-			if(!g.usetsBySize.empty()) {
-				ch81 txt;
-				uset uu(u);
-				uu.positionsByBitmap();
-				g.ua2puzzle(uu, txt.chars);
-				printf("/n%81.81s\t%d\n", txt.chars, u.getSize());
-				for(usetListBySize::const_iterator p = g.usetsBySize.begin(); p != g.usetsBySize.end(); p++) {
-					uu = *p;
-					g.ua2puzzle(uu, txt.chars);
-					printf("%81.81s\tnewUA\t%d\n", txt.chars, u.getSize());
-				}
-				g.usetsBySize.clear();
-			}
-		}
-	}
-	int populateLevel(int level, bool firstOnly) { //expects previous levels are already done
-		sizedUsetList t;
-		sizedUsetVector &singles = clique[0];
-		sizedUsetVector &target = clique[level];
-		target.clear();
+//	void searchForMoreUA(grid &g) {
+//		g.usetsBySize.clear();
+//		g.setBM();
+//		unsigned char unknowns[81];
+//		for(int i = 0; i < clique[mcn - 1].size(); i++) {
+//			sizedUset u(clique[mcn - 1][i]);
+//			int n = 0;
+//			for(int j = 0; j < 81; j++) {
+//				if(!u.isBitSet(j)) {
+//					unknowns[n++] = j;
+//				}
+//			}
+//			g.findUaBySolving(unknowns, n);
+//			if(!g.usetsBySize.empty()) {
+//				ch81 txt;
+//				uset uu(u);
+//				uu.positionsByBitmap();
+//				g.ua2puzzle(uu, txt.chars);
+//				printf("/n%81.81s\t%d\n", txt.chars, u.getSize());
+//				for(usetListBySize::const_iterator p = g.usetsBySize.begin(); p != g.usetsBySize.end(); p++) {
+//					uu = *p;
+//					g.ua2puzzle(uu, txt.chars);
+//					printf("%81.81s\tnewUA\t%d\n", txt.chars, u.getSize());
+//				}
+//				g.usetsBySize.clear();
+//			}
+//		}
+//	}
+	int populateLevel(int level) { //expects previous levels are already done
+		sizedUsetList &singles = clique[0];
+		sizedUsetList &t = clique[level];
+		t.clear();
 		int s0 = (int)singles.size();
 		if(level == 1) { //special case
-			for(int i = 0; i < s0 - 1; i++) {
-				sizedUset &u0 = singles[i];
-				for(int j = i + 1; j < s0; j++) {
-					sizedUset u1(singles[j]);
-					if(u1.join(u0)) {
-						if(firstOnly) {
-							return 1;
-						}
-						t.insert(u1);
+			for(sizedUsetList::const_iterator u0 = singles.begin(); u0 != singles.end(); u0++) {
+				for(sizedUsetList::const_iterator u1 = u0; ++u1 != singles.end();) {
+					sizedUset tt(*u1);
+					if(tt.join(*u0)) {
+						t.insert(tt);
 					}
 				}
 			}
 		}
 		else {
-			sizedUsetVector &prev = clique[level - 1];
-			int sp = (int)prev.size();
-			for(int i = 0; i < s0 - 1; i++) {
-				sizedUset &u0 = singles[i];
-				for(int j = 0; j < sp; j++) {
-					sizedUset u1(prev[j]);
-					if(u1.join(u0)) {
-						if(firstOnly) {
-							return 1;
-						}
-						t.insert(u1);
+			sizedUsetList &prev = clique[level - 1];
+			for(sizedUsetList::const_iterator u0 = singles.begin(); u0 != singles.end(); u0++) {
+				for(sizedUsetList::const_iterator u1 = prev.begin(); u1 != prev.end(); u1++) {
+					sizedUset tt(*u1);
+					if(tt.join(*u0)) {
+						t.insert(tt);
 					}
 				}
 			}
 		}
-		//check whether some clique is a subset of another clique (of the same level)
-		for(sizedUsetList::iterator p = t.begin(); p != t.end(); p++) {
-			sizedUset u1(*p);
-			u1.setSize(0);
-			sizedUsetList::iterator pp = p;
-			pp++;
-			for(; pp != t.end();) {
-				if(p->isSubsetOf(*pp)) {
-					sizedUsetList::iterator e = pp;
-					pp++;
-					t.erase(e);
-				}
-				else {
-					pp++;
-				}
-			}
-		}
-		for(sizedUsetList::const_iterator p = t.begin(); p != t.end(); p++) {
-			target.push_back(*p);
-		}
+//		//check whether some clique is a subset of another clique (of the same level)
+//		for(sizedUsetList::iterator p = t.begin(); p != t.end(); p++) {
+//			sizedUset u1(*p);
+//			u1.setSize(0);
+//			sizedUsetList::iterator pp = p;
+//			pp++;
+//			for(; pp != t.end();) {
+//				if(p->isSubsetOf(*pp)) {
+//					sizedUsetList::iterator e = pp;
+//					pp++;
+//					t.erase(e);
+//				}
+//				else {
+//					pp++;
+//				}
+//			}
+//		}
+
+//		for(sizedUsetList::const_iterator p = t.begin(); p != t.end(); p++) {
+//			target.push_back(*p);
+//		}
 		return 0;
 	}
 };
@@ -568,7 +559,7 @@ void fastClueIterator::iterateLevel() {
 			cliques.clique[0].clear();
 			for(int i = 0; i < numUA; i++) {
 				//todo: skip the minNewUAindex UA
-				cliques.clique[0].push_back(newUA[i]);
+				cliques.clique[0].insert(newUA[i]);
 			}
 			if(cliques.populate(clueNumber)) { //this crashes for MostCanonical grid on 32-bit platform
 				//mcn > clues available
@@ -603,13 +594,16 @@ void fastClueIterator::iterate() {
 	//init the top of the stack
 	clueNumber = nClues;
 	fastState &s = state[nClues];
-	for(usetListBySize::const_iterator p = us.begin(); p != us.end(); p++) {
-		sizedUset su; 
+	const int numUaToSkip = 0; //Gary McGuire skips the shortest 40 UA
+	int curUA = 0;
+	for(usetListBySize::const_iterator p = us.begin(); p != us.end(); p++, curUA++) {
+		if(curUA < numUaToSkip) continue;
+		sizedUset su;
 		su.bitmap128 = p->bitmap128; //don't calculate the size
 		su.setSize(p->nbits);
 		s.sizedUsetV.push_back(su);
-		if(su.getSize() <= 8)
-			cliques.clique[0].push_back(su);
+		//if(su.getSize() >= 6)
+			cliques.clique[0].insert(su);
 	}
 	for(int i = 0; i < 81; i++) {
 		clues[i] = 0;
@@ -628,58 +622,76 @@ void fastClueIterator::iterate() {
 		s.positions[i] = top.positions[i];
 	}
 
-	cliques.populate(100); //this crashes for MostCanonical grid on 32-bit platform
+	cliques.populate(5); //this crashes for MostCanonical grid on 32-bit platform
+
+	//some info for debugging/optimization
+	int population[81];
 	for(int i = 0; i < cliques.mcn; i++) {
-		printf("cl(%d)\t%d\n", i + 1, (int)cliques.clique[i].size());
-	}
-	//cliques.searchForMoreUA(g);
-	//how the top cliques are joined to each other?
-	int c[4];
-	for(int i = cliques.mcn - 2; i >= 4; i--) {
-		sizedUsetVector &v0 = cliques.clique[i];
-		//compare level to itself
-		c[0] = c[1] = c[2] = c[3] = 0;
-		for(int j1 = 0; j1 < v0.size() /*- 1*/; j1++) {
-			//printf("level %d\tua=%d\tsize=%d\n", i + 1, j1, v0[j1].getSize());
-			//uset u(v0[j1]);
-			//u.positionsByBitmap();
-			//ch81 z;
-			//u.toMask81(z.chars);
-			//printf("%81.81s\n", z.chars);
-			for(int j2 = j1 + 1; j2 < v0.size(); j2++) {
-				sizedUset common(v0[j2]);
-				//common.setSize(0);
-				common &= maskLSB[81];
-				common &= v0[j1];
-				int x = common.popcount_128();
-				if(x <= 3) {
-					c[x]++;
-				}
-			}
+		for(int i = 0; i < 81; i++) population[i] = 0;
+		int min = 100, sum = 0, max = 0;
+		for(sizedUsetList::const_iterator p = cliques.clique[i].begin(); p != cliques.clique[i].end(); p++) {
+			int size = p->getSize();
+			sum += size;
+			if(min > size) min = size;
+			if(max < size) max = size;
+			for(int j = 0; j < 81; j++) if(p->isBitSet(j)) population[j]++;
 		}
-		printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i + 1, c[0], c[1], c[2], c[3]);
-		//compare level to lower ones
-		for(int i1 = i - 1; i1 >= 4; i1--) {
-			sizedUsetVector &v1 = cliques.clique[i1];
-			c[0] = c[1] = c[2] = c[3] = 0;
-			for(int j1 = 0; j1 < v0.size(); j1++) {
-				for(int j2 = 0; j2 < v1.size(); j2++) {
-					sizedUset common(v1[j2]);
-					common.setSize(0);
-					common &= v0[j1];
-					int x = common.popcount_128();
-					if(x <= 3) {
-						c[x]++;
-					}
-				}
-			}
-			printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i1 + 1, c[0], c[1], c[2], c[3]);
-		}
+		printf("cl(%d)\tcount=%d\tmin=%d\tavg=%2.2f\tmax=%d\n", i + 1, (int)cliques.clique[i].size(), min, sum/(double)cliques.clique[i].size(), max);
+		sum = 0;
+		for(int j = 0; j < 81; j++) sum += population[j];
+		for(int j = 0; j < 81; j++) population[j] /= (sum / 81 / 10);
+		for(int j = 0; j < 81; j++) printf("%2.2d ", population[j]);
+		printf("\n");
 	}
 
-	//iterateLevel();
-	printf("puz=%d\tch=%d\n", nPuzzles, nChecked);
-	printf("%llu\t%llu\t%llu\t%llu\t%llu\n", d0, d1, d2, d3, d4); //14x17 grid = 5,889,056 33,028,056 114,316,605 124,680,124 43,565,492 =>2061.494 seconds.
+//	//cliques.searchForMoreUA(g);
+//	//how the top cliques are joined to each other?
+//	int c[4];
+//	for(int i = cliques.mcn - 2; i >= 4; i--) {
+//		sizedUsetVector &v0 = cliques.clique[i];
+//		//compare level to itself
+//		c[0] = c[1] = c[2] = c[3] = 0;
+//		for(int j1 = 0; j1 < v0.size() /*- 1*/; j1++) {
+//			//printf("level %d\tua=%d\tsize=%d\n", i + 1, j1, v0[j1].getSize());
+//			//uset u(v0[j1]);
+//			//u.positionsByBitmap();
+//			//ch81 z;
+//			//u.toMask81(z.chars);
+//			//printf("%81.81s\n", z.chars);
+//			for(int j2 = j1 + 1; j2 < v0.size(); j2++) {
+//				sizedUset common(v0[j2]);
+//				//common.setSize(0);
+//				common &= maskLSB[81];
+//				common &= v0[j1];
+//				int x = common.popcount_128();
+//				if(x <= 3) {
+//					c[x]++;
+//				}
+//			}
+//		}
+//		printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i + 1, c[0], c[1], c[2], c[3]);
+//		//compare level to lower ones
+//		for(int i1 = i - 1; i1 >= 4; i1--) {
+//			sizedUsetVector &v1 = cliques.clique[i1];
+//			c[0] = c[1] = c[2] = c[3] = 0;
+//			for(int j1 = 0; j1 < v0.size(); j1++) {
+//				for(int j2 = 0; j2 < v1.size(); j2++) {
+//					sizedUset common(v1[j2]);
+//					common.setSize(0);
+//					common &= v0[j1];
+//					int x = common.popcount_128();
+//					if(x <= 3) {
+//						c[x]++;
+//					}
+//				}
+//			}
+//			printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i1 + 1, c[0], c[1], c[2], c[3]);
+//		}
+//	}
+//
+//	//iterateLevel();
+//	printf("puz=%d\tch=%d\n", nPuzzles, nChecked);
+//	printf("%llu\t%llu\t%llu\t%llu\t%llu\n", d0, d1, d2, d3, d4); //14x17 grid = 5,889,056 33,028,056 114,316,605 124,680,124 43,565,492 =>2061.494 seconds.
 }
 
 
@@ -690,7 +702,7 @@ extern int fastScan() {
 		printf("%81.81s", buf);
 		grid g;
 		g.fromString(buf);
-		g.findInitialUA();
+		//g.findInitialUA();
 		g.fname = fname;
 		fastClueIterator ci(g);
 		ci.iterate();

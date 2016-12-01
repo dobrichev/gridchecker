@@ -820,7 +820,7 @@ void clueIterator::iterateBands(const int numClues) {
 	numUaSizeLimit = 1000;
 	numUaTotalLimit = 1000;
 	//skipProgress = true;
-	for(int band = 0; band < 1; band++) {
+	for(int band = 0; band < 6; band++) {
 		printf("\n========= Processing band %d ==========\n", band + 1);
 		theClique.clear();
 		theClique.fixedClues.clear();
