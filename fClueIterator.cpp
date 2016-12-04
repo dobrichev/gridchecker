@@ -149,7 +149,7 @@ struct fastState {
 class fastClueIterator {
 private:
 	fastClueIterator();
-	void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks) const;
+	void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks);
 	void iterateLevel();
 	void fastIterateLevel(int currentUaIndex = 0);
 	void switch2bm();
@@ -289,24 +289,14 @@ nextClue:;
 backtrack:;
 	clueNumber++;
 }
-void fastClueIterator::bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks) const {
-	//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
-	//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
-	//http://hackers-delight.org.ua/048.htm
-	//https://www.google.bg/#q=bit+matrix+transpose
+void fastClueIterator::bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks) {
 	BitMask768::fromBm128(nsets, sets, hittingMasks);
-	setMask.clear();
-	int j = 768 - nsets;
-	for(int i = 5; j > 0 ; i--, j -= 128) {
-		if(j >= 128) {
-			setMask.aBits[i] |= maskffff.m128i_m128i;
-		}
-		else {
-			setMask.aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
-		}
-	}
+	BitMask768::initSetMask(nsets, setMask);
 }
 
+//b6b.txt 816"
+//b6a.txt 421
+//rnd1.txt 267
 void fastClueIterator::switch2bm() {
 	cliques.clique[0].clear();
 	sizedUsetVector &newUA = *ua1;
@@ -332,28 +322,28 @@ void fastClueIterator::switch2bm() {
 	int i;
 	//compose UA2
 	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[1].begin(); i < 768 && c != cliques.clique[1].end(); c++, i++) {
+	for(sizedUsetList::const_iterator c = cliques.clique[1].begin(); i < state[clueNumber].setMask2.maxSize && c != cliques.clique[1].end(); c++, i++) {
 		tmp[i] = *c;
 	}
 	bm128ToIndex(tmp, i, state[clueNumber].setMask2, hittingMasks2);
 
 	//compose UA3
 	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[2].begin(); i < 768 && c != cliques.clique[2].end(); c++, i++) {
+	for(sizedUsetList::const_iterator c = cliques.clique[2].begin(); i < state[clueNumber].setMask3.maxSize && c != cliques.clique[2].end(); c++, i++) {
 		tmp[i] = *c;
 	}
 	bm128ToIndex(tmp, i, state[clueNumber].setMask3, hittingMasks3);
 
 	//compose UA4
 	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[3].begin(); i < 768 && c != cliques.clique[3].end(); c++, i++) {
+	for(sizedUsetList::const_iterator c = cliques.clique[3].begin(); i < state[clueNumber].setMask4.maxSize && c != cliques.clique[3].end(); c++, i++) {
 		tmp[i] = *c;
 	}
 	bm128ToIndex(tmp, i, state[clueNumber].setMask4, hittingMasks4);
 
 	//compose UA5
 	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[4].begin(); i < 768 && c != cliques.clique[4].end(); c++, i++) {
+	for(sizedUsetList::const_iterator c = cliques.clique[4].begin(); i < state[clueNumber].setMask5.maxSize && c != cliques.clique[4].end(); c++, i++) {
 		tmp[i] = *c;
 	}
 	bm128ToIndex(tmp, i, state[clueNumber].setMask5, hittingMasks5);

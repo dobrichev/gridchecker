@@ -13,9 +13,10 @@
 #pragma intrinsic(_BitScanForward)
 #endif //compiler
 
-struct BitMask768 {
+template <int maxElements> class bit_masks {
 public:
-	bm128 aBits[6];
+	const int maxSize = maxElements;
+	bm128 aBits[maxElements / 128];
 	inline void clear() {
 		for(int i = 0; i < 6; i++)
 			aBits[i].clear();
@@ -24,6 +25,10 @@ public:
 		for(int i = 0; i < 6; i++)
 			aBits[i] = maskffff;
 	}
+};
+
+struct BitMask768 : public bit_masks<768> {
+public:
 	inline void hitOnly(const BitMask768 &s, const BitMask768 &hittingMask) {
 		aBits[0] = s.aBits[0] | hittingMask.aBits[0];
 		aBits[1] = s.aBits[1] | hittingMask.aBits[1];
@@ -134,63 +139,13 @@ public:
 		bm = aBits[5] | hittingMask.aBits[5];
 		return bm.isInvalid();
 	}
-	//int hasUnhitClique3(const bm128 *uaList, int pos) const {
-	//	int posList[768];
-	//	int posListSize = bm128::getBitIndexes(aBits, 6, posList);
-	//	const bm128 &mask = maskLSB[pos]; //mask higher bits
-	//	for(int i1 = 0; i1 < posListSize - 2; i1++) {
-	//		bm128 u1(uaList[posList[i1]]);
-	//		u1 &= mask;
-	//		for(int i2 = i1 + 1; i2 < posListSize - 1; i2++) {
-	//			if(u1.isDisjoint(uaList[posList[i2]])) {
-	//				bm128 u2(uaList[posList[i2]]);
-	//				u2 |= u1;
-	//				u2 &= mask;
-	//				for(int i3 = i2 + 1; i3 < posListSize; i3++) {
-	//					if(u2.isDisjoint(uaList[posList[i3]])) {
-	//						return 1;
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//	return 0;
-	//}
-	//int hasUnhitClique4(const bm128 *uaList, int pos) const {
-	//	int posList[768];
-	//	int posListSize = bm128::getBitIndexes(aBits, 6, posList);
-	//	const bm128 &mask = maskLSB[pos]; //mask higher bits
-	//	for(int i1 = 0; i1 < posListSize - 3; i1++) {
-	//		bm128 u1(uaList[posList[i1]]);
-	//		u1 &= mask;
-	//		for(int i2 = i1 + 1; i2 < posListSize - 2; i2++) {
-	//			if(u1.isDisjoint(uaList[posList[i2]])) {
-	//				bm128 u2(uaList[posList[i2]]);
-	//				u2 |= u1;
-	//				u2 &= mask;
-	//				for(int i3 = i2 + 1; i3 < posListSize - 1; i3++) {
-	//					if(u2.isDisjoint(uaList[posList[i3]])) {
-	//						bm128 u3(uaList[posList[i3]]);
-	//						u3 |= u2;
-	//						u3 &= mask;
-	//						for(int i4 = i3 + 1; i4 < posListSize; i4++) {
-	//							if(u3.isDisjoint(uaList[posList[i4]])) {
-	//								return 1;
-	//							}
-	//						}
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//	return 0;
-	//}
+
 	void static fromBm128(int const srcRows, const bm128 * const src, BitMask768 * dest) {
+		//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
+		//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
+		//http://hackers-delight.org.ua/048.htm
+		//https://www.google.bg/#q=bit+matrix+transpose
 		bm128 ss;
-		//bm128 s[768];
-		//for(int i = 0; i < srcRows; i++) {
-		//	s[i] = src[i];
-		//}
 		int nSlices = srcRows / 16 + 1;
 		if(srcRows >= 768) {
 			nSlices = 6 * 8;
@@ -219,6 +174,18 @@ public:
 			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
 			assert(slice / 8 < 6);
 			dest[80].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+		}
+	}
+	void static initSetMask(int nsets, BitMask768 &setMask) {
+		setMask.clear();
+		int j = 768 - nsets;
+		for(int i = 5; j > 0 ; i--, j -= 128) {
+			if(j >= 128) {
+				setMask.aBits[i] |= maskffff.m128i_m128i;
+			}
+			else {
+				setMask.aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
+			}
 		}
 	}
 	//void static transpose(int const srcRows, const bm128 * const src, bm128 *dest) {
