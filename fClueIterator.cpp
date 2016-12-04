@@ -134,6 +134,13 @@ struct hittingClue {
 
 struct fastState {
 	bm128 deadClues;
+	bm128 setClues;
+	BitMask768 setMask;
+	BitMask768 setMask2;
+	BitMask768 setMask3;
+	BitMask768 setMask4;
+	BitMask768 setMask5;
+	BitMask768 setMask6;
 	int nPositions;
 	int positions[81];
 	sizedUsetVector sizedUsetV;
@@ -142,8 +149,17 @@ struct fastState {
 class fastClueIterator {
 private:
 	fastClueIterator();
+	void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks) const;
+	void iterateLevel();
+	void fastIterateLevel(int currentUaIndex = 0);
+	void switch2bm();
+	void checkPuzzle(bm128 &dc, int startPos = 0);
 public:
 	BitMask768 hittingMasks[81];
+	BitMask768 hittingMasks2[81];
+	BitMask768 hittingMasks3[81];
+	BitMask768 hittingMasks4[81];
+	BitMask768 hittingMasks5[81];
 	int nClues;
 	grid &g;
 	unsigned int nPuzzles;
@@ -152,13 +168,197 @@ public:
 	fastState state[81];
 	char clues[81];
 	reusableUA cliques;
+	sizedUsetVector *ua1;
 
 	fastClueIterator(grid &g);
-	void checkPuzzle(bm128 &dc, int startPos = 0);
 	void iterate();
-	void iterateLevel();
-	void findBestUA();
 };
+
+void fastClueIterator::fastIterateLevel(int currentUaIndex) {
+	fastState &oldState = state[clueNumber];
+	clueNumber--;
+	fastState &newState = state[clueNumber];
+	newState.deadClues = oldState.deadClues;
+	//prepare state for the next clue
+	uset u((*ua1)[currentUaIndex].bitmap128);
+	u &= maskLSB[81];
+	u.clearBits(oldState.deadClues);
+	u.positionsByBitmap();
+	if(u.nbits == 0) {
+		//printf("Empty UA\n");
+		goto backtrack;
+	}
+	newState.nPositions = u.nbits;
+	for(int i = 0; i < u.nbits; i++) {
+		newState.positions[i] = u.positions[i];
+	}
+	for(int i = 0; i < newState.nPositions; i++) {
+		int cluePosition = newState.positions[i];
+		int nextUaIndex = state[clueNumber].setMask.hit(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
+		clues[cluePosition] = g.digits[cluePosition];
+		if(clueNumber) {
+			if(nextUaIndex != INT_MAX) {
+				if(clueNumber >= 5) {
+					//update composite UA requiring 5 clues
+					state[clueNumber].setMask5.hitOnly(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition]);
+				}
+				if(clueNumber == 4) {
+					int unhit;
+					if((unhit = state[clueNumber].setMask5.hit(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition])) != INT_MAX) {
+						//un-hit composite UA found. Continue with next.
+//						printf("Un-hit UA5\n");
+//						for(int n = 0; n < 81; n++) printf("%d", clues[n]);
+//						printf("\t puzzle\n");
+//						for(int n = 0; n < 81; n++) printf("%d", hittingMasks5[n].aBits[unhit / 128].isBitSet(unhit % 128) ? 1 : 0);
+//						printf("\t UA5\n");
+						goto nextClue;
+					}
+				}
+				if(clueNumber >= 4) {
+					//update composite UA requiring 4 clues
+					state[clueNumber].setMask4.hitOnly(state[clueNumber + 1].setMask4, hittingMasks4[cluePosition]);
+				}
+				if(clueNumber == 3) {
+					int unhit;
+					if((unhit = state[clueNumber].setMask4.hit(state[clueNumber + 1].setMask4, hittingMasks4[cluePosition])) != INT_MAX) {
+						//un-hit composite UA found. Continue with next.
+//						printf("Un-hit UA5\n");
+//						for(int n = 0; n < 81; n++) printf("%d", clues[n]);
+//						printf("\t puzzle\n");
+//						for(int n = 0; n < 81; n++) printf("%d", hittingMasks5[n].aBits[unhit / 128].isBitSet(unhit % 128) ? 1 : 0);
+//						printf("\t UA5\n");
+						goto nextClue;
+					}
+				}
+				if(clueNumber >= 3) {
+					//update composite UA requiring 3 clues
+					state[clueNumber].setMask3.hitOnly(state[clueNumber + 1].setMask3, hittingMasks3[cluePosition]);
+				}
+				if(clueNumber == 2) {
+					int unhit;
+					if((unhit = state[clueNumber].setMask3.hit(state[clueNumber + 1].setMask3, hittingMasks3[cluePosition])) != INT_MAX) {
+						//un-hit composite UA found. Continue with next.
+//						printf("Un-hit UA5\n");
+//						for(int n = 0; n < 81; n++) printf("%d", clues[n]);
+//						printf("\t puzzle\n");
+//						for(int n = 0; n < 81; n++) printf("%d", hittingMasks5[n].aBits[unhit / 128].isBitSet(unhit % 128) ? 1 : 0);
+//						printf("\t UA5\n");
+						goto nextClue;
+					}
+				}
+				if(clueNumber >= 2) {
+					//update composite UA requiring 2 clues
+					state[clueNumber].setMask2.hitOnly(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition]);
+				}
+				if(clueNumber == 1) {
+					int unhit;
+					if((unhit = state[clueNumber].setMask2.hit(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition])) != INT_MAX) {
+						//un-hit composite UA found. Continue with next.
+//						printf("Un-hit UA5\n");
+//						for(int n = 0; n < 81; n++) printf("%d", clues[n]);
+//						printf("\t puzzle\n");
+//						for(int n = 0; n < 81; n++) printf("%d", hittingMasks5[n].aBits[unhit / 128].isBitSet(unhit % 128) ? 1 : 0);
+//						printf("\t UA5\n");
+						goto nextClue;
+					}
+				}
+				newState.deadClues.setBit(cluePosition);
+				fastIterateLevel(nextUaIndex); //call recursively
+			}
+			else {
+				//todo: expand all possible puzzles, no more help from UA
+				if(clueNumber > 1) printf("all UA hit at clue %d\n", clueNumber);
+			}
+		}
+		else {
+			//last clue was just set
+			if(nextUaIndex == INT_MAX) {
+				//all UA were just hit
+				nChecked++;
+				if(nChecked % 10000 == 0)
+					printf("all UA hit at last clue (%d times)\n", nChecked);
+				//todo: check the puzzle for single solution
+			}
+			else {
+				//un-hit UA remain, do nothing
+			}
+		}
+nextClue:;
+		clues[cluePosition] = 0;
+	}
+backtrack:;
+	clueNumber++;
+}
+void fastClueIterator::bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks) const {
+	//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
+	//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
+	//http://hackers-delight.org.ua/048.htm
+	//https://www.google.bg/#q=bit+matrix+transpose
+	BitMask768::fromBm128(nsets, sets, hittingMasks);
+	setMask.clear();
+	int j = 768 - nsets;
+	for(int i = 5; j > 0 ; i--, j -= 128) {
+		if(j >= 128) {
+			setMask.aBits[i] |= maskffff.m128i_m128i;
+		}
+		else {
+			setMask.aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
+		}
+	}
+}
+
+void fastClueIterator::switch2bm() {
+	cliques.clique[0].clear();
+	sizedUsetVector &newUA = *ua1;
+	for(int i = 35; i < newUA.size(); i++) { //skip top N UA in composite UA generation (40?)
+		cliques.clique[0].insert(newUA[i]);
+	}
+	if(cliques.populate(5)) { //rebuld cliques from clique[0]
+		//mcn > clues available
+		//printf("x"); //debug
+		return;
+	}
+
+	printf("clue %d", clueNumber);
+	for(int i = 0; i < cliques.mcn; i++) {
+		printf("\t%d", (int)cliques.clique[i].size());
+	}
+	printf("\n");
+
+	//compose ordinary UA
+	bm128ToIndex(&newUA[0], newUA.size(), state[clueNumber].setMask, hittingMasks);
+
+	bm128 tmp[768];
+	int i;
+	//compose UA2
+	i = 0;
+	for(sizedUsetList::const_iterator c = cliques.clique[1].begin(); i < 768 && c != cliques.clique[1].end(); c++, i++) {
+		tmp[i] = *c;
+	}
+	bm128ToIndex(tmp, i, state[clueNumber].setMask2, hittingMasks2);
+
+	//compose UA3
+	i = 0;
+	for(sizedUsetList::const_iterator c = cliques.clique[2].begin(); i < 768 && c != cliques.clique[2].end(); c++, i++) {
+		tmp[i] = *c;
+	}
+	bm128ToIndex(tmp, i, state[clueNumber].setMask3, hittingMasks3);
+
+	//compose UA4
+	i = 0;
+	for(sizedUsetList::const_iterator c = cliques.clique[3].begin(); i < 768 && c != cliques.clique[3].end(); c++, i++) {
+		tmp[i] = *c;
+	}
+	bm128ToIndex(tmp, i, state[clueNumber].setMask4, hittingMasks4);
+
+	//compose UA5
+	i = 0;
+	for(sizedUsetList::const_iterator c = cliques.clique[4].begin(); i < 768 && c != cliques.clique[4].end(); c++, i++) {
+		tmp[i] = *c;
+	}
+	bm128ToIndex(tmp, i, state[clueNumber].setMask5, hittingMasks5);
+	fastIterateLevel();
+}
 
 fastClueIterator::fastClueIterator(grid &g) : g(g) {
 	nPuzzles = 0;
@@ -198,65 +398,6 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 	}
 }
 
-void fastClueIterator::findBestUA() {
-	//best UA is the one with
-	// 1) smallest size
-	// 2) most disjoint short UA
-	// 3) most cells that "join" other short UA
-	//i.e. any "dead" clue causes more disjoint short UA
-	sizedUsetVector &s = state[nClues].sizedUsetV; //the UA vector to deal with
-	int smallestUaSize = s[0].getSize();
-	int numUA = (int)s.size();
-	int bestDJnum = 0;
-	int bestJnum = 0;
-	int bestIndex = 0;
-	for(int i = 0; i < numUA && s[i].getSize() == smallestUaSize; i++) {
-		sizedUset &u = s[i];
-		int curJnum = 0;
-		int curDJnum = 0;
-		for(int n1 = 0; n1 < numUA && s[n1].getSize() <= 9; n1++) {
-			sizedUset &u1 = s[n1];
-			if(u1.isDisjoint(u)) {
-				curJnum++;
-				continue;
-			}
-			for(int n2 = n1 + 1; n2 < numUA && s[n2].getSize() <= 9; n2++) {
-				sizedUset &u2 = s[n2];
-				if(u2.isDisjoint(u)) {
-					curJnum++;
-					continue;
-				}
-				if(!u2.isDisjoint(u1)) {
-					sizedUset x(u2.bitmap128);
-					x &= u1.bitmap128;
-					if(x.isSubsetOf(u)) {
-						x.setSize();
-						if(x.getSize() == 1) {
-							curJnum++;
-						}
-					}
-				}
-			}
-			if(bestDJnum < curDJnum || (bestDJnum == curDJnum && bestJnum < curJnum)) {
-				bestIndex = i;
-				bestDJnum = curDJnum;
-				bestJnum = curJnum;
-			}
-		}
-	}
-	if(bestIndex) {
-		ch81 p0;
-		s[0].toMask81(p0.chars);
-		printf("%81.81s\t%d <<0\n", p0.chars, s[0].getSize());
-		s[bestIndex].toMask81(p0.chars);
-		printf("%81.81s\t%d <<%d\n", p0.chars, s[0].getSize(), bestIndex);
-		//swap the best UA with first UA
-		sizedUset top = s[bestIndex];
-		s[bestIndex] = s[0];
-		s[0] = top;
-	}
-}
-
 unsigned long long d0, d1, d2, d3, d4; //debug
 
 void fastClueIterator::iterateLevel() {
@@ -271,6 +412,7 @@ void fastClueIterator::iterateLevel() {
 		int cluePosition = oldState.positions[posIndex];
 		newUA.clear();
 		clues[cluePosition] = g.digits[cluePosition];
+		newState.deadClues.setBit(cluePosition);
 		hittingClue hit;
 		hit.setClue(cluePosition);
 		int minNewUAsize = 100;
@@ -308,12 +450,14 @@ void fastClueIterator::iterateLevel() {
 				}
 				else {
 					//zero chance to hit this empty UA later
-					//this happens verey rare but is cheap to idenify
-					printf("%d", clueNumber);
+					//this happens very rare but is cheap to identify
+					printf("empty UA at clue %d", clueNumber);
 					goto backtrack;
 				}
 			}
 		}
+		newState.setClues = oldState.setClues;
+		newState.setClues.setBit(cluePosition);
 		//if(newUA.empty()) {
 		if(minNewUAsize == 100) {
 			//all UA hit
@@ -327,47 +471,28 @@ void fastClueIterator::iterateLevel() {
 				newUA[minNewUAindex] = newUA[0];
 				newUA[0] = minUA;
 			}
-			//if(clueNumber < cliques.mcn && clueNumber > 5) { //there is some chance unhit "static" clique to exist
-			//	bm128 done;
-			//	done.clear();
-			//	for(int i = 0; i < 81; i++) {
-			//		if(clues[i]) {
-			//			done.setBit(i);
-			//		}
-			//	}
-			//	sizedUsetVector &cl = cliques.clique[clueNumber];
-			//	int clSize = cl.size();
-			//	for(int i = 0; i < clSize; i++) {
-			//		if(cl[i].isDisjoint(done)) {
-			//			//if(clueNumber > 5) {
-			//			//	printf("%d", clueNumber);
-			//			//}
-			//			goto backtrack;
-			//		}
-			//	}
-			//}
 
 			int numUA = (int)newUA.size();
-			//perform (partial) sort
-			if(clueNumber > 5) {
-				//int n = numUA;
-				////if(clueNumber < 12 && numUA >= 20) {
-				//if(clueNumber < 12 && numUA >= 80) {
-				//	n = 80;
-				//}
-				////if(n <= minNewUAindex) { //ensure the sort is sufficiently depth so that the minimal UA become first 
-				////	n = minNewUAindex + 1;
-				////}
-				//if(minNewUAindex < n) {
-				//	//the shortest UA lies within the sorted scope and therefore will be placed on top
-				//	minNewUAindex = 0;
-				//}
-				//std::sort(newUA.begin(), newUA.begin() + n);
-				std::sort(newUA.begin(), newUA.end());
-				//remove duplicates
-				numUA = (int)(std::unique(newUA.begin(), newUA.end()) - newUA.begin());
-				newUA.resize(numUA);
-			}
+//			//perform (partial) sort
+//			if(clueNumber > 5) {
+//				//int n = numUA;
+//				////if(clueNumber < 12 && numUA >= 20) {
+//				//if(clueNumber < 12 && numUA >= 80) {
+//				//	n = 80;
+//				//}
+//				////if(n <= minNewUAindex) { //ensure the sort is sufficiently depth so that the minimal UA become first
+//				////	n = minNewUAindex + 1;
+//				////}
+//				//if(minNewUAindex < n) {
+//				//	//the shortest UA lies within the sorted scope and therefore will be placed on top
+//				//	minNewUAindex = 0;
+//				//}
+//				//std::sort(newUA.begin(), newUA.begin() + n);
+//				std::sort(newUA.begin(), newUA.end());
+//				//remove duplicates
+//				numUA = (int)(std::unique(newUA.begin(), newUA.end()) - newUA.begin());
+//				newUA.resize(numUA);
+//			}
 
 			//if(numOldUA > 128 && numUA <= 128) {
 			//	//ready to switch to indexed access??
@@ -375,165 +500,39 @@ void fastClueIterator::iterateLevel() {
 			//	nPuzzles++;
 			//	goto backtrack;
 			//}
-			if(clueNumber == 1) {
-				//skip if UA of level 2 exists
-				for(int i1 = 0; i1 < numUA - 1; i1++) {
-					bm128 u1(newUA[i1].bitmap128);
-					u1 &= maskLSB[81];
-					for(int i2 = i1 + 1; i2 < numUA; i2++) {
-						if(u1.isDisjoint(newUA[i2])) {
-							//printf("dj2\n");
-							d1++;
-							goto backtrack;
-						}
-					}
-				}
-			}
-			if(clueNumber == 2) {
-				//skip if UA of level 3 exists
-				for(int i1 = 0; i1 < numUA - 2; i1++) {
-					bm128 u1(newUA[i1].bitmap128);
-					u1 &= maskLSB[81];
-					for(int i2 = i1 + 1; i2 < numUA - 1; i2++) {
-						if(u1.isDisjoint(newUA[i2])) {
-							bm128 u2(newUA[i2].bitmap128);
-							u2 &= maskLSB[81];
-							u2 |= u1;
-							for(int i3 = i2 + 1; i3 < numUA; i3++) {
-								if(u2.isDisjoint(newUA[i3])) {
-									//printf("dj3\n");
-									d2++;
-									goto backtrack;
-								}
-							}
-						}
-					}
-				}
-			}
-			if(clueNumber == 3) { //for sf grid this is called 628 times with 128+ UA, for most others - 0 times
-				//skip if UA of level 4 exists
-				for(int i1 = 0; i1 < numUA - 3; i1++) {
-					bm128 u1(newUA[i1].bitmap128);
-					u1 &= maskLSB[81];
-					for(int i2 = i1 + 1; i2 < numUA - 2; i2++) {
-						if(u1.isDisjoint(newUA[i2])) {
-							bm128 u2(newUA[i2].bitmap128);
-							u2 &= maskLSB[81];
-							u2 |= u1;
-							for(int i3 = i2 + 1; i3 < numUA - 1; i3++) {
-								if(u2.isDisjoint(newUA[i3])) {
-									bm128 u3(newUA[i3].bitmap128);
-									u3 &= maskLSB[81];
-									u3 |= u2;
-									for(int i4 = i3 + 1; i4 < numUA; i4++) {
-										if(u3.isDisjoint(newUA[i4])) {
-											//printf("4");
-											d3++;
-											goto backtrack;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				//printf(".");
-			}
-			if(0 && clueNumber == 4) { //14x17 = 844 seconds processing and 707 seconds skipping this step.
-				//skip if UA of level 5 exists
-				for(int i1 = 0; i1 < numUA - 4; i1++) {
-					if(newUA[i1].getSize() > 6) //6
-					//if(newUA[i1].getSize() > minNewUAsize + 1)
-						continue;
-					bm128 u1(newUA[i1].bitmap128);
-					u1 &= maskLSB[81];
-					for(int i2 = i1 + 1; i2 < numUA - 3; i2++) {
-						if(newUA[i2].getSize() > 6)
-							continue;
-						if(u1.isDisjoint(newUA[i2])) {
-							bm128 u2(newUA[i2].bitmap128);
-							u2 &= maskLSB[81];
-							u2 |= u1;
-							for(int i3 = i2 + 1; i3 < numUA - 2; i3++) {
-								if(newUA[i3].getSize() > 9)
-									continue;
-								if(u2.isDisjoint(newUA[i3])) {
-									bm128 u3(newUA[i3].bitmap128);
-									u3 &= maskLSB[81];
-									u3 |= u2;
-									for(int i4 = i3 + 1; i4 < numUA - 1; i4++) {
-										if(u3.isDisjoint(newUA[i4])) {
-											bm128 u4(newUA[i4].bitmap128);
-											u4 &= maskLSB[81];
-											u4 |= u3;
-											for(int i5 = i4 + 1; i5 < numUA; i5++) {
-												if(u4.isDisjoint(newUA[i5])) {
-													//printf("5");
-													d4++;
-													goto backtrack;
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				//printf(".");
-			}
-			if(0 && clueNumber == 5) {
-				//skip if UA of level 6 exists
-				for(int i1 = 0; i1 < numUA - 5; i1++) {
-					if(newUA[i1].getSize() > 4)
-						continue;
-					bm128 u1(newUA[i1].bitmap128);
-					u1 &= maskLSB[81];
-					for(int i2 = i1 + 1; i2 < numUA - 4; i2++) {
-						if(newUA[i2].getSize() > 5)
-							continue;
-						if(u1.isDisjoint(newUA[i2])) {
-							bm128 u2(newUA[i2].bitmap128);
-							u2 &= maskLSB[81];
-							u2 |= u1;
-							for(int i3 = i2 + 1; i3 < numUA - 3; i3++) {
-								if(newUA[i3].getSize() > 6) //8
-									continue;
-								if(u2.isDisjoint(newUA[i3])) {
-									bm128 u3(newUA[i3].bitmap128);
-									u3 &= maskLSB[81];
-									u3 |= u2;
-									for(int i4 = i3 + 1; i4 < numUA - 2; i4++) {
-										if(newUA[i4].getSize() > 9)
-											continue;
-										if(u3.isDisjoint(newUA[i4])) {
-											bm128 u4(newUA[i4].bitmap128);
-											u4 &= maskLSB[81];
-											u4 |= u3;
-											for(int i5 = i4 + 1; i5 < numUA - 1; i5++) {
-												if(u4.isDisjoint(newUA[i5])) {
-													bm128 u5(newUA[i5].bitmap128);
-													u5 &= maskLSB[81];
-													u5 |= u4;
-													for(int i6 = i5 + 1; i6 < numUA; i6++) {
-														if(u5.isDisjoint(newUA[i6])) {
-															goto backtrack;
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				//printf(".");
-			}
+//			if(clueNumber == 1) {
+//				//skip if UA of level 2 exists
+//				for(sizedUsetList::const_iterator c = cliques.clique[1].begin(); c != cliques.clique[1].end(); c++) {
+//					if(newState.setClues.isDisjoint(*c)) {
+//						//printf("dj2\n");
+//						d1++;
+//						goto backtrack;
+//					}
+//				}
+//			}
+//			if(clueNumber == 2) {
+//				//skip if UA of level 3 exists
+//				for(sizedUsetList::const_iterator c = cliques.clique[2].begin(); c != cliques.clique[2].end(); c++) {
+//					if(newState.setClues.isDisjoint(*c)) {
+//						//printf("dj3\n");
+//						d2++;
+//						goto backtrack;
+//					}
+//				}
+//			}
+//			if(clueNumber == 3) {
+//				//skip if UA of level 3 exists
+//				for(sizedUsetList::const_iterator c = cliques.clique[3].begin(); c != cliques.clique[3].end(); c++) {
+//					if(newState.setClues.isDisjoint(*c)) {
+//						//printf("dj4\n");
+//						d3++;
+//						goto backtrack;
+//					}
+//				}
+//			}
 
 			if(clueNumber == 12) {
-				printf("."); //show progress
+				printf("."); fflush(NULL); //show progress
 			}
 
 			//prepare state for the next clue
@@ -547,34 +546,25 @@ void fastClueIterator::iterateLevel() {
 				newState.positions[i] = u.positions[i];
 			}
 
-			if(numUA > 128) {
+			if(numUA > 230) {
 				//iterate recursively
 				iterateLevel();
 			}
-			//switch to clue indexes (119394 times for 14x17 grid with 311 initial UA, 56120 for 20x17/289, 1892149 sf/371)
+			//switch to clue indexes
 			std::sort(newUA.begin(), newUA.end());
 			//remove duplicates
 			numUA = (int)(std::unique(newUA.begin(), newUA.end()) - newUA.begin());
+			newUA.resize(numUA);
+			ua1 = &newUA;
 
-			cliques.clique[0].clear();
-			for(int i = 0; i < numUA; i++) {
-				//todo: skip the minNewUAindex UA
-				cliques.clique[0].insert(newUA[i]);
-			}
-			if(cliques.populate(clueNumber)) { //this crashes for MostCanonical grid on 32-bit platform
-				//mcn > clues available
-				printf("x"); //debug
-				goto backtrack; //241 for 14x17
-			}
-			//for(int i = 0; i < cliques.mcn; i++) {
-			//	printf("cl(%d)\t%d\n", i, cliques.clique[i].size());
-			//}
+			switch2bm();
+			//todo
+			//fastIterateLevel();
 
-			nPuzzles++; //119153 = 119394 - 241 for 14x17
+			//nPuzzles++; //119153 = 119394 - 241 for 14x17
 		}
 backtrack:;
 		clues[cluePosition] = 0;
-		newState.deadClues.setBit(cluePosition);
 	}
 	clueNumber++;
 }
@@ -586,32 +576,30 @@ void fastClueIterator::iterate() {
 	printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
 	//g.findUA4digits();
-	//printf("\t%d\n", us.size());
-
-	//perform some initial filtering of the UA based on some criteria (size)
-	//todo
+	//printf("\t%d\n", (int)us.size());
 
 	//init the top of the stack
-	clueNumber = nClues;
+	clueNumber = nClues; //stack pointer to the "empty" puzzle
 	fastState &s = state[nClues];
-	const int numUaToSkip = 0; //Gary McGuire skips the shortest 40 UA
-	int curUA = 0;
-	for(usetListBySize::const_iterator p = us.begin(); p != us.end(); p++, curUA++) {
-		if(curUA < numUaToSkip) continue;
-		sizedUset su;
-		su.bitmap128 = p->bitmap128; //don't calculate the size
-		su.setSize(p->nbits);
-		s.sizedUsetV.push_back(su);
-		//if(su.getSize() >= 6)
-			cliques.clique[0].insert(su);
-	}
 	for(int i = 0; i < 81; i++) {
 		clues[i] = 0;
 	}
 
-	//findBestUA();
-
 	s.deadClues.clear();
+	s.setClues.clear();
+	const int numUaToSkip = 0; //Gary McGuire skips the shortest 40 UA
+	int curUA = 0;
+	for(usetListBySize::const_iterator p = us.begin(); p != us.end(); p++, curUA++) {
+		sizedUset su;
+		su.bitmap128 = p->bitmap128; //don't calculate the size
+		su.setSize(p->nbits);
+		s.sizedUsetV.push_back(su);
+//		if(curUA < numUaToSkip) continue;
+//		//if(su.getSize() >= 6)
+//			cliques.clique[0].insert(su);
+	}
+	//cliques.populate(2); //this crashes for MostCanonical grid on 32-bit platform
+
 	//always start from the first UA which is one of the shortest
 	uset top;
 	top.bitmap128 = s.sizedUsetV[0].bitmap128;
@@ -622,76 +610,29 @@ void fastClueIterator::iterate() {
 		s.positions[i] = top.positions[i];
 	}
 
-	cliques.populate(5); //this crashes for MostCanonical grid on 32-bit platform
-
 	//some info for debugging/optimization
-	int population[81];
-	for(int i = 0; i < cliques.mcn; i++) {
-		for(int i = 0; i < 81; i++) population[i] = 0;
-		int min = 100, sum = 0, max = 0;
-		for(sizedUsetList::const_iterator p = cliques.clique[i].begin(); p != cliques.clique[i].end(); p++) {
-			int size = p->getSize();
-			sum += size;
-			if(min > size) min = size;
-			if(max < size) max = size;
-			for(int j = 0; j < 81; j++) if(p->isBitSet(j)) population[j]++;
-		}
-		printf("cl(%d)\tcount=%d\tmin=%d\tavg=%2.2f\tmax=%d\n", i + 1, (int)cliques.clique[i].size(), min, sum/(double)cliques.clique[i].size(), max);
-		sum = 0;
-		for(int j = 0; j < 81; j++) sum += population[j];
-		for(int j = 0; j < 81; j++) population[j] /= (sum / 81 / 10);
-		for(int j = 0; j < 81; j++) printf("%2.2d ", population[j]);
-		printf("\n");
-	}
-
-//	//cliques.searchForMoreUA(g);
-//	//how the top cliques are joined to each other?
-//	int c[4];
-//	for(int i = cliques.mcn - 2; i >= 4; i--) {
-//		sizedUsetVector &v0 = cliques.clique[i];
-//		//compare level to itself
-//		c[0] = c[1] = c[2] = c[3] = 0;
-//		for(int j1 = 0; j1 < v0.size() /*- 1*/; j1++) {
-//			//printf("level %d\tua=%d\tsize=%d\n", i + 1, j1, v0[j1].getSize());
-//			//uset u(v0[j1]);
-//			//u.positionsByBitmap();
-//			//ch81 z;
-//			//u.toMask81(z.chars);
-//			//printf("%81.81s\n", z.chars);
-//			for(int j2 = j1 + 1; j2 < v0.size(); j2++) {
-//				sizedUset common(v0[j2]);
-//				//common.setSize(0);
-//				common &= maskLSB[81];
-//				common &= v0[j1];
-//				int x = common.popcount_128();
-//				if(x <= 3) {
-//					c[x]++;
-//				}
-//			}
+//	int population[81];
+//	for(int i = 0; i < cliques.mcn; i++) {
+//		for(int i = 0; i < 81; i++) population[i] = 0;
+//		int min = 100, sum = 0, max = 0;
+//		for(sizedUsetList::const_iterator p = cliques.clique[i].begin(); p != cliques.clique[i].end(); p++) {
+//			int size = p->getSize();
+//			sum += size;
+//			if(min > size) min = size;
+//			if(max < size) max = size;
+//			for(int j = 0; j < 81; j++) if(p->isBitSet(j)) population[j]++;
 //		}
-//		printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i + 1, c[0], c[1], c[2], c[3]);
-//		//compare level to lower ones
-//		for(int i1 = i - 1; i1 >= 4; i1--) {
-//			sizedUsetVector &v1 = cliques.clique[i1];
-//			c[0] = c[1] = c[2] = c[3] = 0;
-//			for(int j1 = 0; j1 < v0.size(); j1++) {
-//				for(int j2 = 0; j2 < v1.size(); j2++) {
-//					sizedUset common(v1[j2]);
-//					common.setSize(0);
-//					common &= v0[j1];
-//					int x = common.popcount_128();
-//					if(x <= 3) {
-//						c[x]++;
-//					}
-//				}
-//			}
-//			printf("joint at level %d+%d\t0=%d\t1=%d\t2=%d\t3=%d\n", i + 1, i1 + 1, c[0], c[1], c[2], c[3]);
-//		}
+//		printf("cl(%d)\tcount=%d\tmin=%d\tavg=%2.2f\tmax=%d\n", i + 1, (int)cliques.clique[i].size(), min, sum/(double)cliques.clique[i].size(), max);
+//		sum = 0;
+//		for(int j = 0; j < 81; j++) sum += population[j];
+//		for(int j = 0; j < 81; j++) population[j] /= (sum / 81 / 10);
+//		for(int j = 0; j < 81; j++) printf("%2.2d ", population[j]);
+//		printf("\n");
 //	}
-//
-//	//iterateLevel();
-//	printf("puz=%d\tch=%d\n", nPuzzles, nChecked);
-//	printf("%llu\t%llu\t%llu\t%llu\t%llu\n", d0, d1, d2, d3, d4); //14x17 grid = 5,889,056 33,028,056 114,316,605 124,680,124 43,565,492 =>2061.494 seconds.
+
+	iterateLevel();
+	printf("puz=%d\tch=%d\n", nPuzzles, nChecked);
+	printf("%llu\t%llu\t%llu\t%llu\t%llu\n", d0, d1, d2, d3, d4); //14x17 grid = 5,889,056 33,028,056 114,316,605 124,680,124 43,565,492 =>2061.494 seconds.
 }
 
 
@@ -702,7 +643,6 @@ extern int fastScan() {
 		printf("%81.81s", buf);
 		grid g;
 		g.fromString(buf);
-		//g.findInitialUA();
 		g.fname = fname;
 		fastClueIterator ci(g);
 		ci.iterate();

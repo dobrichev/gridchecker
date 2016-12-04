@@ -207,33 +207,33 @@ public:
 			x = _mm_slli_epi64(x.bitmap128.m128i_m128i, 1);
 		}
 	}
-	//void static transpose(int const srcRows, const bm128 * const src, bm128 *dest) {
-	//	//union {char b[16]; __m128i m; } s;
-	//	bm128 ss;
-	//	int srcSize128 = srcRows / 128;
-	//	for (int slice = 0; slice < srcRows; slice += 16) { //process 16 rows from the source simultaneously
-	//		//process first 80 bits
-	//		for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits per "column" simultaneously
-	//			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
-	//				//s.b[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[col];
-	//				ss.bitmap128.m128i_u8[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[srcCol];
-	//			}
-	//			//s.m = transposeSlice(s.m); // 16 bits * 8 columns for the target
-	//			ss.transposeSlice(ss); // 16 bits * 8 columns for the target
-	//			for (int destRow = 0; destRow < 8; destRow++) {
-	//				//Out[srcCol][slice+srcSliceRow] = s.b[srcSliceRow];
-	//				dest[((srcCol * 8) + destRow) * srcSize128 + slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
-	//			}
-	//		}
-	//		//process 81-th bit
-	//		for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
-	//			ss.bitmap128.m128i_u8[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[10];
-	//		}
-	//		ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
-	//		ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
-	//		dest[80 * srcSize128 + slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
-	//	}
-	//}
+//	void static transpose(int const srcRows, const bm128 * const src, bm128 *dest) {
+//		//union {char b[16]; __m128i m; } s;
+//		bm128 ss;
+//		int srcSize128 = srcRows / 128;
+//		for (int slice = 0; slice < srcRows; slice += 16) { //process 16 rows from the source simultaneously
+//			//process first 80 bits
+//			for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits per "column" simultaneously
+//				for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
+//					//s.b[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[col];
+//					ss.bitmap128.m128i_u8[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[srcCol];
+//				}
+//				//s.m = transposeSlice(s.m); // 16 bits * 8 columns for the target
+//				ss.transposeSlice(ss); // 16 bits * 8 columns for the target
+//				for (int destRow = 0; destRow < 8; destRow++) {
+//					//Out[srcCol][slice+srcSliceRow] = s.b[srcSliceRow];
+//					dest[((srcCol * 8) + destRow) * srcSize128 + slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
+//				}
+//			}
+//			//process 81-th bit
+//			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
+//				ss.bitmap128.m128i_u8[srcSliceRow] = src[slice+srcSliceRow].bitmap128.m128i_u8[10];
+//			}
+//			ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
+//			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
+//			dest[80 * srcSize128 + slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+//		}
+//	}
 };
 
 #endif // T_128_H_INCLUDED

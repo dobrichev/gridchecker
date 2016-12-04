@@ -24,6 +24,14 @@ public:
 		for(int i = 0; i < 6; i++)
 			aBits[i] = maskffff;
 	}
+	inline void hitOnly(const BitMask768 &s, const BitMask768 &hittingMask) {
+		aBits[0] = s.aBits[0] | hittingMask.aBits[0];
+		aBits[1] = s.aBits[1] | hittingMask.aBits[1];
+		aBits[2] = s.aBits[2] | hittingMask.aBits[2];
+		aBits[3] = s.aBits[3] | hittingMask.aBits[3];
+		aBits[4] = s.aBits[4] | hittingMask.aBits[4];
+		aBits[5] = s.aBits[5] | hittingMask.aBits[5];
+	}
 	inline int hit(const BitMask768 &s, const BitMask768 &hittingMask) {
 		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
 		unsigned int bAdd;
