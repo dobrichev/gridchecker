@@ -1705,7 +1705,7 @@ void chunkProcessor::iterateClueBM(const BitMask768 &setMask, const int nFirst) 
 			int restBits = setsBM[nFirst].toInt32() >> pos;
 			for(int i = pos; i < maxPos; i++, restBits >>= 1) {
 				if(restBits & 1) {
-					if(setMask.isHit(hittingMasks[i])) {
+					if(setMask.isHittingAll(hittingMasks[i])) {
 						state[0].cluePosition = i;
 						checkPuzzle();
 						if(nPuzzles && stopAtFirst) {
