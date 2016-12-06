@@ -383,7 +383,7 @@ void templates::get3templates(puzzleSet& r3all) {
 		}
 	}
 	//find all compatible 3-templates
-	//int n = 0;
+	int n = 0;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif //_OPENMP
@@ -488,7 +488,7 @@ void templates::get2templates(puzzleSet& r2all) {
 		}
 	}
 	//find all compatible 2-templates
-	//int n = 0;
+	int n = 0;
 	for(int r2 = 0 + 1; r2 < 9; r2++) {
 		for(int r2tn = 0; r2tn < 5184; r2tn++) {
 			if(colTemplates[0][0].isDisjoint(colTemplates[r2][r2tn])) {
