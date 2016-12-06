@@ -99,23 +99,11 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="gridchecker.cdt.managedbuild.target.gnu.exe.903396768" name="Executable" projectType="cdt.managedbuild.target.gnu.exe"/>
 	</storageModule>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.1890296143;cdt.managedbuild.config.gnu.exe.debug.1890296143.;cdt.managedbuild.tool.gnu.c.compiler.exe.debug.832478541;cdt.managedbuild.tool.gnu.c.compiler.input.974103422">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1543587003;cdt.managedbuild.config.gnu.exe.release.1543587003.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.133235731;cdt.managedbuild.tool.gnu.cpp.compiler.input.386603058">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1543587003;cdt.managedbuild.config.gnu.exe.release.1543587003.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.1916630581;cdt.managedbuild.tool.gnu.c.compiler.input.1337178768">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.1890296143;cdt.managedbuild.config.gnu.exe.debug.1890296143.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.1091436700;cdt.managedbuild.tool.gnu.cpp.compiler.input.706713715">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope"/>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+	</storageModule>
 </cproject>
