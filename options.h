@@ -435,7 +435,7 @@ struct uaOptions {
 	}
 	int go() { //collect all options and do the job
 		int err;
-		if(err = readOptions())
+		if((err = readOptions()))
 			return err;
 		return processUA();
 	}

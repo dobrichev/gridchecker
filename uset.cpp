@@ -84,7 +84,7 @@ bool uset::operator < (const uset &rhs) const {
 	//return memcmp(positions, rhs.positions, nbits <= rhs.nbits ? nbits : rhs.nbits) > 0;
 }
 void uset::positionsByBitmap() {
-	int n = 0;
+	//int n = 0;
 	////for(int i = 0; i < 81; i++)
 	////	if(isBitSet(i))
 	////		positions[n++] = (unsigned char)i;
@@ -139,7 +139,7 @@ void uset::toString1(char *r) const {
 	sprintf(r, "%2.2u)", (unsigned int)positions[nbits - 1]);
 }
 void uset::fromString(const char* s) {
-	const char *p1 = s, *p;
+	const char *p;
 	int x, y;
 
 	clear();
