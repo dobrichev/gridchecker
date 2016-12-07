@@ -15,8 +15,8 @@
 
 template <int maxElements> class bit_masks {
 public:
-	const int maxSize = maxElements;
 	bm128 aBits[maxElements / 128];
+	const int maxSize = maxElements;
 	inline void clear() {
 		for(int i = 0; i < maxElements / 128; i++)
 			aBits[i].clear();
@@ -210,85 +210,85 @@ public:
 //	}
 };
 
-struct UATable {
-	bm128 *rows;
-	int size;
-	UATable(const UATable &src, int hitClue) {
-		rows = bm128::allocate(src.size);
-		size = 0;
-		const bm128 &mask = bitSet[hitClue];
-		for(int r = 0; r < src.size; r++) {
-			if(mask.isDisjoint(src.rows[r])) {
-				rows[size++] = src.rows[r];
-			}
-		}
-	};
-	UATable(const UATable &src, const bm128 &mask) {
-		rows = bm128::allocate(src.size);
-		size = 0;
-		for(int r = 0; r < src.size; r++) {
-			if(mask.isDisjoint(src.rows[r])) {
-				rows[size++] = src.rows[r];
-			}
-		}
-	};
-	UATable() : rows(NULL), size(0) {};
-	~UATable() {
-		if(rows) bm128::deallocate(rows);
-	};
-	void setSize(int theSize) {
-		size = theSize;
-		if(rows) bm128::deallocate(rows);
-		rows = bm128::allocate(size);
-	}
-};
+//struct UATable {
+//	bm128 *rows;
+//	int size;
+//	UATable(const UATable &src, int hitClue) {
+//		rows = bm128::allocate(src.size);
+//		size = 0;
+//		const bm128 &mask = bitSet[hitClue];
+//		for(int r = 0; r < src.size; r++) {
+//			if(mask.isDisjoint(src.rows[r])) {
+//				rows[size++] = src.rows[r];
+//			}
+//		}
+//	};
+//	UATable(const UATable &src, const bm128 &mask) {
+//		rows = bm128::allocate(src.size);
+//		size = 0;
+//		for(int r = 0; r < src.size; r++) {
+//			if(mask.isDisjoint(src.rows[r])) {
+//				rows[size++] = src.rows[r];
+//			}
+//		}
+//	};
+//	UATable() : rows(NULL), size(0) {};
+//	~UATable() {
+//		if(rows) bm128::deallocate(rows);
+//	};
+//	void setSize(int theSize) {
+//		size = theSize;
+//		if(rows) bm128::deallocate(rows);
+//		rows = bm128::allocate(size);
+//	}
+//};
+//
+//struct fastUATable {
+//	const UATable &table;
+//	BitMask768 hittingMasks[81]; //one index per cell
+//	BitMask768 validRowsIndex[81]; //stack, one index per clue, 1=valid, 0=invalid
+//	fastUATable(const UATable &srcTable, int cellNumber) : table(srcTable) {
+//		BitMask768 &theIndex = validRowsIndex[cellNumber];
+//		for(int c = 0; c < 81; c++) {
+//			hittingMasks[c].setAll();
+//		}
+//		theIndex.setAll(); //all rows are valid
+//		int truncatedSize = table.size;
+//		if(truncatedSize >= 768) {
+//			truncatedSize = 768;
+//		}
+//		else { // we have empty bits at the end; clear them from the index then forget the size
+//			int firstPartialBlock = (truncatedSize - 1) << 7;
+//			int fillerSizeInPartialBlock = 127 - ((truncatedSize - 1) & 0x7f);
+//			theIndex.aBits[firstPartialBlock].clearBits(maskLSB[fillerSizeInPartialBlock]);
+//			for(int e = firstPartialBlock + 1; e < 6; e++) {
+//				theIndex.aBits[e].clear();
+//			}
+//		}
+//		//create the hitting masks (i.e. the bitmap indexes per cell position)
+//		//todo: optimize for better cache hits, use small squares, or at least more reads but less writes
+//		for(int r = 0; r < truncatedSize; r++) {
+//			const bm128 &row = table.rows[r];
+//			for(int c = 0; c < 81; c++) {
+//				if(row.isBitSet(c)) {
+//					hittingMasks[c].aBits[r << 7].clearBit(r & 0x7f);
+//				}
+//			}
+//		}
+//		//now we have indexes created and validRowsIndex[cellNumber] set to '1' up to the effective size and to '0' till the end
+//	};
+//};
 
-struct fastUATable {
-	const UATable &table;
-	BitMask768 hittingMasks[81]; //one index per cell
-	BitMask768 validRowsIndex[81]; //stack, one index per clue, 1=valid, 0=invalid
-	fastUATable(const UATable &srcTable, int cellNumber) : table(srcTable) {
-		BitMask768 &theIndex = validRowsIndex[cellNumber];
-		for(int c = 0; c < 81; c++) {
-			hittingMasks[c].setAll();
-		}
-		theIndex.setAll(); //all rows are valid
-		int truncatedSize = table.size;
-		if(truncatedSize >= 768) {
-			truncatedSize = 768;
-		}
-		else { // we have empty bits at the end; clear them from the index then forget the size
-			int firstPartialBlock = (truncatedSize - 1) << 7;
-			int fillerSizeInPartialBlock = 127 - ((truncatedSize - 1) & 0x7f);
-			theIndex.aBits[firstPartialBlock].clearBits(maskLSB[fillerSizeInPartialBlock]);
-			for(int e = firstPartialBlock + 1; e < 6; e++) {
-				theIndex.aBits[e].clear();
-			}
-		}
-		//create the hitting masks (i.e. the bitmap indexes per cell position)
-		//todo: optimize for better cache hits, use small squares, or at least more reads but less writes
-		for(int r = 0; r < truncatedSize; r++) {
-			const bm128 &row = table.rows[r];
-			for(int c = 0; c < 81; c++) {
-				if(row.isBitSet(c)) {
-					hittingMasks[c].aBits[r << 7].clearBit(r & 0x7f);
-				}
-			}
-		}
-		//now we have indexes created and validRowsIndex[cellNumber] set to '1' up to the effective size and to '0' till the end
-	};
-};
-
-struct tresholds {
-	int positions[81]; //non-zero position means valid treshold
-	int minClueIndex;
-	int maxClueIndex;
-	UATable *flatTables[81][16]; //valid prior to switching to bitmap indexing
-	fastUATable *indexedTables[81][16]; //valid after swithing to bitmap indexing
-	tresholds() {
-		memset(positions, 0, sizeof(int) * 81); //invalidate positions
-		minClueIndex = maxClueIndex = 0;
-	}
-};
+//struct tresholds {
+//	int positions[81]; //non-zero position means valid treshold
+//	int minClueIndex;
+//	int maxClueIndex;
+//	UATable *flatTables[81][16]; //valid prior to switching to bitmap indexing
+//	fastUATable *indexedTables[81][16]; //valid after swithing to bitmap indexing
+//	tresholds() {
+//		memset(positions, 0, sizeof(int) * 81); //invalidate positions
+//		minClueIndex = maxClueIndex = 0;
+//	}
+//};
 
 #endif //BITMASK768_H_INCLUDED

@@ -169,7 +169,7 @@ public:
 	state_t state[81];
 	//unsigned long long skipped[81]; //debug
 	//unsigned long long maxPositionLimitsByUAweight[81]; //debug
-	UATable tresholds[15]; //up to 14th clue
+	//UATable tresholds[15]; //up to 14th clue
 	clock_t start;
 	cellMapper theMapper;
 	double NoK[82][82];

@@ -188,11 +188,14 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 	uset u((*ua1)[currentUaIndex].bitmap128);
 	u &= maskLSB[81];
 	u.clearBits(oldState.deadClues);
-	u.positionsByBitmap();
-	if(u.nbits == 0) {
-		//printf("Empty UA\n");
+	if(u.isZero()) {
 		goto backtrack;
 	}
+	u.positionsByBitmap();
+//	if(u.nbits == 0) {
+//		//printf("Empty UA\n");
+//		goto backtrack;
+//	}
 	newState.nPositions = u.nbits;
 	for(int i = 0; i < u.nbits; i++) {
 		newState.positions[i] = u.positions[i];
@@ -460,7 +463,7 @@ void fastClueIterator::iterateLevel() {
 			}
 
 			//if(numUA > 230) {
-			if(numUA > 240) {
+			if(numUA > 440) {
 				//iterate recursively
 				iterateLevel();
 			}
@@ -551,15 +554,16 @@ void fastClueIterator::iterate() {
 
 
 extern int fastScan() {
-	const char* fname = opt.scanOpt->gridFileName;
+	//const char* fname = opt.scanOpt->gridFileName;
 	char buf[3000];
 	while(fgets(buf, sizeof(buf), stdin)) {
 		printf("%81.81s", buf);
 		grid g;
 		g.fromString(buf);
-		g.fname = fname;
+		//g.fname = fname;
 		fastClueIterator ci(g);
 		ci.iterate();
+		return 0; //bug in eclipse???
 	}
 	return 0;
 }

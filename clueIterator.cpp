@@ -1002,146 +1002,146 @@ int clueIterator::prepareGrid() {
 	return 0;
 }
 
-void clueIterator::findTresholds() {
-	//on fixed clue mapping find cliques of semi-disjoint UA so that:
-	// - treshold position is N
-	// - N(M) is between M and state[M].maxPositionLimitsByUA]
-	// - number of cliques is <= 768, possibly truncate if the next possibility is ~0
-	// - all clique members have clue(s) at right of N
-	// - all members are of size <= maxsize
-	// - clique size is M so that it is checked after M'th clue is placed
-	// - M > 3, last 2 clues are optimized in other way
-	// - M < 14, large cliques are difficult to find
-
-	//098765432109876543210987654321098765432109876543210987654321098765432109876543210
-	//8         7         6         5         4         3         2         1
-	//.........................<       UA4       ><     UA3    ><  UA2  >< UA1 >< UA0 >
-	//                        ^state[4].maxPositionLimitsByUA]              minPos^
-	//..............................N..................................................
-	//aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-
-	//we are placing the clue M=4
-	//each clue moves from minPos, limited by the larger of
-	// a) clueNumber, so that there is space for the rest clues at right (for clue 4 the rest clues are 3,2,1,0 and we start from position 4)
-	// b) the rightmost cell of all unhit UA (actually the first since they are ordered in this way)
-	
-	//The maxPos is limited by the smaller of
-	// a) the position of the previous clue
-	// b) state[M].maxPositionLimitsByUA] where we know the right M UA from the mapping clique must be hit by at least one clue per UA
-
-	//We want to narrow the search space by obtaining one more treshold below maxPos
-
-	//partition clues at "a" and "b"
-	//semi-disjoint UA are these having 0 or more disjoint clues in "b" partition
-	//if there exists clique of size M+2 and it is not hit by any of the previous clues, then we know this
-	//branch is doomed since we need at leat one clue per UA to hit this clique, but there are only M+1 clues to play with
-
-	//we have 3 parameters to deal with: the clue number M; its threshold position N; and the UA sizes to use in cliques composition.
-	
-	const int maxUAsize = 9; //ignore larger UA
-	const int maxCliquesInTreshold = 100000; //ignore cliques with large amount of clues
-
-	lightweightUsetList complexUA[16];
-	//lightweightUsetList largeUA;
-
-	for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
-		if(s->nbits > maxUAsize) {
-			//largeUA.insert(s->bitmap128);
-		}
-		else {
-			complexUA[0].insert(s->bitmap128);
-		}
-	}
-	//int clNum = theClique.size - 2; //start from zero-based clue = MCN - 2, search for MCN - 1
-	int clNum = 10;
-	for(int t = clNum; t >= 3; t--) {
-		//int critPos = state[t - 1].maxPositionLimitsByUA;
-		int critPos = 31;
-		const bm128 &mask = maskLSB[critPos];
-		for(int n = 1; n < 16; n++) { //cleanup the data collected from previous target clue
-			complexUA[n].clear();
-		}
-		int n = 0;
-		do {
-			n++;
-			for(lightweightUsetList::const_iterator s = complexUA[0].begin(); s != complexUA[0].end(); s++) {
-				bm128 u1(*s);
-				if(u1.isDisjoint(mask)) {
-					continue; //surely will be hit earlier
-				}
-				u1 &= mask;
-				for(lightweightUsetList::const_iterator ss = complexUA[n - 1].begin(); ss != complexUA[n - 1].end(); ss++) {
-					bm128 u2 = *ss;
-					if(u2.isDisjoint(mask)) {
-						continue; //surely will be hit earlier
-					}
-					if(u2.isDisjoint(u1)) {
-						u2 |= *s;
-						complexUA[n].insert(u2);
-					}
-next:				;
-				}
-			}
-			printf("Complex UA[%d,%d,%d]\t%d\n", t, critPos, n, (int)complexUA[n].size());
-			if(n > 1) complexUA[n - 1].clear();
-		} while(!complexUA[n].empty() && n < t + 1);
-		if(complexUA[n].empty()) {
-			//stopped before the target clue so do nothing
-			continue;
-		}
-		//erase cliques having known UA in "a" partition, they will be hit earlier
-		for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
-			if(s->isDisjoint(mask)) { //the UA lies entirely in "a" partition
-				for(lightweightUsetList::iterator ss = complexUA[n].begin(); ss != complexUA[n].end();) {
-					if(s->isSubsetOf(*ss)) { //clique covers the UA
-						//we know the UA will be hit earlier, therefore the clique will be hit too, therefore it is redundant
-						lightweightUsetList::iterator sss = ss;
-						ss++;
-						complexUA[n].erase(sss);
-					}
-					else
-						ss++;
-				}
-			}
-		}
-		//printf("w/o covered UA\t%d\n", (int)complexUA[n].size());
-
-		//remove cells in partition "b" and sort by cell numbers
-		sizedUsetList thList;
-		for(lightweightUsetList::const_iterator s = complexUA[n].begin(); s != complexUA[n].end(); s++) {
-			bm128 u1(*s);
-			u1.clearBits(mask);
-			thList.insert(u1); //during the conversion the size is calculated
-		}
-		complexUA[n].clear();
-		printf("%d UA of sizes between %d and %d\n", (int)thList.size(), thList.begin()->getSize(), thList.rbegin()->getSize());
-		UATable &th = tresholds[t];
-		int finalSize = (int)thList.size();
-		if(finalSize > maxCliquesInTreshold) {
-			//truncate
-			finalSize = maxCliquesInTreshold;
-		}
-		th.setSize(finalSize);
-		int i = 0;
-		for(sizedUsetList::const_iterator s = thList.begin(); i < finalSize /* && s != thList.end()*/; s++, i++) {
-			sizedUset u = *s;
-			u.setSize(0);
-			th.rows[i] = u.bitmap128;
-		}
-
-		////how the top cliques are joined to each other?
-		//for(int i = 0; i < th.size - 1; i++) {
-		//	for(int j = i + 1; j < th.size; j++) {
-		//		bm128 common(th.rows[i]);
-		//		common.clearBits(th.rows[j]);
-		//		int x = common.popcount_128();
-		//		if(x <= 1) {
-		//			printf("%d\t%d\t%d\t%d\n", n, i, j, x);
-		//		}
-		//	}
-		//}
-	}
-}
+//void clueIterator::findTresholds() {
+//	//on fixed clue mapping find cliques of semi-disjoint UA so that:
+//	// - treshold position is N
+//	// - N(M) is between M and state[M].maxPositionLimitsByUA]
+//	// - number of cliques is <= 768, possibly truncate if the next possibility is ~0
+//	// - all clique members have clue(s) at right of N
+//	// - all members are of size <= maxsize
+//	// - clique size is M so that it is checked after M'th clue is placed
+//	// - M > 3, last 2 clues are optimized in other way
+//	// - M < 14, large cliques are difficult to find
+//
+//	//098765432109876543210987654321098765432109876543210987654321098765432109876543210
+//	//8         7         6         5         4         3         2         1
+//	//.........................<       UA4       ><     UA3    ><  UA2  >< UA1 >< UA0 >
+//	//                        ^state[4].maxPositionLimitsByUA]              minPos^
+//	//..............................N..................................................
+//	//aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+//
+//	//we are placing the clue M=4
+//	//each clue moves from minPos, limited by the larger of
+//	// a) clueNumber, so that there is space for the rest clues at right (for clue 4 the rest clues are 3,2,1,0 and we start from position 4)
+//	// b) the rightmost cell of all unhit UA (actually the first since they are ordered in this way)
+//
+//	//The maxPos is limited by the smaller of
+//	// a) the position of the previous clue
+//	// b) state[M].maxPositionLimitsByUA] where we know the right M UA from the mapping clique must be hit by at least one clue per UA
+//
+//	//We want to narrow the search space by obtaining one more treshold below maxPos
+//
+//	//partition clues at "a" and "b"
+//	//semi-disjoint UA are these having 0 or more disjoint clues in "b" partition
+//	//if there exists clique of size M+2 and it is not hit by any of the previous clues, then we know this
+//	//branch is doomed since we need at leat one clue per UA to hit this clique, but there are only M+1 clues to play with
+//
+//	//we have 3 parameters to deal with: the clue number M; its threshold position N; and the UA sizes to use in cliques composition.
+//
+//	const int maxUAsize = 9; //ignore larger UA
+//	const int maxCliquesInTreshold = 100000; //ignore cliques with large amount of clues
+//
+//	lightweightUsetList complexUA[16];
+//	//lightweightUsetList largeUA;
+//
+//	for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
+//		if(s->nbits > maxUAsize) {
+//			//largeUA.insert(s->bitmap128);
+//		}
+//		else {
+//			complexUA[0].insert(s->bitmap128);
+//		}
+//	}
+//	//int clNum = theClique.size - 2; //start from zero-based clue = MCN - 2, search for MCN - 1
+//	int clNum = 10;
+//	for(int t = clNum; t >= 3; t--) {
+//		//int critPos = state[t - 1].maxPositionLimitsByUA;
+//		int critPos = 31;
+//		const bm128 &mask = maskLSB[critPos];
+//		for(int n = 1; n < 16; n++) { //cleanup the data collected from previous target clue
+//			complexUA[n].clear();
+//		}
+//		int n = 0;
+//		do {
+//			n++;
+//			for(lightweightUsetList::const_iterator s = complexUA[0].begin(); s != complexUA[0].end(); s++) {
+//				bm128 u1(*s);
+//				if(u1.isDisjoint(mask)) {
+//					continue; //surely will be hit earlier
+//				}
+//				u1 &= mask;
+//				for(lightweightUsetList::const_iterator ss = complexUA[n - 1].begin(); ss != complexUA[n - 1].end(); ss++) {
+//					bm128 u2 = *ss;
+//					if(u2.isDisjoint(mask)) {
+//						continue; //surely will be hit earlier
+//					}
+//					if(u2.isDisjoint(u1)) {
+//						u2 |= *s;
+//						complexUA[n].insert(u2);
+//					}
+//next:				;
+//				}
+//			}
+//			printf("Complex UA[%d,%d,%d]\t%d\n", t, critPos, n, (int)complexUA[n].size());
+//			if(n > 1) complexUA[n - 1].clear();
+//		} while(!complexUA[n].empty() && n < t + 1);
+//		if(complexUA[n].empty()) {
+//			//stopped before the target clue so do nothing
+//			continue;
+//		}
+//		//erase cliques having known UA in "a" partition, they will be hit earlier
+//		for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
+//			if(s->isDisjoint(mask)) { //the UA lies entirely in "a" partition
+//				for(lightweightUsetList::iterator ss = complexUA[n].begin(); ss != complexUA[n].end();) {
+//					if(s->isSubsetOf(*ss)) { //clique covers the UA
+//						//we know the UA will be hit earlier, therefore the clique will be hit too, therefore it is redundant
+//						lightweightUsetList::iterator sss = ss;
+//						ss++;
+//						complexUA[n].erase(sss);
+//					}
+//					else
+//						ss++;
+//				}
+//			}
+//		}
+//		//printf("w/o covered UA\t%d\n", (int)complexUA[n].size());
+//
+//		//remove cells in partition "b" and sort by cell numbers
+//		sizedUsetList thList;
+//		for(lightweightUsetList::const_iterator s = complexUA[n].begin(); s != complexUA[n].end(); s++) {
+//			bm128 u1(*s);
+//			u1.clearBits(mask);
+//			thList.insert(u1); //during the conversion the size is calculated
+//		}
+//		complexUA[n].clear();
+//		printf("%d UA of sizes between %d and %d\n", (int)thList.size(), thList.begin()->getSize(), thList.rbegin()->getSize());
+//		UATable &th = tresholds[t];
+//		int finalSize = (int)thList.size();
+//		if(finalSize > maxCliquesInTreshold) {
+//			//truncate
+//			finalSize = maxCliquesInTreshold;
+//		}
+//		th.setSize(finalSize);
+//		int i = 0;
+//		for(sizedUsetList::const_iterator s = thList.begin(); i < finalSize /* && s != thList.end()*/; s++, i++) {
+//			sizedUset u = *s;
+//			u.setSize(0);
+//			th.rows[i] = u.bitmap128;
+//		}
+//
+//		////how the top cliques are joined to each other?
+//		//for(int i = 0; i < th.size - 1; i++) {
+//		//	for(int j = i + 1; j < th.size; j++) {
+//		//		bm128 common(th.rows[i]);
+//		//		common.clearBits(th.rows[j]);
+//		//		int x = common.popcount_128();
+//		//		if(x <= 1) {
+//		//			printf("%d\t%d\t%d\t%d\n", n, i, j, x);
+//		//		}
+//		//	}
+//		//}
+//	}
+//}
 
 void clueIterator::iterateWhole(const int numClues) {
 	nClues = numClues;
