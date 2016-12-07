@@ -132,7 +132,7 @@ struct hittingClue {
 	//}
 };
 
-typedef BitMask768 ua1_type;
+typedef bit_masks<512> ua1_type;
 typedef bit_masks<4096> ua2_type;
 typedef bit_masks<12288> ua3_type;
 typedef bit_masks<12288> ua4_type;

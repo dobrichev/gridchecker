@@ -90,124 +90,179 @@ public:
 		fromBm128(nsets, sets, hittingMasks);
 		setMask.initSetMask(nsets);
 	}
+//	inline int hit(const bit_masks &s, const bit_masks &hittingMask) {
+//		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
+//		hitOnly(s, hittingMask);
+//		unsigned int bAdd;
+//		unsigned int bytePos;
+//		for(int i = 0; i < maxElements / 128; i++) {
+//			if(0xFFFF != (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[i].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//				bAdd = i << 4; //*16
+//				//3 alternatives for the following operation
+//
+//				//1) fast but uses Intel-specific intrinsic
+//#if defined(__INTEL_COMPILER)
+//				bytePos = _bit_scan_forward(~bytePos) + bAdd;
+//#elif defined(__GNUC__)
+//				bytePos = __builtin_ctz(~bytePos) + bAdd;
+//#elif defined(_MSC_VER)
+//				//2) uses Microsoft-specific intrinsic
+//				using namespace std;
+//				unsigned long bytePosL;
+//		//#if UINT_MAX == 0xffff
+//				_BitScanForward(&bytePosL,~bytePos);
+//		//#else
+//		//		_BitScanForward64(&bytePosL,~bytePos);
+//		//#endif //UINT_MAX
+//				bytePos = (unsigned int)bytePosL + bAdd;
+//#else
+//				//3) standard but slower
+//				bytePos = (~bytePos);
+//				if(bytePos & 0xff)
+//					bytePos = lowestBit[(bytePos & 0xff) - 1] + bAdd;
+//				else
+//					bytePos = lowestBit[((bytePos >> 8)  & 0xff) - 1] + bAdd + 8;
+//#endif //compiler
+//
+//
+//				return (bytePos << 3) + lowestBit[((unsigned char*)&aBits[0])[bytePos]];
+//				//return (bytePos << 3) + _bit_scan_forward(~((unsigned char*)&aBits[0])[bytePos]);
+//				//_mm_prefetch(((char *)&newSetMask) + 0x60, _MM_HINT_T0); //unsignificant improvement
+//			}
+//		}
+//		return INT_MAX;
+//	}
+	inline int hit(const bit_masks &s, const bit_masks &hittingMask) {
+		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
+		hitOnly(s, hittingMask);
+		for(int i = 0; i < maxElements / 128; i++) {
+			if(aBits[i].bitmap128.m128i_u64[0] != 0xffffffffffffffff) {
+				return i * 128 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[0]));
+			}
+			if(aBits[i].bitmap128.m128i_u64[1] != 0xffffffffffffffff) {
+				return i * 128 + 64 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[1]));
+			}
+		}
+		return INT_MAX;
+	}
 };
 
 struct BitMask768 : public bit_masks<768> {
 public:
-	inline int hit(const BitMask768 &s, const BitMask768 &hittingMask) {
-		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
-		unsigned int bAdd;
-		unsigned int bytePos;
-		aBits[0] = s.aBits[0] | hittingMask.aBits[0];
-		aBits[1] = s.aBits[1] | hittingMask.aBits[1];
-		aBits[2] = s.aBits[2] | hittingMask.aBits[2];
-		aBits[3] = s.aBits[3] | hittingMask.aBits[3];
-		aBits[4] = s.aBits[4] | hittingMask.aBits[4];
-		aBits[5] = s.aBits[5] | hittingMask.aBits[5];
-		//return bm128::getFirstBit0Index(aBits, 6); //40% slower
-		//if(-1 != (bytePos = *((int*)&aBits[0])))
-		//	return _bit_scan_forward(~bytePos);
-		// first find out which 128-bit integer is the one
-		if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[0].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-			if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[1].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-				if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[2].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-					if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[3].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-						if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[4].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-							if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[5].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-								return INT_MAX;
-							}
-							else {
-								bAdd = 80;
-							}
-						}
-						else {
-							bAdd = 64;
-						}
-					}
-					else {
-						bAdd = 48;
-					}
-				}
-				else {
-					bAdd = 32;
-				}
-			}
-			else {
-				bAdd = 16;
-			}
-		}
-		else {
-			bAdd = 0;
-		}
-
-		//3 alternatives for the following operation
-
-		//1) fast but uses Intel-specific intrinsic
-#if defined(__INTEL_COMPILER)
-		bytePos = _bit_scan_forward(~bytePos) + bAdd;
-#elif defined(__GNUC__)
-		bytePos = __builtin_ctz(~bytePos) + bAdd;
-#elif defined(_MSC_VER)
-		//2) uses Microsoft-specific intrinsic
-		using namespace std;
-		unsigned long bytePosL;
-//#if UINT_MAX == 0xffff
-		_BitScanForward(&bytePosL,~bytePos);
+//	inline int hit(const BitMask768 &s, const BitMask768 &hittingMask) {
+//		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
+//		unsigned int bAdd;
+//		unsigned int bytePos;
+//		aBits[0] = s.aBits[0] | hittingMask.aBits[0];
+//		aBits[1] = s.aBits[1] | hittingMask.aBits[1];
+//		aBits[2] = s.aBits[2] | hittingMask.aBits[2];
+//		aBits[3] = s.aBits[3] | hittingMask.aBits[3];
+//		aBits[4] = s.aBits[4] | hittingMask.aBits[4];
+//		aBits[5] = s.aBits[5] | hittingMask.aBits[5];
+//		//return bm128::getFirstBit0Index(aBits, 6); //40% slower
+//		//if(-1 != (bytePos = *((int*)&aBits[0])))
+//		//	return _bit_scan_forward(~bytePos);
+//		// first find out which 128-bit integer is the one
+//		if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[0].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//			if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[1].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//				if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[2].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//					if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[3].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//						if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[4].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//							if ( 0xFFFF == (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[5].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
+//								return INT_MAX;
+//							}
+//							else {
+//								bAdd = 80;
+//							}
+//						}
+//						else {
+//							bAdd = 64;
+//						}
+//					}
+//					else {
+//						bAdd = 48;
+//					}
+//				}
+//				else {
+//					bAdd = 32;
+//				}
+//			}
+//			else {
+//				bAdd = 16;
+//			}
+//		}
+//		else {
+//			bAdd = 0;
+//		}
+//
+//		//3 alternatives for the following operation
+//
+//		//1) fast but uses Intel-specific intrinsic
+//#if defined(__INTEL_COMPILER)
+//		bytePos = _bit_scan_forward(~bytePos) + bAdd;
+//#elif defined(__GNUC__)
+//		bytePos = __builtin_ctz(~bytePos) + bAdd;
+//#elif defined(_MSC_VER)
+//		//2) uses Microsoft-specific intrinsic
+//		using namespace std;
+//		unsigned long bytePosL;
+////#if UINT_MAX == 0xffff
+//		_BitScanForward(&bytePosL,~bytePos);
+////#else
+////		_BitScanForward64(&bytePosL,~bytePos);
+////#endif //UINT_MAX
+//		bytePos = (unsigned int)bytePosL + bAdd;
 //#else
-//		_BitScanForward64(&bytePosL,~bytePos);
-//#endif //UINT_MAX
-		bytePos = (unsigned int)bytePosL + bAdd;
-#else
-		//3) standard but slower
-		bytePos = (~bytePos);
-		if(bytePos & 0xff)
-			bytePos = lowestBit[(bytePos & 0xff) - 1] + bAdd;
-		else
-			bytePos = lowestBit[((bytePos >> 8)  & 0xff) - 1] + bAdd + 8;
-#endif //compiler
-
-
-		return (bytePos << 3) + lowestBit[((unsigned char*)&aBits[0])[bytePos]];
-		//return (bytePos << 3) + _bit_scan_forward(~((unsigned char*)&aBits[0])[bytePos]);
-		//_mm_prefetch(((char *)&newSetMask) + 0x60, _MM_HINT_T0); //unsignificant improvement
-	}
-
-//	void static fromBm128(int const srcRows, const bm128 * const src, BitMask768 * dest) {
-//		//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
-//		//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
-//		//http://hackers-delight.org.ua/048.htm
-//		//https://www.google.bg/#q=bit+matrix+transpose
-//		bm128 ss;
-//		int nSlices = srcRows / 16 + 1;
-//		if(srcRows >= 768) {
-//			nSlices = 6 * 8;
-//		}
-//		const bm128 * const s = src;
-//		for (int slice = 0; slice < nSlices; slice++) { //process 16 rows from the source simultaneously
-//			//process first 80 bits
-//			for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits per "column" simultaneously
-//				for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
-//					assert(slice*16+srcSliceRow < 768);
-//					ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[srcCol];
-//				}
-//				ss.transposeSlice(ss); // 16 bits * 8 columns for the target
-//				for (int destRow = 0; destRow < 8; destRow++) {
-//					assert(srcCol * 8 + destRow < 80);
-//					assert(slice / 8 < 6);
-//					dest[srcCol * 8 + destRow].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
-//				}
-//			}
-//			//process 81-st bit
-//			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
-//				assert(slice+srcSliceRow < 768);
-//				ss.bitmap128.m128i_u8[srcSliceRow] = s[slice+srcSliceRow].bitmap128.m128i_u8[10];
-//			}
-//			ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
-//			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
-//			assert(slice / 8 < 6);
-//			dest[80].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
-//		}
+//		//3) standard but slower
+//		bytePos = (~bytePos);
+//		if(bytePos & 0xff)
+//			bytePos = lowestBit[(bytePos & 0xff) - 1] + bAdd;
+//		else
+//			bytePos = lowestBit[((bytePos >> 8)  & 0xff) - 1] + bAdd + 8;
+//#endif //compiler
+//
+//
+//		return (bytePos << 3) + lowestBit[((unsigned char*)&aBits[0])[bytePos]];
+//		//return (bytePos << 3) + _bit_scan_forward(~((unsigned char*)&aBits[0])[bytePos]);
+//		//_mm_prefetch(((char *)&newSetMask) + 0x60, _MM_HINT_T0); //unsignificant improvement
 //	}
+//
+////	void static fromBm128(int const srcRows, const bm128 * const src, BitMask768 * dest) {
+////		//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
+////		//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
+////		//http://hackers-delight.org.ua/048.htm
+////		//https://www.google.bg/#q=bit+matrix+transpose
+////		bm128 ss;
+////		int nSlices = srcRows / 16 + 1;
+////		if(srcRows >= 768) {
+////			nSlices = 6 * 8;
+////		}
+////		const bm128 * const s = src;
+////		for (int slice = 0; slice < nSlices; slice++) { //process 16 rows from the source simultaneously
+////			//process first 80 bits
+////			for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits per "column" simultaneously
+////				for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
+////					assert(slice*16+srcSliceRow < 768);
+////					ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[srcCol];
+////				}
+////				ss.transposeSlice(ss); // 16 bits * 8 columns for the target
+////				for (int destRow = 0; destRow < 8; destRow++) {
+////					assert(srcCol * 8 + destRow < 80);
+////					assert(slice / 8 < 6);
+////					dest[srcCol * 8 + destRow].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
+////				}
+////			}
+////			//process 81-st bit
+////			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
+////				assert(slice+srcSliceRow < 768);
+////				ss.bitmap128.m128i_u8[srcSliceRow] = s[slice+srcSliceRow].bitmap128.m128i_u8[10];
+////			}
+////			ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
+////			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
+////			assert(slice / 8 < 6);
+////			dest[80].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+////		}
+////	}
 };
 
 //struct UATable {
