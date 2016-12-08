@@ -153,12 +153,14 @@ struct fastState {
 
 class fastClueIterator {
 private:
-	fastClueIterator();
-	//void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks);
-	void iterateLevel();
+	void fastIterateLevel0(int currentUaIndex);
+	void fastIterateLevel1(int currentUaIndex);
 	void fastIterateLevel(int currentUaIndex = 0);
 	void switch2bm();
 	void checkPuzzle(bm128 &dc, int startPos = 0);
+	fastClueIterator();
+	//void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks);
+	void iterateLevel();
 public:
 	ua1_type hittingMasks[81];
 	ua2_type hittingMasks2[81];
@@ -178,6 +180,86 @@ public:
 	fastClueIterator(grid &g);
 	void iterate();
 };
+
+void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
+	fastState &oldState = state[1];
+	fastState &newState = state[0];
+	newState.deadClues = oldState.deadClues;
+	if(currentUaIndex == INT_MAX) {
+		//todo: iterate over all non-dead clues
+		return;
+	}
+	uset u((*ua1)[currentUaIndex].bitmap128);
+	u &= maskLSB[81];
+	u.clearBits(oldState.deadClues);
+	if(u.isZero()) {
+		//the UA is entirely within the dead clues
+		//printf("the UA is entirely within the dead clues\n");
+		return;
+	}
+	u.positionsByBitmap();
+	newState.nPositions = u.nbits;
+	for(int i = 0; i < u.nbits; i++) {
+		newState.positions[i] = u.positions[i];
+	}
+	for(int i = 0; i < newState.nPositions; i++) {
+		int cluePosition = newState.positions[i];
+		if(state[1].setMask.isHittingAll(hittingMasks[cluePosition])) {
+			//all UA are hit, check the puzzle for uniqueness
+//			for(int n = 0; n < ua1->size(); n++) {
+//				sizedUset uu((*ua1)[n]);
+//				if(uu.isSubsetOf(newState.deadClues)) {
+//					//entirely in dead clues
+//					printf("dead\n");
+//					goto nextClue;
+//				}
+//			}
+			//solve
+			clues[cluePosition] = g.digits[cluePosition];
+			nChecked++; //b6b ch=2738236, 136" no solver / 172" solver, 1 found
+			if(solve(clues, 2) == 1) {
+				nPuzzles++;
+			}
+			clues[cluePosition] = 0;
+		}
+nextClue:;
+		newState.deadClues.setBit(cluePosition);
+	}
+}
+void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
+	fastState &oldState = state[2];
+	fastState &newState = state[1];
+	newState.deadClues = oldState.deadClues;
+	if(currentUaIndex == INT_MAX) {
+		//todo: iterate over all non-dead clues
+		return;
+	}
+	uset u((*ua1)[currentUaIndex].bitmap128);
+	u &= maskLSB[81];
+	u.clearBits(oldState.deadClues);
+	if(u.isZero()) {
+		//the UA is entirely within the dead clues
+		//printf("the UA is entirely within the dead clues\n");
+		return;
+	}
+
+	u.positionsByBitmap();
+	newState.nPositions = u.nbits;
+	for(int i = 0; i < u.nbits; i++) {
+		newState.positions[i] = u.positions[i];
+	}
+	for(int i = 0; i < newState.nPositions; i++) {
+		int cluePosition = newState.positions[i];
+		if(state[2].setMask2.isHittingAll(hittingMasks2[cluePosition])) {
+			//all ua2 are hit, check ua1
+			int nextUaIndex = state[1].setMask.hit(state[2].setMask, hittingMasks[cluePosition]);
+			clues[cluePosition] = g.digits[cluePosition];
+			fastIterateLevel0(nextUaIndex);
+			clues[cluePosition] = 0;
+		}
+		newState.deadClues.setBit(cluePosition);
+	}
+}
 
 void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 	fastState &oldState = state[clueNumber];
@@ -240,38 +322,22 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 					if(!state[clueNumber + 1].setMask3.isHittingAll(hittingMasks3[cluePosition])) {
 						goto nextClue;
 					}
+					state[clueNumber].setMask2.hitOnly(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition]);
+					fastIterateLevel1(nextUaIndex);
 				}
-				if(clueNumber >= 2) {
+				else {
 					//update composite UA requiring 2 clues
 					state[clueNumber].setMask2.hitOnly(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition]);
+					fastIterateLevel(nextUaIndex); //call recursively
 				}
-				if(clueNumber == 1) {
-					if(!state[clueNumber + 1].setMask2.isHittingAll(hittingMasks2[cluePosition])) {
-						goto nextClue;
-					}
-				}
-				newState.deadClues.setBit(cluePosition);
-				fastIterateLevel(nextUaIndex); //call recursively
 			}
 			else {
 				//todo: expand all possible puzzles, no more help from UA
 				if(clueNumber > 1) printf("all UA hit at clue %d\n", clueNumber);
 			}
-		}
-		else {
-			//last clue was just set
-			if(nextUaIndex == INT_MAX) {
-				//all UA were just hit
-				nChecked++;
-				if(nChecked % 10000 == 0)
-					printf("all UA hit at last clue (%d times)\n", nChecked);
-				//todo: check the puzzle for single solution
-			}
-			else {
-				//un-hit UA remain, do nothing
-			}
-		}
+		} //clueNumber <> 0
 nextClue:;
+		newState.deadClues.setBit(cluePosition);
 		clues[cluePosition] = 0;
 	}
 backtrack:;
