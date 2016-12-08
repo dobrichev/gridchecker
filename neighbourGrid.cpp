@@ -8,7 +8,7 @@ neighbourGrid::neighbourGrid(void) {
 	maxWormholeSize = 0;
 }
 
-neighbourGrids::neighbourGrids(void) {
+neighbourGrids::neighbourGrids(void) : authoMorphisms(0) {
 	maxUA = 0;
 	nMaxUA = 0;
 }
@@ -57,8 +57,8 @@ void neighbourGrids::findNeighbourGrids(grid &g) {
 		char sbuf[maxSolutions][81];
 		g.ua2puzzle(*s, puz);
 		nSol = solve(g.gridBM, puz, maxSolutions, sbuf[0]);
-		for(int i = 1; i < nSol; i++) {
-			int nCanSol = 0;
+		for(unsigned int i = 1; i < nSol; i++) {
+			//int nCanSol = 0;
 			ch81 solCanon;
 			transformer tr;
 			tr.byGrid(sbuf[i]);
@@ -165,7 +165,8 @@ extern int neighbourhood(const char* fname, const char* knownsfname) {
 			for(lightweightUsetList::const_iterator u = ng->second.us.begin(); u != ng->second.us.end(); u++) {
 				//uset us = *u;
 				//us.positionsByBitmap();
-				int s = u->toPseudoPuzzleString(ng->first.chars, buf);
+				//int s =
+				u->toPseudoPuzzleString(ng->first.chars, buf);
 				cout << "\t" << buf << endl;
 			}
 		}
@@ -224,7 +225,7 @@ int neighbourhoodDetails(const char* fname, const char* knownsfname) {
 	myselfTr.byGrid(g.digits);
 	ch81 digitsCanon;
 	myselfTr.transform(g.digits, digitsCanon.chars);
-	unsigned int authoMorphisms = myselfTr.aut;
+	//unsigned int authoMorphisms = myselfTr.aut;
 	bool mustTransform = myselfTr.isTransforming();
 	if(mustTransform) {
 		//memcpy(g.digits, digitsCanon.chars, 81);
@@ -349,7 +350,7 @@ int neighbourhoodDetails1(const char* fname, const char* knownsfname) {
 	myselfTr.byGrid(g.digits);
 	ch81 digitsCanon;
 	myselfTr.transform(g.digits, digitsCanon.chars);
-	unsigned int authoMorphisms = myselfTr.aut;
+	//unsigned int authoMorphisms = myselfTr.aut;
 	bool mustTransform = myselfTr.isTransforming();
 	if(mustTransform) {
 		//memcpy(g.digits, digitsCanon.chars, 81);
@@ -507,8 +508,8 @@ void uaDistance(const ch81 &a, const ch81 &b, char * ab, char *ba) {
 
 	//compose puzzle of the common clues
 	ch81 p;
-	const int maxSol = 30;
-	ch81 sol[maxSol];
+	//const int maxSol = 30;
+	//ch81 sol[maxSol];
 	p.clear();
 	int n = 0;
 	for(int i = 0; i < 81; i++) {
@@ -579,15 +580,15 @@ int uaDist() {
 		m0.clear();
 	}
 
-	for(int i = 0; i < nGrids /*- 1*/; i++) {
+	for(unsigned int i = 0; i < nGrids /*- 1*/; i++) {
 		findUADistance(i, list, (int)nGrids, distMatrix, theTransformations);
 	}
 
 	//clusterize
 	//print
 	int nOnes = 0;
-	for(int i = 0; i < nGrids - 1; i++) {
-		for(int j = i + 1; j < nGrids; j++) {
+	for(size_t i = 0; i < nGrids - 1; i++) {
+		for(size_t j = i + 1; j < nGrids; j++) {
 			if(distMatrix[i * nGrids + j] == 1) {
 				nOnes++;
 			}

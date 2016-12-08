@@ -300,7 +300,7 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 					state[clueNumber].setMask5.hitOnly(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition]);
 				}
 				if(clueNumber == 4) {
-					int unhit;
+					//int unhit;
 					if(!state[clueNumber + 1].setMask5.isHittingAll(hittingMasks5[cluePosition])) {
 						//un-hit composite UA found. Continue with next.
 //						int unhit = state[clueNumber].setMask5.hit(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition]);
@@ -411,7 +411,7 @@ void fastClueIterator::switch2bm() {
 	fastIterateLevel();
 }
 
-fastClueIterator::fastClueIterator(grid &g) : g(g) {
+fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0), ua1(NULL) {
 	nPuzzles = 0;
 	nChecked = 0;
 	nClues = opt.scanOpt->nClues;

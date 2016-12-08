@@ -89,7 +89,7 @@ struct checkAndMark {
 	const size_t size;
 	int nElem;
 	//checkAndMark(std::vector<bool> &inv, const uset &f, const ch81 &mPuz, size_t sz) : invalids(inv), fl(f), nElem(0), maxPuz(mPuz), size(sz) {}
-	checkAndMark(bool *inv, const uset &f, const ch81 &mPuz, size_t sz) : invalids(inv), fl(f), nElem(0), maxPuz(mPuz), size(sz) {}
+	checkAndMark(bool *inv, const uset &f, const ch81 &mPuz, size_t sz) : invalids(inv), fl(f), maxPuz(mPuz), size(sz), nElem(0) {}
 	void add(size_t mask) {
 		masks[nElem++] = mask;
 		if(nElem == bufSize) {

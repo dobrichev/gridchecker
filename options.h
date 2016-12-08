@@ -602,6 +602,7 @@ struct patternOptions {
 		fixclues = NULL;
 		scanfor = NULL;
 		settle = NULL;
+		pg = NULL;
 		statistics = false;
 		subcanon = false;
 		redundancy = false;

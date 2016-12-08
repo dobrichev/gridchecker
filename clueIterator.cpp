@@ -133,7 +133,7 @@ void clueIterator::iterateBoxes(const int numClues) {
 	numUaSizeLimit = 1000;
 	numUaTotalLimit = 1000;
 	//skipProgress = true;
-	for(int box = 0; box < 9; box++) {
+	for(unsigned int box = 0; box < 9; box++) {
 		printf("\n========= Processing box %d ==========\n", box + 1);
 		theClique.clear();
 		theClique.fixedClues.clear();
@@ -295,59 +295,61 @@ void clueIterator::iterate2Boxes(const int numClues) {
 	numUaSizeLimit = 1000;
 	numUaTotalLimit = 1000;
 	minimizedPuzzles.clear();
-	for(int d1 = 0; d1 < 8; d1++) for(int d2 = d1 + 1; d2 < 9; d2++) {
-		printf("\n========= Processing box pair (%d,%d) ==========\n", d1 + 1, d2 + 1);
-		theClique.clear();
-		theClique.fixedClues.clear();
-		for(int i = 0; i < 81; i++) {
-			if(boxByCellIndex[i] == d1 || boxByCellIndex[i] == d2) {
-				theClique.fixedClues.setBit(i);
+	for(unsigned int d1 = 0; d1 < 8; d1++) {
+			for(unsigned int d2 = d1 + 1; d2 < 9; d2++) {
+			printf("\n========= Processing box pair (%d,%d) ==========\n", d1 + 1, d2 + 1);
+			theClique.clear();
+			theClique.fixedClues.clear();
+			for(int i = 0; i < 81; i++) {
+				if(boxByCellIndex[i] == d1 || boxByCellIndex[i] == d2) {
+					theClique.fixedClues.setBit(i);
+				}
 			}
-		}
-		theClique.fixedClues.positionsByBitmap();
+			theClique.fixedClues.positionsByBitmap();
 
-		prepareGrid();
+			prepareGrid();
 
-		//copy UA bitmaps and LSB to arrays for faster access
-		int nsets = static_cast <int>(usets.size());
-		nAllUA = 0;
-		allUA = bm128::allocate(nsets);
-		//allUA = (bm128 *)_mm_malloc(nsets * sizeof(bm128), 16);
-		uaLSB = (int*)malloc(nsets * sizeof(int));
-		for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
-			uaLSB[nAllUA] = s->positions[0];
-			allUA[nAllUA++] = s->bitmap128;
-		}
-
-		//find the lower limit of clues to complete the grid to unique solution
-		nClues = 9 + 18; //start with (9 + 1) + 18 = 28 clues
-		//nClues = 12 + 18; //start with (9 + 1) + 18 = 28 clues
-		nPuzzles = 0;
-		while(nPuzzles == 0 /*&& nClues < 18+13*/) {
-			nClues++;
-			nChecked = 0;
-			//progressUpdate = 0;
-			state[nClues].cluePosition = 81;
-			//set the 18 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
-				state[nClues - 1 - i].cluePosition = 80 - i;
+			//copy UA bitmaps and LSB to arrays for faster access
+			int nsets = static_cast <int>(usets.size());
+			nAllUA = 0;
+			allUA = bm128::allocate(nsets);
+			//allUA = (bm128 *)_mm_malloc(nsets * sizeof(bm128), 16);
+			uaLSB = (int*)malloc(nsets * sizeof(int));
+			for(usetList::const_iterator s = usets.begin(); s != usets.end(); s++) {
+				uaLSB[nAllUA] = s->positions[0];
+				allUA[nAllUA++] = s->bitmap128;
 			}
-			printf("\nStarting enumeration of valid puzzles of size 18+%d for boxes (%d,%d) fixed.\n", nClues - 18, d1 + 1, d2 + 1);
-			//init local timer
-			start = clock();
-			//start from leftmost (most significant) clue
-			clueNumber = nClues - theClique.fixedClues.nbits;
-			//enumerate all possibilities up to the fixed clues which are placed at left side
-			fprintf(puzFile, "Boxes (%d,%d), Clues %d\n", d1 + 1, d2 + 1, nClues - 18);
-			processChunks();
-			dMinimalClues[d1][d2] = nClues - 18;
-			dPuzzles[d1][d2] = nPuzzles;
-			printf("\nSearched for 18+%d, generated %llu puzzles, found %u valid.\n", nClues - 18, nChecked, nPuzzles);
-			printf("Enumeration done in %2.3f seconds.\n", (double)(clock() - start) / CLOCKS_PER_SEC);
+
+			//find the lower limit of clues to complete the grid to unique solution
+			nClues = 9 + 18; //start with (9 + 1) + 18 = 28 clues
+			//nClues = 12 + 18; //start with (9 + 1) + 18 = 28 clues
+			nPuzzles = 0;
+			while(nPuzzles == 0 /*&& nClues < 18+13*/) {
+				nClues++;
+				nChecked = 0;
+				//progressUpdate = 0;
+				state[nClues].cluePosition = 81;
+				//set the 18 fixed clues
+				for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+					state[nClues - 1 - i].cluePosition = 80 - i;
+				}
+				printf("\nStarting enumeration of valid puzzles of size 18+%d for boxes (%d,%d) fixed.\n", nClues - 18, d1 + 1, d2 + 1);
+				//init local timer
+				start = clock();
+				//start from leftmost (most significant) clue
+				clueNumber = nClues - theClique.fixedClues.nbits;
+				//enumerate all possibilities up to the fixed clues which are placed at left side
+				fprintf(puzFile, "Boxes (%d,%d), Clues %d\n", d1 + 1, d2 + 1, nClues - 18);
+				processChunks();
+				dMinimalClues[d1][d2] = nClues - 18;
+				dPuzzles[d1][d2] = nPuzzles;
+				printf("\nSearched for 18+%d, generated %llu puzzles, found %u valid.\n", nClues - 18, nChecked, nPuzzles);
+				printf("Enumeration done in %2.3f seconds.\n", (double)(clock() - start) / CLOCKS_PER_SEC);
+			}
+			free(uaLSB);
+			//_mm_free(allUA);
+			bm128::deallocate(allUA);
 		}
-		free(uaLSB);
-		//_mm_free(allUA);
-		bm128::deallocate(allUA);
 	}
 	//print results
 	printf("\n==========\n");
@@ -450,7 +452,7 @@ void clueIterator::iterate2digits(const int numClues) {
 		//printf("Digit pair (%d,%d), MinClues %d, NumPuzzles %d\n", d1 + 1, d2 + 1, dMinimalClues[d1][d2], dPuzzles[d1][d2]);
 		fprintf(puzFile, "Digit pair (%d,%d), MinClues %d, NumPseudoPuzzles %d\n", d1 + 1, d2 + 1, dMinimalClues[d1][d2], dPuzzles[d1][d2]);
 	}
-	int nMinimals = (int)minimizedPuzzles.size();
+	//int nMinimals = (int)minimizedPuzzles.size();
 	printf("%d %d-s found.\n", (int)minimizedPuzzles.size(), huntClues);
 	fprintf(puzFile, "%d %d-s found.\n", (int)minimizedPuzzles.size(), huntClues);
 	for(puzTextSet::const_iterator p = minimizedPuzzles.begin(); p != minimizedPuzzles.end(); p++) {
@@ -1394,7 +1396,7 @@ NOINLINE void clueIterator::showProgress(const double pr) {
 	//printf("%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", skipped[0], skipped[1], skipped[2], skipped[3], skipped[4], skipped[5], skipped[6], skipped[7], skipped[8], skipped[9]);
 }
 
-chunkProcessor::chunkProcessor(const clueIterator *clueIterator, const chunk &chunk) : theChunk(chunk) {
+chunkProcessor::chunkProcessor(const clueIterator *clueIterator, const chunk &chunk) : theChunk(chunk), clueNumber(0), lsbBM(NULL), setsBM(NULL) {
 	theClueIterator = clueIterator;
 	nClues = theClueIterator->nClues;
 	memcpy(state, theClueIterator->state, sizeof(state));
@@ -2278,7 +2280,7 @@ int allBandCompletions() {
 		completion[i] = 0;
 	}
 	opt.scanOpt->storepseudos = true;
-	int nCompletions[416];
+	//int nCompletions[416];
 
 	for(int band = 0; band < 416; band++) {
 		intset res[6];
@@ -2289,7 +2291,8 @@ int allBandCompletions() {
 		for(int i = 27; i < 81; i++) {
 			completion[i] = bands[band][i];
 		}
-		unsigned long long nSol = g.findUAbyPuzzle(completion);
+		//unsigned long long nSol =
+		g.findUAbyPuzzle(completion);
 		//now g has valid UA list
 		//printf("%d\t%llu\t%d\t", band + 1, nSol, (int)g.usetsBySize.size());
 		for(usetListBySize::const_iterator x = g.usetsBySize.begin(); x != g.usetsBySize.end(); x++) {
@@ -2643,7 +2646,7 @@ int scanPuzzleset(const bool invert) {
 		else {
 			completion = puz; //structure copy
 		}
-		unsigned long long nSol;
+		//unsigned long long nSol;
 		if(puzSize <= 36) {
 			//g.findUA4cells();
 			//g.findUA6cells();
@@ -2652,10 +2655,11 @@ int scanPuzzleset(const bool invert) {
 			//opt.uaOpt->nCells = 54;
 			opt.scanOpt->progressSeconds = 100000;
 			g.findUArandom(completion.chars);
-			nSol = 0;
+			//nSol = 0;
 		}
 		else {
-			nSol = g.findUAbyPuzzle(completion.chars);
+			//nSol =
+			g.findUAbyPuzzle(completion.chars);
 		}
 		//now g has valid UA list
 		clueIterator ci(g);

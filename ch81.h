@@ -164,7 +164,7 @@ struct puzzleSet : public set<ch81> {
 				if(puzSize == 81) { //complete grid
 					transformer tr;
 					tr.byGrid(puz.chars);
-					ch81 digitsCanon;
+					//ch81 digitsCanon;
 					tr.transform(puz.chars, puzCanon.chars);
 				}
 				else {

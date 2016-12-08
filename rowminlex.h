@@ -74,7 +74,7 @@ struct transformer
 	void transformAll(const char *in, char *out);
 	void reverseTransform(const char *in, char *out);
 	//void toString(char *buf) const;
-	transformer() {
+	transformer() : box(0), aut(0) {
 		next = 0;
 	}
 	const transformer & operator=(const transformer &t) {
@@ -107,7 +107,7 @@ struct transformer
 	bool isTransforming() const {
 		if(aut != 1) return true;
 		if(box) return true;
-		for(int i = 0; i < 9; i++) {
+		for(unsigned int i = 0; i < 9; i++) {
 			if(row[i] != i || col[i] != i || map[i] != i) return true;
 		}
 		if(map[9] != 9) return true;

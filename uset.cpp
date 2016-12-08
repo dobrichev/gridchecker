@@ -73,8 +73,8 @@ int sizedUset::join(const sizedUset &rhs) {
 //}
 void sizedUset::operator=(const sizedUset &rhs) {bitmap128 = rhs.bitmap128;}
 
-uset::uset() {};
-uset::uset(const bm128 &bm) : bm128(bm) {};
+uset::uset() : nbits(0) {};
+uset::uset(const bm128 &bm) : bm128(bm), nbits(0) {};
 bool uset::operator < (const uset &rhs) const {
 	if(positions[0] > rhs.positions[0]) return true;
 	if(positions[0] < rhs.positions[0]) return false;
@@ -308,8 +308,8 @@ int usetListBySize::ReadFromFile(char const *filename) {
 	return 0;
 }
 
-cliqueMember::cliqueMember() {};
-cliqueMember::cliqueMember(const bm128 &bm) : uset(bm) {};
+cliqueMember::cliqueMember() : numDisjoints(0) {};
+cliqueMember::cliqueMember(const bm128 &bm) : uset(bm), numDisjoints(0) {};
 void cliqueMember::setNumDisjoints(const bm128 &bm, const usetListBySize &ul) {
 	numDisjoints = 0;
 	for(usetListBySize::const_iterator us = ul.begin(); us != ul.end(); us++) {
@@ -373,7 +373,7 @@ void cliqueMember::rateCells(const usetListBySize &ul) {
 	}
 }
 
-clique::clique() : size(0) {fixedClues.clear(); fixedClues.nbits = 0; fixedNonClues.clear(); fixedNonClues.nbits = 0;};
+clique::clique() : size(0), nPartitions(0) {fixedClues.clear(); fixedClues.nbits = 0; fixedNonClues.clear(); fixedNonClues.nbits = 0;};
 void clique::insert(cliqueMember &m) {ua[size++] = m;}
 void clique::clear() {size = 0;}
 void clique::sortMembers(const usetListBySize &ul) {

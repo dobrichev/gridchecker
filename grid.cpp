@@ -531,7 +531,7 @@ void grid::findUA6cells() {
 	//m = (const char (*)[9][9])digits;
 
 	for(i = 0; i < 81; i++) {
-		bm[i] = val2bm[digits[i]];
+		bm[i] = val2bm[(int)digits[i]];
 	}
 	for(i = j = k = 0; i < 27; i++, j += 3) {
 		k = gr6_3y[i];
@@ -1132,7 +1132,8 @@ void grid::findUA5digits() {
 							if(digits[j] == d1 || digits[j] == d2 || digits[j] == d3 || digits[j] == d4 || digits[j] == d5)
 								hideThem[k++] = j;
 						}
-						unsigned long long nSol = findUaBySolving(hideThem, 45);
+						//unsigned long long nSol =
+						findUaBySolving(hideThem, 45);
 						//int nUA = static_cast<int>(usetsBySize.size());
 						//printf("(%d,%d,%d,%d,%d)\t%d\t%d\t%d\n", d1, d2, d3, d4, d5, nSol, nUA - nOldUA, nUA);
 						//nOldUA = nUA;
@@ -1223,7 +1224,8 @@ void grid::findUArandom(const char *puz, int nCells, int nAttempts) {
 		n = 0;
 		for(int i = 0; i < 81; i++)
 			if(mask[i]) hideThem[n++] = i;
-		unsigned long long nSol = findUaBySolving(hideThem, nCells);
+		//unsigned long long nSol =
+		findUaBySolving(hideThem, nCells);
 		//int nUA = static_cast<int>(usetsBySize.size());
 		//printf("%d\t%d\t%d\t%d\n", a, nSol, nUA - nOldUA, nUA);
 		//nOldUA = nUA;

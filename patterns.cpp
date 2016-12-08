@@ -145,7 +145,7 @@ allTranformations::~allTranformations() {
 void allTranformations::transform(const ch81 &src, ch81 &dest, int transformationIndex) const {
 	ch81 &ind = indices[transformationIndex];
 	for(int i = 0; i < 81; i++) {
-		dest.chars[ind.chars[i]] = src.chars[i];
+		dest.chars[(int)ind.chars[i]] = src.chars[i];
 
 		//reverse transfor would look like
 		//dest.chars[i] = src.chars[ind.chars[i]];
@@ -212,10 +212,10 @@ struct pat {
 				res[pos] = 0;
 				continue;
 			}
-			if(map[p[pos]] == -1) { //first occurence of this label
-				map[p[pos]] = n++;
+			if(map[(int)p[pos]] == -1) { //first occurence of this label
+				map[(int)p[pos]] = n++;
 			}
-			res[pos] = map[p[pos]];
+			res[pos] = map[(int)p[pos]];
 		}
 	}
 	void minlex(const char *p, char *res) const {
@@ -243,7 +243,7 @@ struct pat {
 			char *m = res + 81 * i;
 			//morph the pussle
 			for(int j = 0; j < 81; j++) {
-				m[maps[i].chars[j]] = p[j];
+				m[(int)maps[i].chars[j]] = p[j];
 			}
 		}
 	}
@@ -311,7 +311,7 @@ int scanfor(const char *p) {
 			ch81 puzInPattern;
 			ch81 puzMinlex;
 			for(int j = 0; j < 81; j++) {
-				puzInPattern.chars[pmap.chars[j]] = puzInGrid.chars[j];
+				puzInPattern.chars[(int)pmap.chars[j]] = puzInGrid.chars[j];
 			}
 			//minlex and print
 			ppp.minlex(puzInPattern.chars, puzMinlex.chars);
@@ -418,7 +418,7 @@ int settle(const char* p) {
 			ch81 puzInPattern;
 			ch81 puzMinlex;
 			for(int j = 0; j < 81; j++) {
-				puzInPattern.chars[pmap.chars[j]] = puzInMorph.chars[j];
+				puzInPattern.chars[(int)pmap.chars[j]] = puzInMorph.chars[j];
 			}
 			//minlex and print
 			ppp.minlex(puzInPattern.chars, puzMinlex.chars);

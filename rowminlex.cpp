@@ -87,20 +87,20 @@ void transformer::byGrid(const char* sol)
 				}
 				for(i = 1; i <= 9; i++)
 					test.map[i] = 0;
-				test.map[sol[tc.swap[b][test.row[0]][test.col[0]]]] = 1;
-				test.map[sol[tc.swap[b][test.row[0]][test.col[1]]]] = 2;
-				test.map[sol[tc.swap[b][test.row[0]][test.col[2]]]] = 3;
-				test.map[sol[tc.swap[b][test.row[1]][test.col[0]]]] = 4;
-				test.map[sol[tc.swap[b][test.row[1]][test.col[1]]]] = 5;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[0]]]] = 1;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[1]]]] = 2;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[2]]]] = 3;
+				test.map[(int)sol[tc.swap[b][test.row[1]][test.col[0]]]] = 4;
+				test.map[(int)sol[tc.swap[b][test.row[1]][test.col[1]]]] = 5;
 
 				/* map value 6 and order cols 4&5&6 */
 
 				k = 0;
 				for(i = 3; i < 9; i++) {
-					if(test.map[sol[tc.swap[b][test.row[0]][i]]] == 4) {
+					if(test.map[(int)sol[tc.swap[b][test.row[0]][i]]] == 4) {
 						l = tc.boxOffset[i];
 						for(j = 0; j < 3; j++) {
-							switch (test.map[sol[tc.swap[b][test.row[0]][j+l]]])
+							switch (test.map[(int)sol[tc.swap[b][test.row[0]][j+l]]])
 							{
 							case 4:
 								test.col[3] = j+l;
@@ -111,7 +111,7 @@ void transformer::byGrid(const char* sol)
 								k |= 02;
 								break;
 							case 0:
-								test.map[sol[tc.swap[b][test.row[0]][test.col[5]=j+l]]] = 6;
+								test.map[(int)sol[tc.swap[b][test.row[0]][test.col[5]=j+l]]] = 6;
 								k |= 04;
 								break;
 							}
@@ -125,15 +125,15 @@ void transformer::byGrid(const char* sol)
 				/* map values 7&8&9 */
 
 				for(j = 2; j < 6; j++) {
-					if(!test.map[sol[tc.swap[b][test.row[1]][test.col[j]]]]) {
-						test.map[sol[tc.swap[b][test.row[1]][test.col[j]]]] = k++;
+					if(!test.map[(int)sol[tc.swap[b][test.row[1]][test.col[j]]]]) {
+						test.map[(int)sol[tc.swap[b][test.row[1]][test.col[j]]]] = k++;
 					}
 				}
 
 				/* check row 2 cols 3&4&5&6 */
 
 				for(j = 2; j < 6; j++) {
-					if((d = (int)test.map[sol[tc.swap[b][test.row[1]][test.col[j]]]] - (int)map[sol[tc.swap[box][row[1]][col[j]]]])) {
+					if((d = (int)test.map[(int)sol[tc.swap[b][test.row[1]][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[1]][col[j]]]])) {
 						if(d > 0) {
 							goto next;
 						}
@@ -146,13 +146,13 @@ void transformer::byGrid(const char* sol)
 				j = (l == 3) ? 6 : 3;
 				k = j+1;
 				l = j+2;
-				if(test.map[sol[tc.swap[b][test.row[0]][j]]] > test.map[sol[tc.swap[b][test.row[0]][k]]]) {
+				if(test.map[(int)sol[tc.swap[b][test.row[0]][j]]] > test.map[(int)sol[tc.swap[b][test.row[0]][k]]]) {
 					v = j; j = k; k = v;
 				}
-				if(test.map[sol[tc.swap[b][test.row[0]][j]]] > test.map[sol[tc.swap[b][test.row[0]][l]]]) {
+				if(test.map[(int)sol[tc.swap[b][test.row[0]][j]]] > test.map[(int)sol[tc.swap[b][test.row[0]][l]]]) {
 					v = j; j = l; l = v;
 				}
-				if(test.map[sol[tc.swap[b][test.row[0]][k]]] > test.map[sol[tc.swap[b][test.row[0]][l]]]) {
+				if(test.map[(int)sol[tc.swap[b][test.row[0]][k]]] > test.map[(int)sol[tc.swap[b][test.row[0]][l]]]) {
 					v = k; k = l; l = v;
 				}
 				test.col[6] = j;
@@ -163,7 +163,7 @@ void transformer::byGrid(const char* sol)
 
 				if(!d) {
 					for(j = 6; j < 9; j++) {
-						if((d = (int)test.map[sol[tc.swap[b][test.row[1]][test.col[j]]]] - (int)map[sol[tc.swap[box][row[1]][col[j]]]])) {
+						if((d = (int)test.map[(int)sol[tc.swap[b][test.row[1]][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[1]][col[j]]]])) {
 							if(d > 0)
 								goto next;
 							break;
@@ -191,8 +191,8 @@ void transformer::byGrid(const char* sol)
 				v = 10;
 				i = 9;
 				while (--i >= 3) {
-					if(test.map[sol[tc.swap[b][i][test.col[0]]]] < v) {
-						v = test.map[sol[tc.swap[b][i][test.col[0]]]];
+					if(test.map[(int)sol[tc.swap[b][i][test.col[0]]]] < v) {
+						v = test.map[(int)sol[tc.swap[b][i][test.col[0]]]];
 						k = i;
 					}
 				}
@@ -201,7 +201,7 @@ void transformer::byGrid(const char* sol)
 
 				if(!d) {
 					for(j = 0; j < 9; j++) {
-						if((d = (int)test.map[sol[tc.swap[b][k][test.col[j]]]] - (int)map[sol[tc.swap[box][row[3]][col[j]]]])) {
+						if((d = (int)test.map[(int)sol[tc.swap[b][k][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[3]][col[j]]]])) {
 							if(d > 0) {
 								goto next;
 							}
@@ -213,7 +213,7 @@ void transformer::byGrid(const char* sol)
 
 				/* order rows 5&6 */
 
-				if(test.map[sol[tc.swap[b][tc.part[k][0]][test.col[0]]]] < test.map[sol[tc.swap[b][tc.part[k][1]][test.col[0]]]]) {
+				if(test.map[(int)sol[tc.swap[b][tc.part[k][0]][test.col[0]]]] < test.map[(int)sol[tc.swap[b][tc.part[k][1]][test.col[0]]]]) {
 					test.row[4] = tc.part[k][0];
 					test.row[5] = tc.part[k][1];
 				}
@@ -227,7 +227,7 @@ void transformer::byGrid(const char* sol)
 				if(!d) {
 					for(i = 4; i < 6; i++) {
 						for(j = 0; j < 9; j++) {
-							if((d = (int)test.map[sol[tc.swap[b][test.row[i]][test.col[j]]]] - (int)map[sol[tc.swap[box][row[i]][col[j]]]])) {
+							if((d = (int)test.map[(int)sol[tc.swap[b][test.row[i]][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[i]][col[j]]]])) {
 								if(d > 0) {
 									goto next;
 								}
@@ -244,8 +244,8 @@ void transformer::byGrid(const char* sol)
 
 				v = 10;
 				for(i = 2; i < 5; i++) {
-					if(test.map[sol[tc.swap[b][tc.part[k][i]][test.col[0]]]] < v) {
-						v = test.map[sol[tc.swap[b][tc.part[k][i]][test.col[0]]]];
+					if(test.map[(int)sol[tc.swap[b][tc.part[k][i]][test.col[0]]]] < v) {
+						v = test.map[(int)sol[tc.swap[b][tc.part[k][i]][test.col[0]]]];
 						l = tc.part[k][i];
 					}
 				}
@@ -254,7 +254,7 @@ void transformer::byGrid(const char* sol)
 
 				if(!d) {
 					for(j = 0; j < 9; j++) {
-						if((d = (int)test.map[sol[tc.swap[b][l][test.col[j]]]] - (int)map[sol[tc.swap[box][row[6]][col[j]]]])) {
+						if((d = (int)test.map[(int)sol[tc.swap[b][l][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[6]][col[j]]]])) {
 							if(d > 0) {
 								goto next;
 							}
@@ -266,7 +266,7 @@ void transformer::byGrid(const char* sol)
 
 				/* order rows 8&9 */
 
-				if(test.map[sol[tc.swap[b][tc.part[l][0]][test.col[0]]]] < test.map[sol[tc.swap[b][tc.part[l][1]][test.col[0]]]]) {
+				if(test.map[(int)sol[tc.swap[b][tc.part[l][0]][test.col[0]]]] < test.map[(int)sol[tc.swap[b][tc.part[l][1]][test.col[0]]]]) {
 					test.row[7] = tc.part[l][0];
 					test.row[8] = tc.part[l][1];
 				}
@@ -280,7 +280,7 @@ void transformer::byGrid(const char* sol)
 				if(!d) {
 					for(i = 7; i < 9; i++)
 						for(j = 0; j < 9; j++)
-							if((d = (int)test.map[sol[tc.swap[b][test.row[i]][test.col[j]]]] - (int)map[sol[tc.swap[box][row[i]][col[j]]]])) {
+							if((d = (int)test.map[(int)sol[tc.swap[b][test.row[i]][test.col[j]]]] - (int)map[(int)sol[tc.swap[box][row[i]][col[j]]]])) {
 								if(d > 0) {
 									goto next;
 								}

@@ -28,7 +28,7 @@ int minimizer::init(const char * const givens) {
 	fng.clear();
 	for(int i = 0; i < 81; i++) {
 		int c;
-		if(c = puz.chars[i]) {
+		if((c = puz.chars[i])) {
 			nClues++;
 			puz.chars[i] = 0;
 			if(solve(puz.chars, 2) != 1) {

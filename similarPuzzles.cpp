@@ -381,7 +381,7 @@ void doPlus(const ch81 &puz, puzzleSet &puzzles, puzzleSet &newPuzzles, puzzleSe
 				continue; //single possibility
 			}
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the pencilmarks
 				puzModified.chars[pos] = Bitmap2Digit[valueBM];
 				int pencilMarks2[81];

@@ -288,7 +288,7 @@ static void setDigit(game &g, const cellIndex pi, const bitmap pbm)
 
 //process_queue:
 	do {
-		if(cp[i]) ; else continue; //silently ignore setting of already solved cell
+		if(cp[i] == 0) continue; //silently ignore setting of already solved cell
 		//if((cp[i] & bm) == 0) goto ret_stop; //never happens
 		const int *const ag = affectedGroups[i];
 
@@ -971,7 +971,7 @@ static inline void init(game &g, const char* in)
 		//setDigit(g, i, Digit2Bitmap[in[i]]);
 		//...check for error here if this is the goal...
 
-		bitmap bm = Digit2Bitmap[in[i]];
+		bitmap bm = Digit2Bitmap[(unsigned int)in[i]];
 
 		const int *ag = affectedGroups[i];
 		//if the digit we are setting has been previously set for one of
@@ -1174,7 +1174,7 @@ static double probablisticGuess(game &g) {
 	for(int i = 0; i < w.size; i++) {
 		game gg = g; //clone the context
 		setDigit(gg, w.w[i].cell, 1 << w.w[i].digit);
-		if(0 == gg.mode & MODE_STOP_PROCESSING) {
+		if(0 == (gg.mode & MODE_STOP_PROCESSING)) {
 			fastEliminations(gg);
 			//checkForLastOccurenceInGroup(gg);
 		}
@@ -1470,7 +1470,7 @@ extern void findPencilMarks(char* in, short* pencilMarks, short *pmHints/* = NUL
 		if(pm) {
 			//unsolved cell
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the pencilmarks
 				game gg = g; //clone the game
 				//set the new given
@@ -1585,7 +1585,7 @@ extern int solverPlus(char* in, const int maxPuzzles, char* out, unsigned long l
 			continue; //single possibility == solved or given
 		}
 		int valueBM;
-		while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+		while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 			pm ^= valueBM; //clear this bit from the pencilmarks
 			game gg = gTemplate;
 			gg.cellDigits = NULL;
@@ -1613,7 +1613,7 @@ extern int solverPlus(char* in, const int maxPuzzles, char* out, unsigned long l
 				if(Bitmap2Digit[mmPencilMarks[cluePositions[oldClueIndex]]]) {
 					//adding the clue valueBM at position pos makes the clue at cluePositions[oldClueIndex] redundant
 					//here is the place to compose a matrix with redundants for later +1 (TODO?)
-					int xxl = 0;
+					//int xxl = 0;
 					goto nextValue;
 				}
 			}
@@ -1666,7 +1666,7 @@ extern NOINLINE int solverIsIrreducibleByProbing(char *puz) { //return nSol for 
 		if(pm) {
 			//unsolved cell
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the cloned pencilmarks
 				game gg = g; //clone the game
 				//set the new given
@@ -1764,7 +1764,7 @@ extern int solverPlus1(const char* in, char* out, const bool redundancyCheck, co
 		if(pm) {
 			//unsolved cell
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the pencilmarks
 				game gg = g; //clone the game
 				//set the new given
@@ -1812,7 +1812,7 @@ extern int solverPlus2(char* in, char* out) { //apply fast {+2} to in and store 
 		if(pm) {
 			//unsolved cell
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the pencilmarks
 				game gg = g; //clone the game
 				//set the new given
@@ -1839,7 +1839,7 @@ extern int solverPlus2(char* in, char* out) { //apply fast {+2} to in and store 
 					if(pm2) {
 						//unsolved cell
 						int valueBM2;
-						while(valueBM2 = pm2 & -pm2) { //take the rightmost nonzero bit
+						while((valueBM2 = (pm2 & -pm2))) { //take the rightmost nonzero bit
 							pm2 ^= valueBM2; //clear this bit from the pencilmarks
 							game gg2 = g2; //clone the game
 							//set the new given
@@ -1881,7 +1881,7 @@ extern int solverPlus1Unique(char* in, char* out) { //apply fast {+1} to in and 
 		if(pm) {
 			//unsolved cell
 			int valueBM;
-			while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 				pm ^= valueBM; //clear this bit from the pencilmarks
 				game gg = g; //clone the game
 				gg.maxSolutions = 2;
@@ -2020,7 +2020,7 @@ static int solvePattern(solverRelab &rd, const game &g, const int maxDiff, const
 					return 0; //redundant if the same value, or no solution if different value
 				//TODO: solve from scratch to see whether the solved clue matches the given
 			}
-			setDigit(gg, rd.patternPositions[i], Digit2Bitmap[rd.in[rd.patternPositions[i]]]);
+			setDigit(gg, rd.patternPositions[i], Digit2Bitmap[(unsigned int)rd.in[rd.patternPositions[i]]]);
 			if((gg.mode & MODE_STOP_PROCESSING) && gg.nSolutions == 0)
 				return 0; //no solution
 			rd.digits[rd.patternPositions[i]] = rd.in[rd.patternPositions[i]];
@@ -2087,23 +2087,23 @@ static int solvePattern(solverRelab &rd, const game &g, const int maxDiff, const
 	int valueBM;
 	int ret = 0;
 	if(maxDiff) {
-		while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+		while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 			pm ^= valueBM; //clear this bit from the pencilmarks
 			int md = maxDiff;
-			if(Bitmap2Digit[valueBM] != rd.in[rd.patternPositions[clueNumber]]) {
+			if((int)Bitmap2Digit[valueBM] != rd.in[rd.patternPositions[clueNumber]]) {
 				md--; //one more difference
 			}
 			ret += solvePattern(rd, g, md, clueNumber, valueBM);
 		}
 	}
 	else {
-		return solvePattern(rd, g, 0, clueNumber, Digit2Bitmap[rd.in[rd.patternPositions[clueNumber]]]);
+		return solvePattern(rd, g, 0, clueNumber, Digit2Bitmap[(unsigned int)rd.in[rd.patternPositions[clueNumber]]]);
 	}
 	return ret;
 }
 ///populate the given pattern in all possible ways up to maxDiff differences
 extern int solverRelabel(const char* in, const int maxDiff, const bool minimals, const bool unique, const bool nosingles, int (*callBack)(const char *puz, void *context), void *context) {
-	int ret = 0;
+	//int ret = 0;
 	solverRelab rd;
 	rd.minimals = minimals;
 	rd.unique = unique;
@@ -2157,7 +2157,7 @@ static int solverPattern(game &g, char* in, const int nClues, const int* cluePos
 	if(pm) {
 		//unsolved cell
 		int valueBM;
-		while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+		while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 			pm ^= valueBM; //clear this bit from the pencilmarks
 			game gg = g; //clone the game
 			//set the new given
@@ -2205,7 +2205,7 @@ extern int solverPattern(char* in, const int nClues, const int* cluePositions, i
 	if(pm) {
 		//unsolved cell
 		int valueBM;
-		while(valueBM = pm & -pm) { //take the rightmost nonzero bit
+		while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
 			pm ^= valueBM; //clear this bit from the pencilmarks
 			game gg = g; //clone the game
 			//set the new given
@@ -2358,6 +2358,6 @@ extern void solverXXL(const char* in) {
 
 extern void digit2bitmap(const char* in, int* out) {
 	for(int i = 0; i < 81; i++)
-		out[i] = Digit2Bitmap[in[i]];
+		out[i] = Digit2Bitmap[(int)in[i]];
 }
 
