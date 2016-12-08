@@ -2,7 +2,8 @@
 
 #define T_128_H_INCLUDED
 
-#include <emmintrin.h>
+//#include <emmintrin.h>
+#include <smmintrin.h>
 #include <limits.h>
 
 #ifndef _MSC_VER
@@ -71,8 +72,10 @@ public:
 	inline void setBit(const int theBit) {*this |= bitSet[theBit].m128i_m128i;};
 	inline void clearBit(const int theBit) {bitmap128.m128i_m128i = _mm_andnot_si128(bitSet[theBit].m128i_m128i, bitmap128.m128i_m128i);};
 	inline void clearBits(const bm128& r) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i);};
+	inline void clearBits(const bm128& r, const bm128& r1) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, r1.bitmap128.m128i_m128i);};
 	inline void clear() {bitmap128.m128i_m128i = _mm_setzero_si128();};
 	inline bool isSubsetOf(const bm128 &s) const {return equals(s.bitmap128.m128i_m128i, _mm_or_si128(bitmap128.m128i_m128i, s.bitmap128.m128i_m128i));}
+	inline bool clearsAll(const bm128 &s) const {return 1 == _mm_testc_si128(s.bitmap128.m128i_m128i, bitmap128.m128i_m128i);}
 	inline bool operator< (const bm128 &rhs) const {
 		if(bitmap128.m128i_u64[1] < rhs.bitmap128.m128i_u64[1]) return true;
 		if(bitmap128.m128i_u64[1] > rhs.bitmap128.m128i_u64[1]) return false;
@@ -81,7 +84,8 @@ public:
 	inline void operator= (const bm128 &rhs) {bitmap128.m128i_m128i = rhs.bitmap128.m128i_m128i;};
 	inline void loadUnaligned (const void *p) {bitmap128.m128i_m128i = _mm_loadu_si128((const __m128i *)p);};
 	inline void invalidate() {bitmap128.m128i_m128i = maskffff.m128i_m128i;};
-	inline bool isInvalid() const {return equals(bitmap128.m128i_m128i, maskffff.m128i_m128i);};
+	//inline bool isInvalid() const {return equals(bitmap128.m128i_m128i, maskffff.m128i_m128i);};
+	inline bool isInvalid() const {return 1 == _mm_test_all_ones(bitmap128.m128i_m128i);};
 	inline static bool isZero(const __m128i &r) {return equals(r, _mm_setzero_si128());};
 	inline bool isZero() const {return equals(bitmap128.m128i_m128i, _mm_setzero_si128());};
 	inline static bm128* allocate(const int size) {return (bm128*)_mm_malloc(size * sizeof(bm128), 16);};

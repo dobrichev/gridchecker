@@ -20,23 +20,33 @@ template <int maxElements> class bit_masks {
 
 	bm128 aBits[maxElements / 128];
 
-	inline void clear() {
-		for(int i = 0; i < maxElements / 128; i++)
-			aBits[i].clear();
-	}
-//	inline void setAll() {
+//	inline void clear() {
 //		for(int i = 0; i < maxElements / 128; i++)
-//			aBits[i] = maskffff;
+//			aBits[i].clear();
 //	}
+	inline void setAll() {
+		for(int i = 0; i < maxElements / 128; i++)
+			aBits[i] = maskffff;
+	}
 	void initSetMask(int numSets) {
-		clear();
+		//clear();
+//		int j = maxElements - numSets;
+//		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
+//			if(j >= 128) {
+//				aBits[i] |= maskffff.m128i_m128i;
+//			}
+//			else {
+//				aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
+//			}
+//		}
+		setAll();
 		int j = maxElements - numSets;
 		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
 			if(j >= 128) {
-				aBits[i] |= maskffff.m128i_m128i;
+				aBits[i].clear();
 			}
 			else {
-				aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
+				aBits[i].clearBits(_mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i));
 			}
 		}
 	}
@@ -80,14 +90,20 @@ public:
 	const int maxSize = maxElements;
 	inline void hitOnly(const bit_masks &s, const bit_masks &hittingMask) {
 		for(int i = 0; i < maxElements / 128; i++) {
-			aBits[i] = s.aBits[i] | hittingMask.aBits[i];
+//			aBits[i] = s.aBits[i] | hittingMask.aBits[i];
+//			//aBits[i].bitmap128.m128i_u64[0] = s.aBits[i].bitmap128.m128i_u64[0] | hittingMask.aBits[i].bitmap128.m128i_u64[0];
+//			//aBits[i].bitmap128.m128i_u64[1] = s.aBits[i].bitmap128.m128i_u64[1] | hittingMask.aBits[i].bitmap128.m128i_u64[1];
+			aBits[i].clearBits(hittingMask.aBits[i], s.aBits[i]);
 		}
 	}
 	inline bool isHittingAll(const bit_masks &hittingMask) const {
 		bm128 bm;
 		for(int i = 0; i < maxElements / 128; i++) {
-			bm = aBits[i] | hittingMask.aBits[i];
-			if(!bm.isInvalid()) return false;
+//			bm = aBits[i] | hittingMask.aBits[i];
+//			if(!bm.isInvalid()) return false;
+//			//if((aBits[i].bitmap128.m128i_u64[0] | hittingMask.aBits[i].bitmap128.m128i_u64[0]) != 0xffffffffffffffff) return false;
+//			//if((aBits[i].bitmap128.m128i_u64[1] | hittingMask.aBits[i].bitmap128.m128i_u64[1]) != 0xffffffffffffffff) return false;
+			if(!aBits[i].clearsAll(hittingMask.aBits[i])) return false;
 		}
 		return true;
 	}
@@ -137,15 +153,19 @@ public:
 //		}
 //		return INT_MAX;
 //	}
-	inline int hit(const bit_masks &s, const bit_masks &hittingMask) {
-		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
-		hitOnly(s, hittingMask);
+	inline int firstUnhit() {
 		for(int i = 0; i < maxElements / 128; i++) {
-			if(aBits[i].bitmap128.m128i_u64[0] != 0xffffffffffffffff) {
-				return i * 128 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[0]));
+//			if(aBits[i].bitmap128.m128i_u64[0] != 0xffffffffffffffff) {
+//				return i * 128 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[0]));
+//			}
+//			if(aBits[i].bitmap128.m128i_u64[1] != 0xffffffffffffffff) {
+//				return i * 128 + 64 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[1]));
+//			}
+			if(aBits[i].bitmap128.m128i_u64[0]) {
+				return i * 128 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[0]));
 			}
-			if(aBits[i].bitmap128.m128i_u64[1] != 0xffffffffffffffff) {
-				return i * 128 + 64 + __builtin_ctzll(~(aBits[i].bitmap128.m128i_u64[1]));
+			if(aBits[i].bitmap128.m128i_u64[1]) {
+				return i * 128 + 64 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[1]));
 			}
 		}
 		return INT_MAX;

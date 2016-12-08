@@ -1626,8 +1626,10 @@ void chunkProcessor::iterateClueBM(const BitMask768 &setMask, const int nFirst) 
 				BitMask768 newSetMask;
 				int nFirst;
 				////_mm_prefetch((char *)&newSetMask, _MM_HINT_T0); //slower
-				_mm_prefetch(((char *)&nFirst), _MM_HINT_T0); //insignificant improvement
-				nFirst = newSetMask.hit(setMask, hittingMasks[pos]);
+				//_mm_prefetch(((char *)&nFirst), _MM_HINT_T0); //insignificant improvement
+				//nFirst = newSetMask.hit(setMask, hittingMasks[pos]);
+				newSetMask.hitOnly(setMask, hittingMasks[pos]);
+				nFirst = newSetMask.firstUnhit();
 				iterateClueBM(newSetMask, nFirst);
 			}
 		}

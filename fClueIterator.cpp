@@ -185,80 +185,85 @@ void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
 	fastState &oldState = state[1];
 	fastState &newState = state[0];
 	newState.deadClues = oldState.deadClues;
+	clueNumber = 0;
 	if(currentUaIndex == INT_MAX) {
 		//todo: iterate over all non-dead clues
-		return;
+		goto done;
 	}
-	uset u((*ua1)[currentUaIndex].bitmap128);
-	u &= maskLSB[81];
-	u.clearBits(oldState.deadClues);
-	if(u.isZero()) {
-		//the UA is entirely within the dead clues
-		//printf("the UA is entirely within the dead clues\n");
-		return;
-	}
-	u.positionsByBitmap();
-	newState.nPositions = u.nbits;
-	for(int i = 0; i < u.nbits; i++) {
-		newState.positions[i] = u.positions[i];
-	}
-	for(int i = 0; i < newState.nPositions; i++) {
-		int cluePosition = newState.positions[i];
-		if(state[1].setMask.isHittingAll(hittingMasks[cluePosition])) {
-			//all UA are hit, check the puzzle for uniqueness
-//			for(int n = 0; n < ua1->size(); n++) {
-//				sizedUset uu((*ua1)[n]);
-//				if(uu.isSubsetOf(newState.deadClues)) {
-//					//entirely in dead clues
-//					printf("dead\n");
-//					goto nextClue;
-//				}
-//			}
-			//solve
-			clues[cluePosition] = g.digits[cluePosition];
-			nChecked++; //b6b ch=2738236, 136" no solver / 172" solver, 1 found
-			if(solve(clues, 2) == 1) {
-				nPuzzles++;
-			}
-			clues[cluePosition] = 0;
+	else {
+		uset u((*ua1)[currentUaIndex].bitmap128);
+		u &= maskLSB[81];
+		u.clearBits(oldState.deadClues);
+		if(u.isZero()) {
+			//the UA is entirely within the dead clues
+			//printf("the UA is entirely within the dead clues\n");
+			goto done;
 		}
-nextClue:;
-		newState.deadClues.setBit(cluePosition);
+		u.positionsByBitmap();
+		newState.nPositions = u.nbits;
+		for(int i = 0; i < u.nbits; i++) {
+			newState.positions[i] = u.positions[i];
+		}
+		for(int i = 0; i < newState.nPositions; i++) {
+			int cluePosition = newState.positions[i];
+			if(state[1].setMask.isHittingAll(hittingMasks[cluePosition])) {
+				//all UA are hit, check the puzzle for uniqueness
+				//solve
+				clues[cluePosition] = g.digits[cluePosition];
+	//			nChecked++; //b6b ch=2738236, 136" no solver / 172" solver, 1 found
+	//			if(solve(clues, 2) == 1) {
+	//				nPuzzles++;
+	//			}
+				checkPuzzle(newState.deadClues);
+				clues[cluePosition] = 0;
+			}
+	nextClue:;
+			newState.deadClues.setBit(cluePosition);
+		}
 	}
+done:
+	clueNumber = 1;
 }
 void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
 	fastState &oldState = state[2];
 	fastState &newState = state[1];
 	newState.deadClues = oldState.deadClues;
+	clueNumber = 1;
 	if(currentUaIndex == INT_MAX) {
 		//todo: iterate over all non-dead clues
-		return;
+		goto done;
 	}
-	uset u((*ua1)[currentUaIndex].bitmap128);
-	u &= maskLSB[81];
-	u.clearBits(oldState.deadClues);
-	if(u.isZero()) {
-		//the UA is entirely within the dead clues
-		//printf("the UA is entirely within the dead clues\n");
-		return;
-	}
-
-	u.positionsByBitmap();
-	newState.nPositions = u.nbits;
-	for(int i = 0; i < u.nbits; i++) {
-		newState.positions[i] = u.positions[i];
-	}
-	for(int i = 0; i < newState.nPositions; i++) {
-		int cluePosition = newState.positions[i];
-		if(state[2].setMask2.isHittingAll(hittingMasks2[cluePosition])) {
-			//all ua2 are hit, check ua1
-			int nextUaIndex = state[1].setMask.hit(state[2].setMask, hittingMasks[cluePosition]);
-			clues[cluePosition] = g.digits[cluePosition];
-			fastIterateLevel0(nextUaIndex);
-			clues[cluePosition] = 0;
+	else {
+		uset u((*ua1)[currentUaIndex].bitmap128);
+		u &= maskLSB[81];
+		u.clearBits(oldState.deadClues);
+		if(u.isZero()) {
+			//the UA is entirely within the dead clues
+			//printf("the UA is entirely within the dead clues\n");
+			goto done;
 		}
-		newState.deadClues.setBit(cluePosition);
+
+		u.positionsByBitmap();
+		newState.nPositions = u.nbits;
+		for(int i = 0; i < u.nbits; i++) {
+			newState.positions[i] = u.positions[i];
+		}
+		for(int i = 0; i < newState.nPositions; i++) {
+			int cluePosition = newState.positions[i];
+			if(state[2].setMask2.isHittingAll(hittingMasks2[cluePosition])) {
+				//all ua2 are hit, check ua1
+				//int nextUaIndex = state[1].setMask.hit(state[2].setMask, hittingMasks[cluePosition]);
+				state[1].setMask.hitOnly(state[2].setMask, hittingMasks[cluePosition]);
+				int nextUaIndex = state[1].setMask.firstUnhit();
+				clues[cluePosition] = g.digits[cluePosition];
+				fastIterateLevel0(nextUaIndex);
+				clues[cluePosition] = 0;
+			}
+			newState.deadClues.setBit(cluePosition);
+		}
 	}
+done:
+	clueNumber = 2;
 }
 
 void fastClueIterator::fastIterateLevel(int currentUaIndex) {
@@ -284,7 +289,9 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 	}
 	for(int i = 0; i < newState.nPositions; i++) {
 		int cluePosition = newState.positions[i];
-		int nextUaIndex = state[clueNumber].setMask.hit(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
+		//int nextUaIndex = state[clueNumber].setMask.hit(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
+		state[clueNumber].setMask.hitOnly(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
+		int nextUaIndex = state[clueNumber].setMask.firstUnhit();
 		clues[cluePosition] = g.digits[cluePosition];
 		if(clueNumber) {
 			if(nextUaIndex != INT_MAX) {
