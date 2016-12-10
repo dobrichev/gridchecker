@@ -74,6 +74,7 @@ public:
 	void findUA4digits();
 	void findUA5digits();
 	//void findUAbyMorph();
+	void findUA4boxes();
 	void findUA5boxes();
 	void findShortUA();
 	unsigned long long findUAbyPuzzle(const char *puz);

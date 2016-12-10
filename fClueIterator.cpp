@@ -32,10 +32,10 @@ using namespace std;
 //typedef bit_masks<1536> fua4_type;
 //typedef bit_masks<1536> fua5_type;
 
-typedef bit_masks<512> ua1_type;
+typedef bit_masks<768> ua1_type;
 typedef bit_masks<10240> ua2_type;
 typedef bit_masks<32768> ua3_type;
-typedef bit_masks<43008> ua4_type;
+typedef bit_masks<32768> ua4_type;
 typedef bit_masks<32768> ua5_type;
 
 typedef bit_masks<256> fua1_type;
@@ -509,9 +509,9 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 	clueNumber++;
 }
 
-//b6b.txt 816"/364/161 ch=2710054 (758/ch=2565209; 135/2565187)
-//b6a.txt 421/730/568  ch=723261/502563 (238/ch=297999)
-//rnd1.txt 267/250/293/245/252/228   ch=137035/ch=136828/124892 TODO: ua2 cuts wrongly!!!! (97/ch=60319)
+//b6b.txt 58.3"
+//b6a.txt 69.2
+//rnd1.txt 22.7
 void fastClueIterator::switch2bm() {
 	//compose ordinary UA
 	ua1_type::bm128ToIndex(ua, uaActualSize, state[clueNumber].setMask, hittingMasks);
@@ -530,6 +530,7 @@ void fastClueIterator::switch2bm() {
 		}
 	}
 	ua2composed:;
+	std::sort(ua2, ua2 + ua2ActualSize, sizedUset::isSmaller);
 	ua2_type::bm128ToIndex(ua2, ua2ActualSize, state[clueNumber].setMask2, hittingMasks2);
 
 	//compose UA3
@@ -546,6 +547,7 @@ void fastClueIterator::switch2bm() {
 		}
 	}
 	ua3composed:;
+	std::sort(ua3, ua3 + ua3ActualSize, sizedUset::isSmaller);
 	ua3_type::bm128ToIndex(ua3, ua3ActualSize, state[clueNumber].setMask3, hittingMasks3);
 
 	//compose UA4
@@ -562,10 +564,18 @@ void fastClueIterator::switch2bm() {
 		}
 	}
 	ua4composed:;
+	std::sort(ua4, ua4 + ua4ActualSize, sizedUset::isSmaller);
 	ua4_type::bm128ToIndex(ua4, ua4ActualSize, state[clueNumber].setMask4, hittingMasks4);
 
 	//compose UA5
 	ua5ActualSize = 0;
+
+//	//inject an artificial UA5 for band 3
+//	sizedUset tt(maskLSB[27]);
+//	tt.setSize();
+//	ua5[0] = tt;
+//	ua5ActualSize = 1;
+
 	for(int s1 = starter5; s1 < uaActualSize; s1++) {
 		for(int s2 = 0; s2 < ua4ActualSize; s2++) {
 			sizedUset tt(ua[s1]);
@@ -578,6 +588,7 @@ void fastClueIterator::switch2bm() {
 		}
 	}
 	ua5composed:;
+	std::sort(ua5, ua5 + ua5ActualSize, sizedUset::isSmaller);
 	ua5_type::bm128ToIndex(ua5, ua5ActualSize, state[clueNumber].setMask5, hittingMasks5);
 }
 
@@ -612,10 +623,10 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 		}
 		clueNumber++;
 	}
-	//debug
-	if(nChecked % 100000 == 0) {
-		printf("checked %d, found %d\n", nChecked, nPuzzles);
-	}
+//	//debug
+//	if(nChecked % 300000 == 0) {
+//		printf("checked %d, found %d\n", nChecked, nPuzzles);
+//	}
 }
 
 unsigned long long d0, d1, d2, d3, d4; //debug
@@ -627,8 +638,9 @@ void fastClueIterator::iterate() {
 	usetListBySize &us = g.usetsBySize;
 	printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
-	//g.findUA4digits();
-	//printf("\t%d\n", (int)us.size());
+	g.findUA4digits();
+	//g.findUA4boxes();
+	printf("\t%d\n", (int)us.size());
 
 	//init the top of the stack
 	clueNumber = nClues; //stack pointer to the "empty" puzzle

@@ -1314,11 +1314,33 @@ void grid::findUA12() {
 //	}
 //}
 
+void grid::findUA4boxes() {
+	unsigned char hideThem[81];
+	//int nOldUA = static_cast<int>(usetsBySize.size());
+	//printf("Finding UA by removing digits from 5 boxes.\n");
+	//printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
+	for(int d1 = 1; d1 <= 6; d1++) { //4-boxes
+		for(int d2 = d1 + 1; d2 <= 7; d2++) {
+			for(int d3 = d2 + 1; d3 <= 8; d3++) {
+				for(int d4 = d3 + 1; d4 <= 9; d4++) {
+					for(int j = 0, k = 0; j < 81; j++) {
+						if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1)
+							hideThem[k++] = j;
+					}
+					unsigned long long nSol = findUaBySolving(hideThem, 45);
+					//int nUA = static_cast<int>(usetsBySize.size());
+					//printf("(%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, nSol, nUA - nOldUA, nUA);
+					//nOldUA = nUA;
+				}
+			}
+		}
+	}
+}
 void grid::findUA5boxes() {
 	unsigned char hideThem[81];
-	int nOldUA = static_cast<int>(usetsBySize.size());
-	printf("Finding UA by removing digits from 5 boxes.\n");
-	printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
+	//int nOldUA = static_cast<int>(usetsBySize.size());
+	//printf("Finding UA by removing digits from 5 boxes.\n");
+	//printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
 	for(int d1 = 1; d1 <= 5; d1++) { //5-boxes
 		for(int d2 = d1 + 1; d2 <= 6; d2++) {
 			for(int d3 = d2 + 1; d3 <= 7; d3++) {
@@ -1329,9 +1351,9 @@ void grid::findUA5boxes() {
 								hideThem[k++] = j;
 						}
 						unsigned long long nSol = findUaBySolving(hideThem, 45);
-						int nUA = static_cast<int>(usetsBySize.size());
-						printf("(%d,%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, d5, nSol, nUA - nOldUA, nUA);
-						nOldUA = nUA;
+						//int nUA = static_cast<int>(usetsBySize.size());
+						//printf("(%d,%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, d5, nSol, nUA - nOldUA, nUA);
+						//nOldUA = nUA;
 					}
 				}
 			}
