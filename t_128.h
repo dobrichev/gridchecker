@@ -179,27 +179,35 @@ public:
 		return -1;
 	}
 	int getPositions(unsigned char *positions) const {
+//		int n = 0;
+//		//for(int i = 0; i < 81; i++)
+//		//	if(isBitSet(i))
+//		//		positions[n++] = (unsigned char)i;
+//		int m = nonzeroOctets(); // 16-bit mask of octets having non-zero bits
+//		int add8 = 0; //0 for lower 8 bits, 8 for higher 8 bits
+//		while(m) { //exit if no more octets with bits set
+//			if((m & 0xFF) == 0) { //lower 8 bits of the mask (== lower 64 bits of the field) are zero, switch to higher bits
+//				m >>= 8;
+//				add8 = 8;
+//			}
+//			int octetIndexLSB = m & -m; //the rightmost octet having nonzero bit
+//			int octetIndex = toPos[octetIndexLSB] + add8 - 1; //zero based index of this octet within the field
+//			int octetValue = bitmap128.m128i_u8[octetIndex];
+//			do {
+//				int octetLSB = octetValue & -octetValue; //the rightmost bit set within the value
+//				int bitIndex = (octetIndex * 8) + (toPos[octetLSB] - 1); //convert to zero based index within the fields
+//				positions[n++] = bitIndex; //store
+//				octetValue ^= octetLSB; //clear the processed bit from the temporay copy
+//			} while(octetValue); //loop until all bits within this octed are processed
+//			m ^= octetIndexLSB; //clear the octet processed
+//		}
+//		return n;
 		int n = 0;
-		//for(int i = 0; i < 81; i++)
-		//	if(isBitSet(i))
-		//		positions[n++] = (unsigned char)i;
-		int m = nonzeroOctets(); // 16-bit mask of octets having non-zero bits
-		int add8 = 0; //0 for lower 8 bits, 8 for higher 8 bits
-		while(m) { //exit if no more octets with bits set
-			if((m & 0xFF) == 0) { //lower 8 bits of the mask (== lower 64 bits of the field) are zero, switch to higher bits
-				m >>= 8;
-				add8 = 8;
+		for(int j = 0; j < 2; j++) {
+			for(uint64_t bits = bitmap128.m128i_u64[j]; bits; bits &= (bits - 1)) {
+				int offset = __builtin_ctzll(bits);
+				positions[n++] = j * 64 + offset;
 			}
-			int octetIndexLSB = m & -m; //the rightmost octet having nonzero bit
-			int octetIndex = toPos[octetIndexLSB] + add8 - 1; //zero based index of this octet within the field
-			int octetValue = bitmap128.m128i_u8[octetIndex];
-			do {
-				int octetLSB = octetValue & -octetValue; //the rightmost bit set within the value
-				int bitIndex = (octetIndex * 8) + (toPos[octetLSB] - 1); //convert to zero based index within the fields
-				positions[n++] = bitIndex; //store
-				octetValue ^= octetLSB; //clear the processed bit from the temporay copy
-			} while(octetValue); //loop until all bits within this octed are processed
-			m ^= octetIndexLSB; //clear the octet processed
 		}
 		return n;
 	}

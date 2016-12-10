@@ -11,62 +11,33 @@
 
 #include "solver.h"
 #include "tables.h"
-#include "mm_allocator.h"
 #include "t_128.h"
 #include "uset.h"
 #include "grid.h"
-#include "clueIterator.h"
-#include "rowminlex.h"
+#include "BitMask768.h"
 #include "ch81.h"
 #include "options.h"
 
 using namespace std;
 
-struct reusableUA {
-	sizedUsetList clique[21]; //0..15
-	int mcn; //6797" for 120K calls in 14x17, 2136" for mcn-1 < 3
-	int populate(int stopAt) { //expects previous level 0 is already done
-		for(mcn = 1; /*mcn < 3 &&*/ mcn < stopAt && clique[mcn - 1].size(); mcn++) {
-			if(populateLevel(mcn)) {
-				return 1; //too high mcn
-			}
-		}
-		return 0;
-	}
-	int populateLevel(int level) { //expects previous levels are already done
-		sizedUsetList &singles = clique[0];
-		sizedUsetList &t = clique[level];
-		t.clear();
-		if(level == 1) { //special case
-			for(sizedUsetList::const_iterator u0 = singles.begin(); u0 != singles.end(); u0++) {
-				for(sizedUsetList::const_iterator u1 = u0; ++u1 != singles.end();) {
-					sizedUset tt(*u1);
-					if(tt.join(*u0)) {
-						t.insert(tt);
-					}
-				}
-			}
-		}
-		else {
-			sizedUsetList &prev = clique[level - 1];
-			for(sizedUsetList::const_iterator u0 = singles.begin(); u0 != singles.end(); u0++) {
-				for(sizedUsetList::const_iterator u1 = prev.begin(); u1 != prev.end(); u1++) {
-					sizedUset tt(*u1);
-					if(tt.join(*u0)) {
-						t.insert(tt);
-					}
-				}
-			}
-		}
-		return 0;
-	}
-};
-
 typedef bit_masks<512> ua1_type;
-typedef bit_masks<4096> ua2_type;
-typedef bit_masks<12288> ua3_type;
-typedef bit_masks<12288> ua4_type;
-typedef bit_masks<2048> ua5_type;
+typedef bit_masks<8192> ua2_type;
+typedef bit_masks<16384> ua3_type;
+typedef bit_masks<32768> ua4_type;
+typedef bit_masks<16384> ua5_type;
+
+typedef bit_masks<256> fua1_type;
+typedef bit_masks<512> fua2_type;
+typedef bit_masks<1280> fua3_type;
+typedef bit_masks<1536> fua4_type;
+typedef bit_masks<1536> fua5_type;
+
+//consolidated
+//128
+//384
+//1280
+//1536
+//1536
 
 struct fastState {
 	bm128 deadClues;
@@ -76,27 +47,69 @@ struct fastState {
 	ua3_type setMask3;
 	ua4_type setMask4;
 	ua5_type setMask5;
+	fua1_type fSetMask;
+	fua2_type fSetMask2;
+	fua3_type fSetMask3;
+	fua4_type fSetMask4;
+	fua5_type fSetMask5;
 	int nPositions;
 	int positions[81];
-	sizedUsetVector sizedUsetV;
 };
 
 class fastClueIterator {
 private:
 	void fastIterateLevel0(int currentUaIndex);
 	void fastIterateLevel1(int currentUaIndex);
+	void fastIterateLevel2(int currentUaIndex);
+	void fastIterateLevel3(int currentUaIndex);
+	void fastIterateLevel4(int currentUaIndex);
+	void fastIterateLevel9to5(int currentUaIndex);
 	void fastIterateLevel(int currentUaIndex = 0);
 	void switch2bm();
 	void checkPuzzle(bm128 &dc, int startPos = 0);
 	fastClueIterator();
 	//void bm128ToIndex(const bm128 *sets, int nsets, BitMask768 &setMask, BitMask768 *hittingMasks);
 	//void iterateLevel();
+//	static int const starter2 = 44; // Gary McGure http://www.math.ie/checker.html
+//	static int const starter3 = 30;
+//	static int const starter4 = 27;
+//	static int const starter5 = 21;
+	static int const starter2 = 44; // Gary McGure http://www.math.ie/checker.html
+	static int const starter3 = 30;
+	static int const starter4 = 27;
+	static int const starter5 = 21;
 public:
 	ua1_type hittingMasks[81];
 	ua2_type hittingMasks2[81];
 	ua3_type hittingMasks3[81];
 	ua4_type hittingMasks4[81];
 	ua5_type hittingMasks5[81];
+	fua1_type fHittingMasks[81]; //4+
+	fua2_type fHittingMasks2[81]; //5+
+	fua3_type fHittingMasks3[81]; //6+
+	fua4_type fHittingMasks4[81]; //6+
+	fua5_type fHittingMasks5[81]; //7+
+	sizedUset ua[ua1_type::maxSize];
+	sizedUset ua2[ua2_type::maxSize];
+	sizedUset ua3[ua3_type::maxSize];
+	sizedUset ua4[ua4_type::maxSize];
+	sizedUset ua5[ua5_type::maxSize];
+	sizedUset fUa[fua1_type::maxSize];
+	sizedUset fUa2[fua2_type::maxSize];
+	sizedUset fUa3[fua3_type::maxSize];
+	sizedUset fUa4[fua4_type::maxSize];
+	sizedUset fUa5[fua5_type::maxSize];
+	int uaActualSize;
+	int ua2ActualSize;
+	int ua3ActualSize;
+	int ua4ActualSize;
+	int ua5ActualSize;
+	int fuaActualSize;
+	int fua2ActualSize;
+	int fua3ActualSize;
+	int fua4ActualSize;
+	int fua5ActualSize;
+
 	int nClues;
 	grid &g;
 	unsigned int nPuzzles;
@@ -104,8 +117,6 @@ public:
 	int clueNumber; //nClues - 1 .. 0
 	fastState state[81];
 	char clues[81];
-	reusableUA cliques;
-	sizedUsetVector *ua1;
 
 	fastClueIterator(grid &g);
 	void iterate();
@@ -115,40 +126,32 @@ void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
 	fastState &oldState = state[1];
 	fastState &newState = state[0];
 	newState.deadClues = oldState.deadClues;
-	clueNumber = 0;
 	if(currentUaIndex == INT_MAX) {
-		//todo: iterate over all non-dead clues
+		//iterate over all non-dead clues
+		checkPuzzle(newState.deadClues);
 		goto done;
 	}
 	else {
-		uset u((*ua1)[currentUaIndex].bitmap128);
+		uset u((fUa)[currentUaIndex].bitmap128);
 		u &= maskLSB[81];
 		u.clearBits(oldState.deadClues);
-		if(u.isZero()) {
-			//the UA is entirely within the dead clues
-			//printf("the UA is entirely within the dead clues\n");
-			goto done;
-		}
+//		if(u.isZero()) {
+//			//the UA is entirely within the dead clues
+//			//printf("the UA is entirely within the dead clues\n");
+//			goto done;
+//		}
 		u.positionsByBitmap();
-		newState.nPositions = u.nbits;
 		for(int i = 0; i < u.nbits; i++) {
-			newState.positions[i] = u.positions[i];
-		}
-		for(int i = 0; i < newState.nPositions; i++) {
-			int cluePosition = newState.positions[i];
-			if(state[1].setMask.isHittingAll(hittingMasks[cluePosition])) {
+			int cluePosition = u.positions[i];
+			if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
 				//all UA are hit, check the puzzle for uniqueness
 				//solve
+				clueNumber = 0;
 				clues[cluePosition] = g.digits[cluePosition];
-	//			nChecked++; //b6b ch=2738236, 136" no solver / 172" solver, 1 found
-	//			if(solve(clues, 2) == 1) {
-	//				nPuzzles++;
-	//			}
 				checkPuzzle(newState.deadClues);
 				clues[cluePosition] = 0;
 			}
-	nextClue:;
-			newState.deadClues.setBit(cluePosition);
+			//newState.deadClues.setBit(cluePosition);
 		}
 	}
 done:
@@ -158,33 +161,23 @@ void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
 	fastState &oldState = state[2];
 	fastState &newState = state[1];
 	newState.deadClues = oldState.deadClues;
-	clueNumber = 1;
 	if(currentUaIndex == INT_MAX) {
-		//todo: iterate over all non-dead clues
+		//iterate over all non-dead clues
+		checkPuzzle(newState.deadClues);
 		goto done;
 	}
 	else {
-		uset u((*ua1)[currentUaIndex].bitmap128);
+		uset u((fUa)[currentUaIndex].bitmap128);
 		u &= maskLSB[81];
 		u.clearBits(oldState.deadClues);
-		if(u.isZero()) {
-			//the UA is entirely within the dead clues
-			//printf("the UA is entirely within the dead clues\n");
-			goto done;
-		}
-
+		clueNumber = 1;
 		u.positionsByBitmap();
-		newState.nPositions = u.nbits;
 		for(int i = 0; i < u.nbits; i++) {
-			newState.positions[i] = u.positions[i];
-		}
-		for(int i = 0; i < newState.nPositions; i++) {
-			int cluePosition = newState.positions[i];
+			int cluePosition = u.positions[i];
 			if(state[2].setMask2.isHittingAll(hittingMasks2[cluePosition])) {
 				//all ua2 are hit, check ua1
-				//int nextUaIndex = state[1].setMask.hit(state[2].setMask, hittingMasks[cluePosition]);
-				state[1].setMask.hitOnly(state[2].setMask, hittingMasks[cluePosition]);
-				int nextUaIndex = state[1].setMask.firstUnhit();
+				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+				int nextUaIndex = newState.fSetMask.firstUnhit();
 				clues[cluePosition] = g.digits[cluePosition];
 				fastIterateLevel0(nextUaIndex);
 				clues[cluePosition] = 0;
@@ -195,134 +188,255 @@ void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
 done:
 	clueNumber = 2;
 }
+void fastClueIterator::fastIterateLevel2(int currentUaIndex) {
+	fastState &oldState = state[3];
+	fastState &newState = state[2];
+	newState.deadClues = oldState.deadClues;
+	if(currentUaIndex == INT_MAX) {
+		//iterate over all non-dead clues
+		checkPuzzle(newState.deadClues);
+		goto done;
+	}
+	else {
+		uset u((fUa)[currentUaIndex].bitmap128);
+		u &= maskLSB[81];
+		u.clearBits(oldState.deadClues);
+		clueNumber = 2;
+		u.positionsByBitmap();
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(state[3].setMask3.isHittingAll(hittingMasks3[cluePosition])) {
+				//all ua3 are hit, now hit ua2 and ua
+				state[2].setMask2.hitOnly(state[3].setMask2, hittingMasks2[cluePosition]);
+				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+				int nextUaIndex = newState.fSetMask.firstUnhit();
+				clues[cluePosition] = g.digits[cluePosition];
+				fastIterateLevel1(nextUaIndex);
+				clues[cluePosition] = 0;
+			}
+			newState.deadClues.setBit(cluePosition);
+		}
+	}
+done:
+	clueNumber = 3;
+}
+void fastClueIterator::fastIterateLevel3(int currentUaIndex) {
+	fastState &oldState = state[4];
+	fastState &newState = state[3];
+	newState.deadClues = oldState.deadClues;
+	if(currentUaIndex == INT_MAX) {
+		//iterate over all non-dead clues
+		checkPuzzle(newState.deadClues);
+		goto done;
+	}
+	else {
+		uset u((fUa)[currentUaIndex].bitmap128);
+		u &= maskLSB[81];
+		u.clearBits(oldState.deadClues);
+		clueNumber = 3;
+		u.positionsByBitmap();
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(state[4].setMask4.isHittingAll(hittingMasks4[cluePosition])) {
+				//all ua4 are hit, now hit ua3, ua2 and ua
+				state[3].setMask3.hitOnly(state[4].setMask3, hittingMasks3[cluePosition]);
+				state[3].setMask2.hitOnly(state[4].setMask2, hittingMasks2[cluePosition]);
+				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+				int nextUaIndex = newState.fSetMask.firstUnhit();
+				clues[cluePosition] = g.digits[cluePosition];
+				fastIterateLevel2(nextUaIndex);
+				clues[cluePosition] = 0;
+			}
+			newState.deadClues.setBit(cluePosition);
+		}
+	}
+done:
+	clueNumber = 4;
+}
+void fastClueIterator::fastIterateLevel4(int currentUaIndex) {
+	fastState &oldState = state[5];
+	fastState &newState = state[4];
+	newState.deadClues = oldState.deadClues;
+	if(currentUaIndex == INT_MAX) {
+		//iterate over all non-dead clues
+		checkPuzzle(newState.deadClues);
+		goto done;
+	}
+	else {
+		uset u((fUa)[currentUaIndex].bitmap128);
+		u &= maskLSB[81];
+		u.clearBits(oldState.deadClues);
+		clueNumber = 4;
+		u.positionsByBitmap();
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(state[5].setMask5.isHittingAll(hittingMasks5[cluePosition])) {
+				//all ua5 are hit, now hit ua4, ua3, ua2 and ua
+				state[4].setMask4.hitOnly(state[5].setMask4, hittingMasks4[cluePosition]);
+				state[4].setMask3.hitOnly(state[5].setMask3, hittingMasks3[cluePosition]);
+				state[4].setMask2.hitOnly(state[5].setMask2, hittingMasks2[cluePosition]);
+				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+				int nextUaIndex = newState.fSetMask.firstUnhit();
+				clues[cluePosition] = g.digits[cluePosition];
+				fastIterateLevel3(nextUaIndex);
+				clues[cluePosition] = 0;
+			}
+			newState.deadClues.setBit(cluePosition);
+		}
+	}
+done:
+	clueNumber = 5;
+}
+void fastClueIterator::fastIterateLevel9to5(int currentUaIndex) {
+	if(currentUaIndex == INT_MAX) {
+		return;
+	}
+	fastState &oldState = state[clueNumber];
+	clueNumber--;
+	fastState &newState = state[clueNumber];
+	newState.deadClues = oldState.deadClues;
+	uset u((fUa)[currentUaIndex].bitmap128);
+	u &= maskLSB[81];
+	u.clearBits(oldState.deadClues);
+	u.positionsByBitmap();
+	for(int i = 0; i < u.nbits; i++) {
+		int cluePosition = u.positions[i];
+		if(state[5].setMask5.isHittingAll(hittingMasks5[cluePosition])) {
+			//all ua5 are hit, now hit ua4, ua3, ua2 and ua
+			newState.setMask4.hitOnly(oldState.setMask4, hittingMasks4[cluePosition]);
+			newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
+			newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
+			newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+			int nextUaIndex = newState.fSetMask.firstUnhit();
+			clues[cluePosition] = g.digits[cluePosition];
+			if(clueNumber == 5) {
+				fastIterateLevel4(nextUaIndex);
+			}
+			else {
+				fastIterateLevel9to5(nextUaIndex); //call recursively
+			}
+			clues[cluePosition] = 0;
+		}
+		newState.deadClues.setBit(cluePosition);
+	}
+	clueNumber++;
+}
 
 void fastClueIterator::fastIterateLevel(int currentUaIndex) {
+	if(currentUaIndex == INT_MAX) {
+		return;
+	}
 	fastState &oldState = state[clueNumber];
 	clueNumber--;
 	fastState &newState = state[clueNumber];
 	newState.deadClues = oldState.deadClues;
 	//prepare state for the next clue
-	uset u((*ua1)[currentUaIndex].bitmap128);
+	uset u((ua)[currentUaIndex].bitmap128);
 	u &= maskLSB[81];
 	u.clearBits(oldState.deadClues);
-	if(u.isZero()) {
-		goto backtrack;
-	}
 	u.positionsByBitmap();
-//	if(u.nbits == 0) {
-//		//printf("Empty UA\n");
-//		goto backtrack;
-//	}
-	newState.nPositions = u.nbits;
 	for(int i = 0; i < u.nbits; i++) {
-		newState.positions[i] = u.positions[i];
-	}
-	for(int i = 0; i < newState.nPositions; i++) {
-		int cluePosition = newState.positions[i];
-		//int nextUaIndex = state[clueNumber].setMask.hit(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
-		state[clueNumber].setMask.hitOnly(state[clueNumber + 1].setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = state[clueNumber].setMask.firstUnhit();
+		int cluePosition = u.positions[i];
 		clues[cluePosition] = g.digits[cluePosition];
-		if(clueNumber) {
-			if(nextUaIndex != INT_MAX) {
-				if(clueNumber >= 5) {
-					//update composite UA requiring 5 clues
-					state[clueNumber].setMask5.hitOnly(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition]);
-				}
-				if(clueNumber == 4) {
-					//int unhit;
-					if(!state[clueNumber + 1].setMask5.isHittingAll(hittingMasks5[cluePosition])) {
-						//un-hit composite UA found. Continue with next.
-//						int unhit = state[clueNumber].setMask5.hit(state[clueNumber + 1].setMask5, hittingMasks5[cluePosition]);
-//						printf("Un-hit UA5\n");
-//						for(int n = 0; n < 81; n++) printf("%d", clues[n]);
-//						printf("\t puzzle\n");
-//						for(int n = 0; n < 81; n++) printf("%d", hittingMasks5[n].aBits[unhit / 128].isBitSet(unhit % 128) ? 1 : 0);
-//						printf("\t UA5\n");
-						goto nextClue;
-					}
-				}
-				if(clueNumber >= 4) {
-					//update composite UA requiring 4 clues
-					state[clueNumber].setMask4.hitOnly(state[clueNumber + 1].setMask4, hittingMasks4[cluePosition]);
-				}
-				if(clueNumber == 3) {
-					if(!state[clueNumber + 1].setMask4.isHittingAll(hittingMasks4[cluePosition])) {
-						goto nextClue;
-					}
-				}
-				if(clueNumber >= 3) {
-					//update composite UA requiring 3 clues
-					state[clueNumber].setMask3.hitOnly(state[clueNumber + 1].setMask3, hittingMasks3[cluePosition]);
-				}
-				if(clueNumber == 2) {
-					if(!state[clueNumber + 1].setMask3.isHittingAll(hittingMasks3[cluePosition])) {
-						goto nextClue;
-					}
-					state[clueNumber].setMask2.hitOnly(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition]);
-					fastIterateLevel1(nextUaIndex);
-				}
-				else {
-					//update composite UA requiring 2 clues
-					state[clueNumber].setMask2.hitOnly(state[clueNumber + 1].setMask2, hittingMasks2[cluePosition]);
-					fastIterateLevel(nextUaIndex); //call recursively
-				}
-			}
-			else {
-				//todo: expand all possible puzzles, no more help from UA
-				if(clueNumber > 1) printf("all UA hit at clue %d\n", clueNumber);
-			}
-		} //clueNumber <> 0
-nextClue:;
+		//update composite UA requiring 1, 2, 3, 4 and 5 clues
+		newState.setMask5.hitOnly(oldState.setMask5, hittingMasks5[cluePosition]);
+		newState.setMask4.hitOnly(oldState.setMask4, hittingMasks4[cluePosition]);
+		newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
+		newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
+		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
+		if(clueNumber == 10) {
+			//consolidate ua to fUa
+			fuaActualSize = newState.setMask.copyAlive(ua, fUa, fua1_type::maxSize, newState.deadClues);
+			//printf("fuaActualSize=%d", fuaActualSize);
+			std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
+			//fuaActualSize = (std::unique(fUa, fUa + fuaActualSize) - &fUa[0]);
+			//printf("\t%d\n", fuaActualSize);
+			fua1_type::bm128ToIndex(fUa, fuaActualSize, newState.fSetMask, fHittingMasks);
+			fastIterateLevel9to5(0);
+		}
+		else {
+			int nextUaIndex = newState.setMask.firstUnhit();
+			fastIterateLevel(nextUaIndex); //call recursively
+		}
 		newState.deadClues.setBit(cluePosition);
 		clues[cluePosition] = 0;
 	}
-backtrack:;
 	clueNumber++;
 }
 
 //b6b.txt 816"/364/161 ch=2710054 (758/ch=2565209; 135/2565187)
 //b6a.txt 421/730/568  ch=723261/502563 (238/ch=297999)
-//rnd1.txt 267/250/293/245/252/228   ch=137035/ch=136828/124892 TODO: ua2 cuts wrongly!!!!
+//rnd1.txt 267/250/293/245/252/228   ch=137035/ch=136828/124892 TODO: ua2 cuts wrongly!!!! (97/ch=60319)
 void fastClueIterator::switch2bm() {
-	sizedUsetVector &newUA = *ua1;
-
 	//compose ordinary UA
-	ua1_type::bm128ToIndex(&newUA[0], newUA.size(), state[clueNumber].setMask, hittingMasks);
+	ua1_type::bm128ToIndex(ua, uaActualSize, state[clueNumber].setMask, hittingMasks);
 
-	bm128 tmp[40000];
-	int i;
 	//compose UA2
-	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[1].begin(); i < state[clueNumber].setMask2.maxSize && c != cliques.clique[1].end(); c++, i++) {
-		tmp[i] = *c;
+	ua2ActualSize = 0;
+	for(int s1 = starter2; s1 < uaActualSize - 1; s1++) {
+		for(int s2 = s1 + 1; s2 < uaActualSize; s2++) {
+			sizedUset tt(ua[s1]);
+			if(tt.join(ua[s2])) {
+				ua2[ua2ActualSize] = tt;
+				ua2ActualSize++;
+				if(ua2ActualSize >= ua2_type::maxSize)
+					goto ua2composed;
+			}
+		}
 	}
-	ua2_type::bm128ToIndex(tmp, i, state[clueNumber].setMask2, hittingMasks2);
+	ua2composed:;
+	ua2_type::bm128ToIndex(ua2, ua2ActualSize, state[clueNumber].setMask2, hittingMasks2);
 
 	//compose UA3
-	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[2].begin(); i < state[clueNumber].setMask3.maxSize && c != cliques.clique[2].end(); c++, i++) {
-		tmp[i] = *c;
+	ua3ActualSize = 0;
+	for(int s1 = starter3; s1 < uaActualSize; s1++) {
+		for(int s2 = 0; s2 < ua2ActualSize; s2++) {
+			sizedUset tt(ua[s1]);
+			if(tt.join(ua2[s2])) {
+				ua3[ua3ActualSize] = tt;
+				ua3ActualSize++;
+				if(ua3ActualSize >= ua3_type::maxSize)
+					goto ua3composed;
+			}
+		}
 	}
-	ua3_type::bm128ToIndex(tmp, i, state[clueNumber].setMask3, hittingMasks3);
+	ua3composed:;
+	ua3_type::bm128ToIndex(ua3, ua3ActualSize, state[clueNumber].setMask3, hittingMasks3);
 
 	//compose UA4
-	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[3].begin(); i < state[clueNumber].setMask4.maxSize && c != cliques.clique[3].end(); c++, i++) {
-		tmp[i] = *c;
+	ua4ActualSize = 0;
+	for(int s1 = starter4; s1 < uaActualSize; s1++) {
+		for(int s2 = 0; s2 < ua3ActualSize; s2++) {
+			sizedUset tt(ua[s1]);
+			if(tt.join(ua3[s2])) {
+				ua4[ua4ActualSize] = tt;
+				ua4ActualSize++;
+				if(ua4ActualSize >= ua4_type::maxSize)
+					goto ua4composed;
+			}
+		}
 	}
-	ua4_type::bm128ToIndex(tmp, i, state[clueNumber].setMask4, hittingMasks4);
+	ua4composed:;
+	ua4_type::bm128ToIndex(ua4, ua4ActualSize, state[clueNumber].setMask4, hittingMasks4);
 
 	//compose UA5
-	i = 0;
-	for(sizedUsetList::const_iterator c = cliques.clique[4].begin(); i < state[clueNumber].setMask5.maxSize && c != cliques.clique[4].end(); c++, i++) {
-		tmp[i] = *c;
+	ua5ActualSize = 0;
+	for(int s1 = starter5; s1 < uaActualSize; s1++) {
+		for(int s2 = 0; s2 < ua4ActualSize; s2++) {
+			sizedUset tt(ua[s1]);
+			if(tt.join(ua4[s2])) {
+				ua5[ua5ActualSize] = tt;
+				ua5ActualSize++;
+				if(ua5ActualSize >= ua5_type::maxSize)
+					goto ua5composed;
+			}
+		}
 	}
-	ua5_type::bm128ToIndex(tmp, i, state[clueNumber].setMask5, hittingMasks5);
-	//fastIterateLevel();
+	ua5composed:;
+	ua5_type::bm128ToIndex(ua5, ua5ActualSize, state[clueNumber].setMask5, hittingMasks5);
 }
 
-fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0), ua1(NULL) {
+fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0) {
 	nPuzzles = 0;
 	nChecked = 0;
 	nClues = opt.scanOpt->nClues;
@@ -380,22 +494,22 @@ void fastClueIterator::iterate() {
 
 	s.deadClues.clear();
 	s.setClues.clear();
-	const int numUaToSkip = 40; //Gary McGuire skips the shortest 40 UA
+//	const int numUaToSkip = 21; //Gary McGuire skips the shortest {44,30,27,21} UA
 	int curUA = 0;
-	for(usetListBySize::const_iterator p = us.begin(); p != us.end(); p++, curUA++) {
+	uaActualSize = 0;
+	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && uaActualSize < ua1_type::maxSize; p++, curUA++) {
 		sizedUset su;
 		su.bitmap128 = p->bitmap128; //don't calculate the size
 		su.setSize(p->nbits);
-		s.sizedUsetV.push_back(su);
-		if(curUA < numUaToSkip) continue;
-		//if(su.getSize() >= 6)
-			cliques.clique[0].insert(su);
+		ua[uaActualSize++] = su; //store for hitting
+//		if(curUA < numUaToSkip) continue;
+//		cliques.clique[0].insert(su); //store for composing cliques
 	}
-	cliques.populate(5); //this crashes for MostCanonical grid on 32-bit platform
+//	cliques.populate(5); //this crashes for MostCanonical grid on 32-bit platform
 
 	//always start from the first UA which is one of the shortest
 	uset top;
-	top.bitmap128 = s.sizedUsetV[0].bitmap128;
+	top.bitmap128 = ua[0].bitmap128;
 	top &= maskLSB[81];
 	top.positionsByBitmap();
 	s.nPositions = top.nbits;
@@ -403,27 +517,14 @@ void fastClueIterator::iterate() {
 		s.positions[i] = top.positions[i];
 	}
 
-	//some info for debugging/optimization
-	int population[81];
-	for(int i = 0; i < cliques.mcn; i++) {
-		for(int i = 0; i < 81; i++) population[i] = 0;
-		int min = 100, sum = 0, max = 0;
-		for(sizedUsetList::const_iterator p = cliques.clique[i].begin(); p != cliques.clique[i].end(); p++) {
-			int size = p->getSize();
-			sum += size;
-			if(min > size) min = size;
-			if(max < size) max = size;
-			for(int j = 0; j < 81; j++) if(p->isBitSet(j)) population[j]++;
-		}
-		printf("cl(%d)\tcount=%d\tmin=%d\tavg=%2.2f\tmax=%d\n", i + 1, (int)cliques.clique[i].size(), min, sum/(double)cliques.clique[i].size(), max);
-//		sum = 0;
-//		for(int j = 0; j < 81; j++) sum += population[j];
-//		for(int j = 0; j < 81; j++) population[j] /= (sum / 81 / 10);
-//		for(int j = 0; j < 81; j++) printf("%2.2d ", population[j]);
-//		printf("\n");
-	}
-	ua1 = &state[nClues].sizedUsetV;
 	switch2bm();
+	//some info for debugging/optimization
+	printf("ua =%d\n", uaActualSize);
+	printf("ua2=%d\n", ua2ActualSize);
+	printf("ua3=%d\n", ua3ActualSize);
+	printf("ua4=%d\n", ua4ActualSize);
+	printf("ua5=%d\n", ua5ActualSize);
+
 	fastIterateLevel();
 	//iterateLevel();
 	printf("puz=%d\tch=%d\n", nPuzzles, nChecked);
