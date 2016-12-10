@@ -242,7 +242,8 @@ public:
 		for(int i = 0; i < maxElements / 128; i++) {
 			//if(aBits[i].bitmap128.m128i_u64[0] & ~hittingMask.aBits[i].bitmap128.m128i_u64[0]) return false;
 			//if(aBits[i].bitmap128.m128i_u64[1] & ~hittingMask.aBits[i].bitmap128.m128i_u64[1]) return false;
-			if(!aBits[i].clearsAll(hittingMask.aBits[i])) return false;
+			if(!aBits[i].clearsAll(hittingMask.aBits[i]))
+				return false;
 		}
 		return true;
 	}
