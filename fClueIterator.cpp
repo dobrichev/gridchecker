@@ -36,8 +36,8 @@ typedef bit_masks<768> ua1_type;
 typedef bit_masks<10240> ua2_type;
 typedef bit_masks<32768> ua3_type;
 typedef bit_masks<32768> ua4_type;
-typedef bit_masks<32768> ua5_type;
-typedef bit_masks<32768> ua6_type;
+typedef bit_masks<40960> ua5_type;
+typedef bit_masks<65536> ua6_type;
 
 typedef bit_masks<256> fua1_type;
 typedef bit_masks<768> fua2_type;
@@ -67,7 +67,7 @@ struct fastState {
 	fua3_type fSetMask3;
 	fua4_type fSetMask4;
 	fua5_type fSetMask5;
-	fua5_type fSetMask6;
+	fua6_type fSetMask6;
 	int nPositions;
 	int positions[81];
 };
@@ -99,20 +99,20 @@ private:
 	static int const starter3 = 30;
 	static int const starter4 = 27;
 	static int const starter5 = 21;
-	static int const starter6 = 18;
+	static int const starter6 = 17; //18~0
 public:
 	ua1_type hittingMasks[81];
 	ua2_type hittingMasks2[81];
 	ua3_type hittingMasks3[81];
 	ua4_type hittingMasks4[81];
 	ua5_type hittingMasks5[81];
-	ua5_type hittingMasks6[81];
+	ua6_type hittingMasks6[81];
 	fua1_type fHittingMasks[81];  //7+ (10)
 	fua2_type fHittingMasks2[81]; //6+ (11)
 	fua3_type fHittingMasks3[81]; //6+ (11)
 	fua4_type fHittingMasks4[81]; //5+ (12)
 	fua5_type fHittingMasks5[81]; //4+ (13)
-	fua5_type fHittingMasks6[81]; //4+ (13)?
+	fua6_type fHittingMasks6[81]; //4+ (13)?
 	sizedUset ua[ua1_type::maxSize];
 	sizedUset ua2[ua2_type::maxSize];
 	sizedUset ua3[ua3_type::maxSize];

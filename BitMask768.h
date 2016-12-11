@@ -15,8 +15,8 @@
 //#endif //compiler
 
 typedef union {
-	//__m256i b256;
-	//__m256d b256d;
+	__m256i b256;
+	__m256d b256d;
 	__m128i b128[2];
 	uint64_t u64[4];
 	uint16_t u16[16];
@@ -52,9 +52,9 @@ template <int maxElements> class bit_masks {
 //		}
 		for(int i = maxElements / 256 - 1; j > 0 ; i--, j -= 256) {
 			if(j >= 256) {
-				//aBits[i].b256 = _mm256_setzero_si256();
-				aBits[i].b128[0] = _mm_setzero_si128();
-				aBits[i].b128[1] = _mm_setzero_si128();
+				aBits[i].b256 = _mm256_setzero_si256();
+				//aBits[i].b128[0] = _mm_setzero_si128();
+				//aBits[i].b128[1] = _mm_setzero_si128();
 			}
 			else {
 				if(j >= 128) {
@@ -115,13 +115,13 @@ public:
 //			//aBits[i].bitmap128.m128i_u64[1] = s.aBits[i].bitmap128.m128i_u64[1] & ~hittingMask.aBits[i].bitmap128.m128i_u64[1];
 //			aBits[i].clearBits(hittingMask.aBits[i], s.aBits[i]);
 //		}
-//		for(int i = 0; i < maxElements / 256; i++) {
-//			aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
-//		}
 		for(int i = 0; i < maxElements / 256; i++) {
-			aBits[i].b128[0] = _mm_andnot_si128(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
-			aBits[i].b128[1] = _mm_andnot_si128(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
+			aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
 		}
+//		for(int i = 0; i < maxElements / 256; i++) {
+//			aBits[i].b128[0] = _mm_andnot_si128(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
+//			aBits[i].b128[1] = _mm_andnot_si128(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
+//		}
 //		for(int i = 0; i < maxElements / 128; i += 2) {
 //			__m256d d;
 //			__m256d s1, s2;
@@ -148,18 +148,18 @@ public:
 //				return false;
 //		}
 //		return true;
-//		for(int i = 0; i < maxElements / 256; i++) {
-//			if(0 == _mm256_testc_si256(hittingMask.aBits[i].b256, aBits[i].b256))
-//				return false;
-//		}
-//		return true;
 		for(int i = 0; i < maxElements / 256; i++) {
-			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[0], aBits[i].b128[0]))
-				return false;
-			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[1], aBits[i].b128[1]))
+			if(0 == _mm256_testc_si256(hittingMask.aBits[i].b256, aBits[i].b256))
 				return false;
 		}
 		return true;
+//		for(int i = 0; i < maxElements / 256; i++) {
+//			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[0], aBits[i].b128[0]))
+//				return false;
+//			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[1], aBits[i].b128[1]))
+//				return false;
+//		}
+//		return true;
 	}
 	void static bm128ToIndex(const bm128 *sets, int nsets, bit_masks &setMask, bit_masks hittingMasks[81]) {
 		fromBm128(nsets, sets, hittingMasks);
@@ -218,7 +218,7 @@ public:
 //		}
 		for(int i = 0; i < maxElements / 256; i++) {
 			if(aBits[i].u64[0]) {
-				return i * 256 + __builtin_ctzll(aBits[i].u64[0]);
+				return i * 256 + __builtin_ctzll(aBits[i].u64[0]); //almost always this is the only test
 			}
 			if(aBits[i].u64[1]) {
 				return i * 256 + 64 + __builtin_ctzll(aBits[i].u64[1]);
@@ -271,19 +271,19 @@ public:
 		}
 		return num_inserted;
 	}
-	void static debug_check_hitting_masks(int const srcRows, const bm128 * const src, bit_masks dest[81]) {
-		for(int i = 0; i < srcRows; i++) {
-			for(int c = 0; c < 81; c++) {
-				bool srcBit = src[i].isBitSet(c);
-				//bool maskBit = dest[c].aBits[i / 256].u64[(i % 256) / 4] & (1UL << (i % 64));
-				bm128 d = dest[c].aBits[i / 256].b128[(i % 256) / 128];
-				bool maskBit = d.isBitSet(i % 128);
-				if(srcBit != maskBit) {
-					printf("debug_check_hitting_masks: row %d cell %d mismatch. Ua has %d\n", i, c, srcBit ? 1 : 0);
-				}
-			}
-		}
-	}
+//	void static debug_check_hitting_masks(int const srcRows, const bm128 * const src, bit_masks dest[81]) {
+//		for(int i = 0; i < srcRows; i++) {
+//			for(int c = 0; c < 81; c++) {
+//				bool srcBit = src[i].isBitSet(c);
+//				//bool maskBit = dest[c].aBits[i / 256].u64[(i % 256) / 4] & (1UL << (i % 64));
+//				bm128 d = dest[c].aBits[i / 256].b128[(i % 256) / 128];
+//				bool maskBit = d.isBitSet(i % 128);
+//				if(srcBit != maskBit) {
+//					printf("debug_check_hitting_masks: row %d cell %d mismatch. Ua has %d\n", i, c, srcBit ? 1 : 0);
+//				}
+//			}
+//		}
+//	}
 };
 
 struct BitMask768 : public bit_masks<768> {};
