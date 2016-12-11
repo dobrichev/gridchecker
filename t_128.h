@@ -20,6 +20,13 @@
    typedef unsigned __int64     uint64_t;
 #endif
 
+#ifdef   _MSC_VER
+	#define _popcnt64(a) __popcnt64(a)
+	#define _popcnt32(a) __popcnt32(a)
+#else
+	#define _popcnt64(a) __builtin_popcountll(a)
+	#define _popcnt32(a) __builtin_popcount(a)
+#endif
 
 typedef union t_128 {
     ////unsigned __int64    m128i_u64[2];
@@ -67,6 +74,8 @@ public:
 	inline bool isDisjoint(const bm128& r) const {return equals(andnot(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), bitmap128.m128i_m128i);};
 	//inline bool slow isDisjoint(const bm128& r) const {return equals(_mm_and_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), _mm_setzero_si128());};
 	inline int mask8() const {return _mm_movemask_epi8(bitmap128.m128i_m128i);}
+	inline uint64_t toInt64() const {return _mm_cvtsi128_si64(bitmap128.m128i_m128i);}
+	inline uint64_t toInt64_1() const {return _mm_extract_epi64(bitmap128.m128i_m128i, 1);}
 	inline int toInt32() const {return _mm_cvtsi128_si32(bitmap128.m128i_m128i);}
 	inline bool isBitSet(const int theBit) const {return equals(*this & bitSet[theBit].m128i_m128i, bitSet[theBit].m128i_m128i);};
 	inline void setBit(const int theBit) {*this |= bitSet[theBit].m128i_m128i;};
@@ -98,28 +107,29 @@ public:
 	void toMask81(const char c, char* r) const {for(int i = 0; i < 81; i++) r[i] = isBitSet(i) ? c : '.';}
 	void toMask128(char* r) const {for(int i = 0; i < 128; i++) r[i] = isBitSet(i) ? '1' : '.';}
 	inline int popcount_128() const {
-		//http://dalkescientific.blogspot.com/2008/06/molecular-fingerprints.html
-		//see also http://bmagic.sourceforge.net/bmsse2opt.html
-		const __m128i msk55 = _mm_set1_epi32(0x55555555);
-		const __m128i msk33 = _mm_set1_epi32(0x33333333);
-		const __m128i msk0F = _mm_set1_epi32(0x0F0F0F0F);
-		const __m128i mul01 = _mm_set1_epi32(0x01010101);
-
-		//xmm -= ((xmm >> 1) & 0x55555555);
-		__m128i xmm = bitmap128.m128i_m128i;
-		__m128i tmp = _mm_and_si128(_mm_srli_epi32(xmm,1), msk55);
-		xmm = _mm_sub_epi32(xmm, tmp);
-		//xmm = (xmm & 0x33333333) + ((xmm >> 2) & 0x33333333);
-		tmp = _mm_and_si128(_mm_srli_epi32(xmm, 2), msk33);
-		xmm = _mm_add_epi32(_mm_and_si128(xmm, msk33),tmp);
-		//xmm = (xmm + (xmm >> 4)) & 0x0F0F0F0F;
-		tmp = _mm_srli_epi32(xmm,4);
-		xmm = _mm_and_si128(_mm_add_epi32(xmm,tmp),msk0F);
-		// .. mix up
-		tmp = _mm_shuffle_epi32(xmm, _MM_SHUFFLE(3,3,1,1));
-		xmm = _mm_add_epi32(tmp,xmm);
-		xmm = _mm_srli_epi64(_mm_mul_epu32(xmm,mul01), 24);
-		return ((unsigned char*)&xmm)[0]+((unsigned char*)&xmm)[8];
+		return (int)(_popcnt64(this->toInt64()) + _popcnt64(this->toInt64_1()));
+//		//http://dalkescientific.blogspot.com/2008/06/molecular-fingerprints.html
+//		//see also http://bmagic.sourceforge.net/bmsse2opt.html
+//		const __m128i msk55 = _mm_set1_epi32(0x55555555);
+//		const __m128i msk33 = _mm_set1_epi32(0x33333333);
+//		const __m128i msk0F = _mm_set1_epi32(0x0F0F0F0F);
+//		const __m128i mul01 = _mm_set1_epi32(0x01010101);
+//
+//		//xmm -= ((xmm >> 1) & 0x55555555);
+//		__m128i xmm = bitmap128.m128i_m128i;
+//		__m128i tmp = _mm_and_si128(_mm_srli_epi32(xmm,1), msk55);
+//		xmm = _mm_sub_epi32(xmm, tmp);
+//		//xmm = (xmm & 0x33333333) + ((xmm >> 2) & 0x33333333);
+//		tmp = _mm_and_si128(_mm_srli_epi32(xmm, 2), msk33);
+//		xmm = _mm_add_epi32(_mm_and_si128(xmm, msk33),tmp);
+//		//xmm = (xmm + (xmm >> 4)) & 0x0F0F0F0F;
+//		tmp = _mm_srli_epi32(xmm,4);
+//		xmm = _mm_and_si128(_mm_add_epi32(xmm,tmp),msk0F);
+//		// .. mix up
+//		tmp = _mm_shuffle_epi32(xmm, _MM_SHUFFLE(3,3,1,1));
+//		xmm = _mm_add_epi32(tmp,xmm);
+//		xmm = _mm_srli_epi64(_mm_mul_epu32(xmm,mul01), 24);
+//		return ((unsigned char*)&xmm)[0]+((unsigned char*)&xmm)[8];
 	}
     inline unsigned int nonzeroOctets() const {return 0x0000ffff ^ _mm_movemask_epi8(_mm_cmpeq_epi8(bitmap128.m128i_m128i, _mm_setzero_si128()));}
     inline unsigned int diffOctets(const bm128 &rhs) const {return 0x0000ffff ^ _mm_movemask_epi8(_mm_cmpeq_epi8(bitmap128.m128i_m128i, rhs.bitmap128.m128i_m128i));}

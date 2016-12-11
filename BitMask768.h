@@ -9,45 +9,62 @@
 #include "t_128.h"
 #include <immintrin.h>
 
-#if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
-#include <intrin.h> //MS _BitScanForward
-#pragma intrinsic(_BitScanForward)
-#endif //compiler
+//#if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
+//#include <intrin.h> //MS _BitScanForward
+//#pragma intrinsic(_BitScanForward)
+//#endif //compiler
+
+typedef union {
+	//__m256i b256;
+	//__m256d b256d;
+	__m128i b128[2];
+	uint64_t u64[4];
+	uint16_t u16[16];
+} bm256;
 
 template <int maxElements> class bit_masks {
 //    int __builtin_ia32_ptestc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestnzc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestz256 (v4di,v4di,ptest)
 
-	bm128 aBits[maxElements / 128];
+	bm256 aBits[maxElements / 256];
 
 //	inline void clear() {
 //		for(int i = 0; i < maxElements / 128; i++)
 //			aBits[i].clear();
 //	}
 	inline void setAll() {
-		for(int i = 0; i < maxElements / 128; i++)
-			aBits[i] = maskffff;
+		for(int i = 0; i < maxElements / 256; i++) {
+			aBits[i].b128[0] = maskffff.m128i_m128i;
+			aBits[i].b128[1] = maskffff.m128i_m128i;
+		}
 	}
 	void initSetMask(int numSets) {
-		//clear();
-//		int j = maxElements - numSets;
-//		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
-//			if(j >= 128) {
-//				aBits[i] |= maskffff.m128i_m128i;
-//			}
-//			else {
-//				aBits[i] |= _mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i);
-//			}
-//		}
 		setAll();
 		int j = maxElements - numSets;
-		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
-			if(j >= 128) {
-				aBits[i].clear();
+//		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
+//			if(j >= 128) {
+//				aBits[i].clear();
+//			}
+//			else {
+//				aBits[i].clearBits(_mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i));
+//			}
+//		}
+		for(int i = maxElements / 256 - 1; j > 0 ; i--, j -= 256) {
+			if(j >= 256) {
+				//aBits[i].b256 = _mm256_setzero_si256();
+				aBits[i].b128[0] = _mm_setzero_si128();
+				aBits[i].b128[1] = _mm_setzero_si128();
 			}
 			else {
-				aBits[i].clearBits(_mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i));
+				if(j >= 128) {
+					aBits[i].b128[1] = _mm_setzero_si128();
+					j -= 128;
+					aBits[i].b128[0] = maskLSB[128 - j].m128i_m128i;
+				}
+				else {
+					aBits[i].b128[1] = maskLSB[128 - j].m128i_m128i;
+				}
 			}
 		}
 	}
@@ -59,7 +76,8 @@ template <int maxElements> class bit_masks {
 		bm128 ss;
 		int nSlices = srcRows / 16 + 1;
 		if(srcRows >= maxElements) {
-			nSlices = maxElements / 128 * 8;
+			//nSlices = maxElements / 128 * 8;
+			nSlices = maxElements / 16;
 		}
 		const bm128 * const s = src;
 		for (int slice = 0; slice < nSlices; slice++) { //process 16 rows from the source simultaneously
@@ -73,27 +91,36 @@ template <int maxElements> class bit_masks {
 				for (int destRow = 0; destRow < 8; destRow++) {
 					assert(srcCol * 8 + destRow < 80);
 					assert(slice / 8 < maxElements / 128);
-					dest[srcCol * 8 + destRow].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
+					//dest[srcCol * 8 + destRow].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
+					dest[srcCol * 8 + destRow].aBits[slice / 16].u16[slice % 16] = ss.bitmap128.m128i_u16[destRow];
 				}
 			}
 			//process 81-st bit
 			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
 				assert(slice+srcSliceRow < maxElements);
-				ss.bitmap128.m128i_u8[srcSliceRow] = s[slice+srcSliceRow].bitmap128.m128i_u8[10];
+				ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[10];
 			}
 			ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
 			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
 			assert(slice / 8 < maxElements / 128);
-			dest[80].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+			//dest[80].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+			dest[80].aBits[slice / 16].u16[slice % 16] = ss.bitmap128.m128i_u16[0];
 		}
 	}
 public:
 	static const int maxSize = maxElements;
 	inline void hitOnly(const bit_masks &s, const bit_masks &hittingMask) {
-		for(int i = 0; i < maxElements / 128; i++) {
-			//aBits[i].bitmap128.m128i_u64[0] = s.aBits[i].bitmap128.m128i_u64[0] & ~hittingMask.aBits[i].bitmap128.m128i_u64[0];
-			//aBits[i].bitmap128.m128i_u64[1] = s.aBits[i].bitmap128.m128i_u64[1] & ~hittingMask.aBits[i].bitmap128.m128i_u64[1];
-			aBits[i].clearBits(hittingMask.aBits[i], s.aBits[i]);
+//		for(int i = 0; i < maxElements / 128; i++) {
+//			//aBits[i].bitmap128.m128i_u64[0] = s.aBits[i].bitmap128.m128i_u64[0] & ~hittingMask.aBits[i].bitmap128.m128i_u64[0];
+//			//aBits[i].bitmap128.m128i_u64[1] = s.aBits[i].bitmap128.m128i_u64[1] & ~hittingMask.aBits[i].bitmap128.m128i_u64[1];
+//			aBits[i].clearBits(hittingMask.aBits[i], s.aBits[i]);
+//		}
+//		for(int i = 0; i < maxElements / 256; i++) {
+//			aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
+//		}
+		for(int i = 0; i < maxElements / 256; i++) {
+			aBits[i].b128[0] = _mm_andnot_si128(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
+			aBits[i].b128[1] = _mm_andnot_si128(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
 		}
 //		for(int i = 0; i < maxElements / 128; i += 2) {
 //			__m256d d;
@@ -112,12 +139,24 @@ public:
 //				return false;
 //		}
 //		return true;
-		for(int i = 0; i < maxElements / 128; i += 2) {
-			__m256i s1;
-			__m256i s2;
-			s1 = _mm256_loadu_si256((__m256i*)&hittingMask.aBits[i]);
-			s2 = _mm256_loadu_si256((__m256i*)&aBits[i]);
-			if(0 == _mm256_testc_si256(s1, s2))
+//		for(int i = 0; i < maxElements / 128; i += 2) {
+//			__m256i s1;
+//			__m256i s2;
+//			s1 = _mm256_loadu_si256((__m256i*)&hittingMask.aBits[i]);
+//			s2 = _mm256_loadu_si256((__m256i*)&aBits[i]);
+//			if(0 == _mm256_testc_si256(s1, s2))
+//				return false;
+//		}
+//		return true;
+//		for(int i = 0; i < maxElements / 256; i++) {
+//			if(0 == _mm256_testc_si256(hittingMask.aBits[i].b256, aBits[i].b256))
+//				return false;
+//		}
+//		return true;
+		for(int i = 0; i < maxElements / 256; i++) {
+			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[0], aBits[i].b128[0]))
+				return false;
+			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[1], aBits[i].b128[1]))
 				return false;
 		}
 		return true;
@@ -169,37 +208,81 @@ public:
 //		return INT_MAX;
 //	}
 	inline int firstUnhit() {
-		for(int i = 0; i < maxElements / 128; i++) {
-			if(aBits[i].bitmap128.m128i_u64[0]) {
-				return i * 128 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[0]));
+//		for(int i = 0; i < maxElements / 128; i++) {
+//			if(aBits[i].bitmap128.m128i_u64[0]) {
+//				return i * 128 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[0]));
+//			}
+//			if(aBits[i].bitmap128.m128i_u64[1]) {
+//				return i * 128 + 64 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[1]));
+//			}
+//		}
+		for(int i = 0; i < maxElements / 256; i++) {
+			if(aBits[i].u64[0]) {
+				return i * 256 + __builtin_ctzll(aBits[i].u64[0]);
 			}
-			if(aBits[i].bitmap128.m128i_u64[1]) {
-				return i * 128 + 64 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[1]));
+			if(aBits[i].u64[1]) {
+				return i * 256 + 64 + __builtin_ctzll(aBits[i].u64[1]);
+			}
+			if(aBits[i].u64[2]) {
+				return i * 256 + 128 + __builtin_ctzll(aBits[i].u64[2]);
+			}
+			if(aBits[i].u64[3]) {
+				return i * 256 + 192 + __builtin_ctzll(aBits[i].u64[3]);
 			}
 		}
 		return INT_MAX;
 	}
 	inline int copyAlive(const sizedUset *original, sizedUset *target, int target_size, const bm128 &deadClues) const {
 		int num_inserted = 0;
-		for(int i = 0; i < maxElements / 128; i++) {
-			for(int j = 0; j < 2; j++) {
-				int base = i * 128 + j * 64;
-				for(uint64_t bits = aBits[i].bitmap128.m128i_u64[j]; bits; bits &= (bits - 1)) {
+//		for(int i = 0; i < maxElements / 128; i++) {
+//			for(int j = 0; j < 2; j++) {
+//				int base = i * 128 + j * 64;
+//				for(uint64_t bits = aBits[i].bitmap128.m128i_u64[j]; bits; bits &= (bits - 1)) {
+//					int offset = __builtin_ctzll(bits);
+//					sizedUset s = original[base + offset];
+//					s.clearBits(deadClues);
+//					s.setSize(); //calculate new size for the later reordering
+////					if(s.getSize() == 0) {
+////						//unhit UA within the dead clues
+////						printf("unhit UA within the dead clues identified during the consolidation\n");
+////						return false;
+////					}
+//					target[num_inserted++] = s;
+//					if(num_inserted >= target_size || s.getSize() == 0) return num_inserted; //possibly with zero length UA
+//				}
+//			}
+//		}
+		for(int i = 0; i < maxElements / 256; i++) {
+			for(int j = 0; j < 4; j++) {
+				int base = i * 256 + j * 64;
+				for(uint64_t bits = aBits[i].u64[j]; bits; bits &= (bits - 1)) {
 					int offset = __builtin_ctzll(bits);
 					sizedUset s = original[base + offset];
 					s.clearBits(deadClues);
 					s.setSize(); //calculate new size for the later reordering
-//					if(s.getSize() == 0) {
-//						//unhit UA within the dead clues
-//						printf("unhit UA within the dead clues identified during the consolidation\n");
-//						return false;
-//					}
+					if(s.getSize() == 0) {
+						target[0] = s;
+						return 1; //a zero length UA
+					}
 					target[num_inserted++] = s;
-					if(num_inserted >= target_size || s.getSize() == 0) return num_inserted; //possibly with zero length UA
+					if(num_inserted >= target_size) return target_size;
 				}
 			}
 		}
 		return num_inserted;
+	}
+	void static debug_check_hitting_masks(int const srcRows, const bm128 * const src, bit_masks dest[81]) {
+		for(int i = 0; i < srcRows; i++) {
+			for(int c = 0; c < 81; c++) {
+				bool srcBit = src[i].isBitSet(c);
+				//bool maskBit = dest[c].aBits[i / 256].u64[(i % 256) / 4] & (1UL << (i % 64));
+				bm128 d = dest[c].aBits[i / 256].b128[(i % 256) / 128];
+				bool maskBit = d.isBitSet(i % 128);
+				if(srcBit != maskBit) {
+					printf("debug_check_hitting_masks: row %d cell %d mismatch. Ua has %d\n", i, c, srcBit ? 1 : 0);
+				}
+			}
+		}
 	}
 };
 

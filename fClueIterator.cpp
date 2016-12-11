@@ -589,6 +589,7 @@ void fastClueIterator::switch2bm() {
 	ua2composed:;
 	std::sort(ua2, ua2 + ua2ActualSize, sizedUset::isSmaller);
 	ua2_type::bm128ToIndex(ua2, ua2ActualSize, state[clueNumber].setMask2, hittingMasks2);
+	//ua2_type::debug_check_hitting_masks(ua2ActualSize, ua2, hittingMasks2);
 
 	//compose UA3
 	ua3ActualSize = 0;
@@ -688,6 +689,10 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 			nPuzzles++;
 		}
 		nChecked++;
+		//debug
+		if(nChecked % 300000 == 0) {
+			printf("checked %d, found %d\n", nChecked, nPuzzles);
+		}
 	}
 	else {
 		clueNumber--;
@@ -704,10 +709,6 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 		}
 		clueNumber++;
 	}
-//	//debug
-//	if(nChecked % 300000 == 0) {
-//		printf("checked %d, found %d\n", nChecked, nPuzzles);
-//	}
 }
 
 unsigned long long d0, d1, d2, d3, d4; //debug
@@ -720,7 +721,7 @@ void fastClueIterator::iterate() {
 	//printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
 	g.findUA4digits();
-	//g.findUA4boxes();
+	//g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
 	//printf("\t%d\n", (int)us.size());
 
 	//init the top of the stack
@@ -753,6 +754,7 @@ void fastClueIterator::iterate() {
 
 	switch2bm();
 	//some info for debugging/optimization
+	printf("\t%d clues\n", nClues);
 	printf("ua =%d\n", uaActualSize);
 	printf("ua2=%d\n", ua2ActualSize);
 	printf("ua3=%d\n", ua3ActualSize);
