@@ -95,10 +95,10 @@ private:
 //	static int const starter3 = 30;
 //	static int const starter4 = 27;
 //	static int const starter5 = 21;
-	static int const starter2 = 44;
-	static int const starter3 = 30;
-	static int const starter4 = 27;
-	static int const starter5 = 21;
+	static int const starter2 = 42;
+	static int const starter3 = 27;
+	static int const starter4 = 24;
+	static int const starter5 = 19;
 	static int const starter6 = 17; //18~0
 public:
 	ua1_type hittingMasks[81];
@@ -114,7 +114,7 @@ public:
 	fua5_type fHittingMasks5[81]; //4+ (13)
 	fua6_type fHittingMasks6[81]; //4+ (13)?
 	sizedUset ua[ua1_type::maxSize];
-	sizedUset ua2[ua2_type::maxSize];
+	sizedUset ua2[ua2_type::maxSize + 1000];
 	sizedUset ua3[ua3_type::maxSize];
 	sizedUset ua4[ua4_type::maxSize];
 	sizedUset ua5[ua5_type::maxSize];
@@ -581,7 +581,7 @@ void fastClueIterator::switch2bm() {
 			if(tt.join(ua[s2])) {
 				ua2[ua2ActualSize] = tt;
 				ua2ActualSize++;
-				if(ua2ActualSize >= ua2_type::maxSize)
+				if(ua2ActualSize >= ua2_type::maxSize + 1000)
 					goto ua2composed;
 			}
 		}
@@ -678,6 +678,7 @@ fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0) {
 	nPuzzles = 0;
 	nChecked = 0;
 	nClues = opt.scanOpt->nClues;
+	//nClues = 16;
 }
 
 void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
@@ -754,32 +755,37 @@ void fastClueIterator::iterate() {
 
 	switch2bm();
 	//some info for debugging/optimization
-	printf("\t%d clues\n", nClues);
-	printf("ua =%d\n", uaActualSize);
-	printf("ua2=%d\n", ua2ActualSize);
-	printf("ua3=%d\n", ua3ActualSize);
-	printf("ua4=%d\n", ua4ActualSize);
-	printf("ua5=%d\n", ua5ActualSize);
-	printf("ua6=%d\n", ua6ActualSize);
+//	printf("\t%d clues\n", nClues);
+//	printf("ua =%d\n", uaActualSize);
+//	printf("ua2=%d\n", ua2ActualSize);
+//	printf("ua3=%d\n", ua3ActualSize);
+//	printf("ua4=%d\n", ua4ActualSize);
+//	printf("ua5=%d\n", ua5ActualSize);
+//	printf("ua6=%d\n", ua6ActualSize);
 
 	fastIterateLevel();
 	//iterateLevel();
-	printf("\tpuz=%d\tch=%d\n", nPuzzles, nChecked);
+	printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
 	//printf("%llu\t%llu\t%llu\t%llu\t%llu\n", d0, d1, d2, d3, d4);
 }
 
-
 extern int fastScan() {
-	//const char* fname = opt.scanOpt->gridFileName;
+	clock_t start, finish;
 	char buf[3000];
 	while(fgets(buf, sizeof(buf), stdin)) {
+		start = clock();
 		printf("%81.81s", buf);
 		grid g;
 		g.fromString(buf);
-		//g.fname = fname;
 		fastClueIterator ci(g);
 		ci.iterate();
+		finish = clock();
+		fprintf(stdout, "\ttime %2.3f seconds.\n", (double)(finish - start) / CLOCKS_PER_SEC);
+		fflush(NULL);
 		//return 0; //bug in eclipse???
 	}
 	return 0;
 }
+//extern int test() {
+//	return fastScan();
+//}

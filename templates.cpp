@@ -1110,78 +1110,78 @@ void countSolutions () {
 }
 //extern void test() {countSolutions();}
 struct uaByTemplate: public map<ch81,usetListBySize> {};
-extern void test() {
-	templates tpl;
-
-	puzzleSet r4all;
-	tpl.get4templates(r4all);
-
-//	puzzleSet r2all;
-//	tpl.get2templates(r2all);
-//	uaByTemplate ua2digit;
-//	for(puzzleSet::const_iterator s = r2all.begin(); s != r2all.end(); s++) {
-//		//find first solution grid
-//		grid sol;
-//		if(1 == solve(s->chars, 1, sol.digits)) {
-//			//template can be completed to a valid solution grid
-//			//uaByTemplate::mapped_type& x = ua2digit[*s];
-//			usetListBySize& ua = ua2digit[*s];
-//			digit2bitmap(sol.digits, sol.gridBM);
-//			sol.findUAinPuzzle(s->chars);
-//			ua.insert(sol.usetsBySize.begin(), sol.usetsBySize.end());
-//		}
-//	}
-//	printf("Total 2: %d\n", (int)ua2digit.size());
-//	for(uaByTemplate::const_iterator t = ua2digit.begin(); t != ua2digit.end(); t++) {
-//		ch81 res;
-//		t->first.toString(res.chars);
-//		printf("\n%81.81s\n", res.chars);
-//		for(usetListBySize::const_iterator u = t->second.begin(); u != t->second.end(); u++) {
-//			//u->toMask81(res.chars);
-//			//u->toPuzzleString(t->first.chars, res.chars);
-//			//printf("%81.81s\n", res.chars);
-//			int m = 0;
-//			int n = 0;
-//			for(int i = 0; i < 81; i++) {
-//				if(t->first.chars[i]) {
-//					if(u->isBitSet(i)) {
-//						m |= (1U << n++);
-//					}
-//					else {
-//						n++;
-//					}
-//				}
-//			}
-//			printf("%8.8X\n", m);
-//		}
-//	}
-//	//r2all.saveToFile(stdout);
-
-//	puzzleSet r3all;
-//	tpl.get3templates(r3all);
-//	uaByTemplate ua3digit;
-//	for(puzzleSet::const_iterator s = r3all.begin(); s != r3all.end(); s++) {
-//		//find first solution grid
-//		grid sol;
-//		if(1 == solve(s->chars, 1, sol.digits)) {
-//			//template can be completed to a valid solution grid
-//			//uaByTemplate::mapped_type& x = ua2digit[*s];
-//			usetListBySize& ua = ua3digit[*s];
-//			digit2bitmap(sol.digits, sol.gridBM);
-//			sol.findUAinPuzzle(s->chars);
-//			ua.insert(sol.usetsBySize.begin(), sol.usetsBySize.end());
-//		}
-//	}
-//	printf("Total 3: %d\n", (int)ua3digit.size());
-//	for(uaByTemplate::const_iterator t = ua3digit.begin(); t != ua3digit.end(); t++) {
-//		ch81 res;
-//		t->first.toString(res.chars);
-//		printf("\n%81.81s\n", res.chars);
-//		for(usetListBySize::const_iterator u = t->second.begin(); u != t->second.end(); u++) {
-//			//u->toMask81(res.chars);
-//			u->toPuzzleString(t->first.chars, res.chars);
-//			printf("%81.81s\n", res.chars);
-//		}
-//	}
-////	r3all.saveToFile(stdout);
-}
+//extern void test() {
+//	templates tpl;
+//
+//	puzzleSet r4all;
+//	tpl.get4templates(r4all);
+//
+////	puzzleSet r2all;
+////	tpl.get2templates(r2all);
+////	uaByTemplate ua2digit;
+////	for(puzzleSet::const_iterator s = r2all.begin(); s != r2all.end(); s++) {
+////		//find first solution grid
+////		grid sol;
+////		if(1 == solve(s->chars, 1, sol.digits)) {
+////			//template can be completed to a valid solution grid
+////			//uaByTemplate::mapped_type& x = ua2digit[*s];
+////			usetListBySize& ua = ua2digit[*s];
+////			digit2bitmap(sol.digits, sol.gridBM);
+////			sol.findUAinPuzzle(s->chars);
+////			ua.insert(sol.usetsBySize.begin(), sol.usetsBySize.end());
+////		}
+////	}
+////	printf("Total 2: %d\n", (int)ua2digit.size());
+////	for(uaByTemplate::const_iterator t = ua2digit.begin(); t != ua2digit.end(); t++) {
+////		ch81 res;
+////		t->first.toString(res.chars);
+////		printf("\n%81.81s\n", res.chars);
+////		for(usetListBySize::const_iterator u = t->second.begin(); u != t->second.end(); u++) {
+////			//u->toMask81(res.chars);
+////			//u->toPuzzleString(t->first.chars, res.chars);
+////			//printf("%81.81s\n", res.chars);
+////			int m = 0;
+////			int n = 0;
+////			for(int i = 0; i < 81; i++) {
+////				if(t->first.chars[i]) {
+////					if(u->isBitSet(i)) {
+////						m |= (1U << n++);
+////					}
+////					else {
+////						n++;
+////					}
+////				}
+////			}
+////			printf("%8.8X\n", m);
+////		}
+////	}
+////	//r2all.saveToFile(stdout);
+//
+////	puzzleSet r3all;
+////	tpl.get3templates(r3all);
+////	uaByTemplate ua3digit;
+////	for(puzzleSet::const_iterator s = r3all.begin(); s != r3all.end(); s++) {
+////		//find first solution grid
+////		grid sol;
+////		if(1 == solve(s->chars, 1, sol.digits)) {
+////			//template can be completed to a valid solution grid
+////			//uaByTemplate::mapped_type& x = ua2digit[*s];
+////			usetListBySize& ua = ua3digit[*s];
+////			digit2bitmap(sol.digits, sol.gridBM);
+////			sol.findUAinPuzzle(s->chars);
+////			ua.insert(sol.usetsBySize.begin(), sol.usetsBySize.end());
+////		}
+////	}
+////	printf("Total 3: %d\n", (int)ua3digit.size());
+////	for(uaByTemplate::const_iterator t = ua3digit.begin(); t != ua3digit.end(); t++) {
+////		ch81 res;
+////		t->first.toString(res.chars);
+////		printf("\n%81.81s\n", res.chars);
+////		for(usetListBySize::const_iterator u = t->second.begin(); u != t->second.end(); u++) {
+////			//u->toMask81(res.chars);
+////			u->toPuzzleString(t->first.chars, res.chars);
+////			printf("%81.81s\n", res.chars);
+////		}
+////	}
+//////	r3all.saveToFile(stdout);
+//}
