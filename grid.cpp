@@ -1327,7 +1327,7 @@ void grid::findUA4boxes() {
 						if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1)
 							hideThem[k++] = j;
 					}
-					unsigned long long nSol = findUaBySolving(hideThem, 45);
+					unsigned long long nSol = findUaBySolving(hideThem, 36);
 					//int nUA = static_cast<int>(usetsBySize.size());
 					//printf("(%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, nSol, nUA - nOldUA, nUA);
 					//nOldUA = nUA;

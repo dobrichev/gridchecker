@@ -92,8 +92,12 @@ struct sizedUset : public bm128 {
 	}
 	bool static isSmaller(const sizedUset elem1, const sizedUset elem2)
 	{
-	   return elem1.getSize() < elem2.getSize();
+	   //return elem1.getSize() < elem2.getSize();
+	   return elem1 < elem2;
 	}
+//	void setRating(int rating) { //so that usets are ordered by size, rating, 81 cells
+//		bitmap128.m128i_u32[2] = (((uint32_t)rating) << 17) | (bitmap128.m128i_u32[2] & 0x1FFFF);
+//	}
 };
 
 //struct compareLightweightUsetBySize {

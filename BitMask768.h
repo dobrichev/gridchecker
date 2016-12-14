@@ -26,20 +26,29 @@ template <int maxElements> class bit_masks {
 //    int __builtin_ia32_ptestc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestnzc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestz256 (v4di,v4di,ptest)
+	static const int maxWords = maxElements / 256;
 
 	bm256 aBits[maxElements / 256];
+	int actualWords;
+
+	inline int getNumWords() const {
+		if(maxWords > 5) return actualWords; //should be resolved at compile time
+		return maxWords;
+	}
 
 //	inline void clear() {
 //		for(int i = 0; i < maxElements / 128; i++)
 //			aBits[i].clear();
 //	}
 	inline void setAll() {
-		for(int i = 0; i < maxElements / 256; i++) {
+		for(int i = 0; i < maxWords; i++) {
 			aBits[i].b128[0] = maskffff.m128i_m128i;
 			aBits[i].b128[1] = maskffff.m128i_m128i;
 		}
 	}
 	void initSetMask(int numSets) {
+		actualWords = (numSets + 255) / 256;
+		if(actualWords > maxWords) actualWords = maxWords;
 		setAll();
 		int j = maxElements - numSets;
 //		for(int i = maxElements / 128 - 1; j > 0 ; i--, j -= 128) {
@@ -50,7 +59,7 @@ template <int maxElements> class bit_masks {
 //				aBits[i].clearBits(_mm_andnot_si128(maskLSB[128 - 1 - j].m128i_m128i, maskffff.m128i_m128i));
 //			}
 //		}
-		for(int i = maxElements / 256 - 1; j > 0 ; i--, j -= 256) {
+		for(int i = maxWords - 1; j > 0 ; i--, j -= 256) {
 			if(j >= 256) {
 				aBits[i].b256 = _mm256_setzero_si256();
 				//aBits[i].b128[0] = _mm_setzero_si128();
@@ -110,12 +119,14 @@ template <int maxElements> class bit_masks {
 public:
 	static const int maxSize = maxElements;
 	inline void hitOnly(const bit_masks &s, const bit_masks &hittingMask) {
+		actualWords = s.actualWords;
 //		for(int i = 0; i < maxElements / 128; i++) {
 //			//aBits[i].bitmap128.m128i_u64[0] = s.aBits[i].bitmap128.m128i_u64[0] & ~hittingMask.aBits[i].bitmap128.m128i_u64[0];
 //			//aBits[i].bitmap128.m128i_u64[1] = s.aBits[i].bitmap128.m128i_u64[1] & ~hittingMask.aBits[i].bitmap128.m128i_u64[1];
 //			aBits[i].clearBits(hittingMask.aBits[i], s.aBits[i]);
 //		}
-		for(int i = 0; i < maxElements / 256; i++) {
+		//for(int i = 0; i < maxWords; i++) {
+		for(int i = 0; i < getNumWords(); i++) {
 			aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
 		}
 //		for(int i = 0; i < maxElements / 256; i++) {
@@ -148,7 +159,8 @@ public:
 //				return false;
 //		}
 //		return true;
-		for(int i = 0; i < maxElements / 256; i++) {
+		//for(int i = 0; i < maxWords; i++) {
+		for(int i = 0; i < getNumWords(); i++) {
 			if(0 == _mm256_testc_si256(hittingMask.aBits[i].b256, aBits[i].b256))
 				return false;
 		}
@@ -216,7 +228,8 @@ public:
 //				return i * 128 + 64 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[1]));
 //			}
 //		}
-		for(int i = 0; i < maxElements / 256; i++) {
+		//for(int i = 0; i < maxWords; i++) {
+		for(int i = 0; i < getNumWords(); i++) {
 			if(aBits[i].u64[0]) {
 				return i * 256 + __builtin_ctzll(aBits[i].u64[0]); //almost always this is the only test
 			}
@@ -252,7 +265,8 @@ public:
 //				}
 //			}
 //		}
-		for(int i = 0; i < maxElements / 256; i++) {
+		//for(int i = 0; i < maxWords; i++) {
+		for(int i = 0; i < getNumWords(); i++) {
 			for(int j = 0; j < 4; j++) {
 				int base = i * 256 + j * 64;
 				for(uint64_t bits = aBits[i].u64[j]; bits; bits &= (bits - 1)) {
