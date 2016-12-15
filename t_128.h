@@ -212,12 +212,24 @@ public:
 //			m ^= octetIndexLSB; //clear the octet processed
 //		}
 //		return n;
+
+//		int n = 0;
+//		for(int j = 0; j < 2; j++) {
+//			for(uint64_t bits = bitmap128.m128i_u64[j]; bits; bits &= (bits - 1)) {
+//				int offset = __builtin_ctzll(bits);
+//				positions[n++] = j * 64 + offset;
+//			}
+//		}
+//		return n;
+
 		int n = 0;
-		for(int j = 0; j < 2; j++) {
-			for(uint64_t bits = bitmap128.m128i_u64[j]; bits; bits &= (bits - 1)) {
-				int offset = __builtin_ctzll(bits);
-				positions[n++] = j * 64 + offset;
-			}
+		for(uint64_t bits = toInt64(); bits; bits &= (bits - 1)) {
+			int offset = __builtin_ctzll(bits);
+			positions[n++] = offset;
+		}
+		for(uint64_t bits = toInt64_1(); bits; bits &= (bits - 1)) {
+			int offset = __builtin_ctzll(bits);
+			positions[n++] = 64 + offset;
 		}
 		return n;
 	}
