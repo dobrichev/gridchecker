@@ -80,7 +80,7 @@ struct starters {
 };
 starters stFamily[] = {
 	{44,30,27,21,20}, //original McGuire 16s
-	{46,33,28,21,17}, //low, test "a"
+	{46,33,28,20,19}, //low, test "a"
 	{47,38,33,33,30}, //high, test "c"
 	{50,40,36,30,30}, //yet higher
 	{52,42,38,33,30}, //yet higher
@@ -101,12 +101,18 @@ struct fastState {
 	fua4_type fSetMask4;
 	fua5_type fSetMask5;
 	fua6_type fSetMask6;
-	int nPositions;
+	int positions[81];
+};
+struct forecastState {
+	bm128 deadClues;
+	bm128 setClues;
+	ua1_type setMask;
 	int positions[81];
 };
 
 class fastClueIterator {
 private:
+	void forecastIterateLevel(int currentUaIndex = 0);
 	void fastIterateLevel0(int currentUaIndex);
 	void fastIterateLevel1(int currentUaIndex);
 	void fastIterateLevel2(int currentUaIndex);
@@ -166,12 +172,44 @@ public:
 	unsigned int nChecked;
 	int clueNumber; //nClues - 1 .. 0
 	fastState state[25];
+	forecastState fState[4];
 	char clues[81];
 	starters starter;
 
 	fastClueIterator(grid &g);
 	void iterate();
 };
+void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
+	if(currentUaIndex == INT_MAX) {
+		return;
+	}
+	forecastState &oldState = fState[clueNumber];
+	clueNumber--;
+	forecastState &newState = fState[clueNumber];
+	newState.deadClues = oldState.deadClues;
+	//prepare state for the next clue
+	uset u((ua)[currentUaIndex].bitmap128);
+	u &= maskLSB[81];
+	u.clearBits(oldState.deadClues);
+	u.positionsByBitmap();
+	for(int i = 0; i < u.nbits; i++) {
+		int cluePosition = u.positions[i];
+		clues[cluePosition] = g.digits[cluePosition];
+		printf("clue[%d] using ua[%3d] cell[%2.d]=%2.d\n", clueNumber, currentUaIndex, cluePosition, clues[cluePosition]);
+		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
+		int nextUaIndex = newState.setMask.firstUnhit();
+		if(clueNumber == 0) {
+			//log the setting
+			;
+		}
+		else {
+			forecastIterateLevel(nextUaIndex); //call recursively
+		}
+		newState.deadClues.setBit(cluePosition);
+		clues[cluePosition] = 0;
+	}
+	clueNumber++;
+}
 
 void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
 	fastState &oldState = state[1];
@@ -618,7 +656,7 @@ void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 //rnd1.txt 22.7
 void fastClueIterator::switch2bm() {
 	//compose ordinary UA
-	ua1_type::bm128ToIndex(ua, uaActualSize, state[clueNumber].setMask, hittingMasks);
+	//ua1_type::bm128ToIndex(ua, uaActualSize, state[clueNumber].setMask, hittingMasks);
 
 	//compose UA2
 	ua2ActualSize = 0;
@@ -853,14 +891,6 @@ void fastClueIterator::iterate() {
 	printf("\n");
 
 	//init the top of the stack
-	clueNumber = nClues; //stack pointer to the "empty" puzzle
-	fastState &s = state[nClues];
-	for(int i = 0; i < 81; i++) {
-		clues[i] = 0;
-	}
-
-	s.deadClues.clear();
-	s.setClues.clear();
 	int curUA = 0;
 	uaActualSize = 0;
 	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && uaActualSize < ua1_type::maxSize; p++, curUA++) {
@@ -869,6 +899,26 @@ void fastClueIterator::iterate() {
 		su.setSize(p->nbits);
 		ua[uaActualSize++] = su; //store for hitting
 	}
+	//compose ordinary UA
+	ua1_type::bm128ToIndex(ua, uaActualSize, state[nClues].setMask, hittingMasks);
+
+	clueNumber = 3;
+	fState[clueNumber].deadClues.clear();
+	fState[clueNumber].setClues.clear();
+	for(int i = 0; i < 81; i++) {
+		clues[i] = 0;
+	}
+	forecastIterateLevel();
+	return;
+
+	clueNumber = nClues; //stack pointer to the "empty" puzzle
+	state[clueNumber].deadClues.clear();
+	state[clueNumber].setClues.clear();
+	for(int i = 0; i < 81; i++) {
+		clues[i] = 0;
+	}
+
+
 	d0=d1=d2=d3=d4=d5=s0=s1=s2=s3=s4=s5=0;
 
 //	//always start from the first UA which is one of the shortest
