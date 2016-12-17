@@ -16,7 +16,7 @@
 
 typedef union {
 	__m256i b256;
-	__m256d b256d;
+	//__m256d b256d;
 	__m128i b128[2];
 	uint64_t u64[4];
 	uint16_t u16[16];
@@ -41,9 +41,11 @@ template <int maxElements> class bit_masks {
 //			aBits[i].clear();
 //	}
 	inline void setAll() {
+		__m256i all1 = _mm256_set1_epi64x(-1);
 		for(int i = 0; i < maxWords; i++) {
-			aBits[i].b128[0] = maskffff.m128i_m128i;
-			aBits[i].b128[1] = maskffff.m128i_m128i;
+			aBits[i].b256 = all1;
+			//aBits[i].b128[0] = maskffff.m128i_m128i;
+			//aBits[i].b128[1] = maskffff.m128i_m128i;
 		}
 	}
 	void initSetMask(int numSets) {
@@ -85,7 +87,6 @@ template <int maxElements> class bit_masks {
 		bm128 ss;
 		int nSlices = srcRows / 16 + 1;
 		if(srcRows >= maxElements) {
-			//nSlices = maxElements / 128 * 8;
 			nSlices = maxElements / 16;
 		}
 		const bm128 * const s = src;
@@ -93,13 +94,10 @@ template <int maxElements> class bit_masks {
 			//process first 80 bits
 			for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits per "column" simultaneously
 				for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
-					assert(slice*16+srcSliceRow < maxElements);
 					ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[srcCol];
 				}
 				ss.transposeSlice(ss); // 16 bits * 8 columns for the target
 				for (int destRow = 0; destRow < 8; destRow++) {
-					assert(srcCol * 8 + destRow < 80);
-					assert(slice / 8 < maxElements / 128);
 					//dest[srcCol * 8 + destRow].aBits[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[destRow];
 					dest[srcCol * 8 + destRow].aBits[slice / 16].u16[slice % 16] = ss.bitmap128.m128i_u16[destRow];
 				}
@@ -127,9 +125,10 @@ public:
 //		}
 		//for(int i = 0; i < maxWords; i++) {
 		for(int i = 0; i < getNumWords(); i++) {
-			aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
+			//aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
+			aBits[i].b256 = _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(hittingMask.aBits[i].b256), _mm256_castsi256_pd(s.aBits[i].b256)));
 		}
-//		for(int i = 0; i < maxElements / 256; i++) {
+//		for(int i = 0; i < getNumWords(); i++) {
 //			aBits[i].b128[0] = _mm_andnot_si128(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
 //			aBits[i].b128[1] = _mm_andnot_si128(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
 //		}
@@ -173,52 +172,17 @@ public:
 //		}
 //		return true;
 	}
+	static bool isHitting(const __m256i hittingMask, const __m256i setMask) {
+		return _mm256_testc_si256(hittingMask, setMask);
+	}
+	__m256i getTopWord() const {
+		return aBits[0].b256;
+	}
 	void static bm128ToIndex(const bm128 *sets, int nsets, bit_masks &setMask, bit_masks hittingMasks[81]) {
 		fromBm128(nsets, sets, hittingMasks);
 		setMask.initSetMask(nsets);
 	}
-//	inline int hit(const bit_masks &s, const bit_masks &hittingMask) {
-//		//set hittingMask bits in aBits and return the first unhit (i.e. zero bit) index
-//		hitOnly(s, hittingMask);
-//		unsigned int bAdd;
-//		unsigned int bytePos;
-//		for(int i = 0; i < maxElements / 128; i++) {
-//			if(0xFFFF != (bytePos = _mm_movemask_epi8(_mm_cmpeq_epi8(aBits[i].bitmap128.m128i_m128i, maskffff.m128i_m128i)))) {
-//				bAdd = i << 4; //*16
-//				//3 alternatives for the following operation
-//
-//				//1) fast but uses Intel-specific intrinsic
-//#if defined(__INTEL_COMPILER)
-//				bytePos = _bit_scan_forward(~bytePos) + bAdd;
-//#elif defined(__GNUC__)
-//				bytePos = __builtin_ctz(~bytePos) + bAdd;
-//#elif defined(_MSC_VER)
-//				//2) uses Microsoft-specific intrinsic
-//				using namespace std;
-//				unsigned long bytePosL;
-//		//#if UINT_MAX == 0xffff
-//				_BitScanForward(&bytePosL,~bytePos);
-//		//#else
-//		//		_BitScanForward64(&bytePosL,~bytePos);
-//		//#endif //UINT_MAX
-//				bytePos = (unsigned int)bytePosL + bAdd;
-//#else
-//				//3) standard but slower
-//				bytePos = (~bytePos);
-//				if(bytePos & 0xff)
-//					bytePos = lowestBit[(bytePos & 0xff) - 1] + bAdd;
-//				else
-//					bytePos = lowestBit[((bytePos >> 8)  & 0xff) - 1] + bAdd + 8;
-//#endif //compiler
-//
-//
-//				return (bytePos << 3) + lowestBit[((unsigned char*)&aBits[0])[bytePos]];
-//				//return (bytePos << 3) + _bit_scan_forward(~((unsigned char*)&aBits[0])[bytePos]);
-//				//_mm_prefetch(((char *)&newSetMask) + 0x60, _MM_HINT_T0); //unsignificant improvement
-//			}
-//		}
-//		return INT_MAX;
-//	}
+
 	inline int firstUnhit() {
 //		for(int i = 0; i < maxElements / 128; i++) {
 //			if(aBits[i].bitmap128.m128i_u64[0]) {
@@ -228,6 +192,24 @@ public:
 //				return i * 128 + 64 + __builtin_ctzll((aBits[i].bitmap128.m128i_u64[1]));
 //			}
 //		}
+
+//		for(int i = 0; i < getNumWords(); i++) { //slow
+//			uint64_t bits;
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 0))) {
+//				return i * 256 + __builtin_ctzll(bits); //almost always this is the only test
+//			}
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 1))) {
+//				return i * 256 + 64 + __builtin_ctzll(bits);
+//			}
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 2))) {
+//				return i * 256 + 128 + __builtin_ctzll(bits);
+//			}
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 3))) {
+//				return i * 256 + 192 + __builtin_ctzll(bits);
+//			}
+//		}
+//		return INT_MAX;
+
 		//for(int i = 0; i < maxWords; i++) {
 		for(int i = 0; i < getNumWords(); i++) {
 			if(aBits[i].u64[0]) {
@@ -279,7 +261,8 @@ public:
 						return 1; //a zero length UA
 					}
 					target[num_inserted++] = s;
-					if(num_inserted >= target_size) return target_size;
+					if(num_inserted >= target_size)
+						return target_size;
 				}
 			}
 		}

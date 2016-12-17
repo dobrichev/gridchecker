@@ -822,7 +822,7 @@ void clueIterator::iterateBands(const int numClues) {
 	numUaSizeLimit = 1000;
 	numUaTotalLimit = 1000;
 	//skipProgress = true;
-	for(int band = 0; band < 6; band++) {
+	for(unsigned int band = 0; band < 6; band++) {
 		printf("\n========= Processing band %d ==========\n", band + 1);
 		theClique.clear();
 		theClique.fixedClues.clear();
@@ -2244,8 +2244,8 @@ int scanFixedBandStack() { //leave one band and one stack from the original puzz
 		g.findUA12(); //find all 4..12 digit UA
 		//now g has valid UA list
 		digit2bitmap(g.digits, g.gridBM);
-		for(int band = 0; band < 3; band++) { //any cell in this band is fixed given/non-given
-			for(int stack = 0; stack < 3; stack++) { //any cell in this stack is fixed given/non-given
+		for(unsigned int band = 0; band < 3; band++) { //any cell in this band is fixed given/non-given
+			for(unsigned int stack = 0; stack < 3; stack++) { //any cell in this stack is fixed given/non-given
 				clueIterator ci(g);
 				//prepare fixed clues and fixed non-clues
 				for(int i = 0; i < 81; i++) {
