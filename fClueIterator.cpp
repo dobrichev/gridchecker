@@ -52,25 +52,25 @@ unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
 //typedef bit_masks<1536> fua6_type;
 
 typedef bit_masks<768> ua1_type; //768,1024
-typedef bit_masks<10240> ua2_type; //10240
+typedef bit_masks<12800> ua2_type; //10240
 typedef bit_masks<32768> ua3_type; //32768
 typedef bit_masks<65536> ua4_type; //65536
-typedef bit_masks<65536> ua5_type; //40960
-typedef bit_masks<65536> ua6_type; //32768
+typedef bit_masks<40960> ua5_type; //40960
+typedef bit_masks<32768> ua6_type; //32768
 
 //typedef bit_masks<256> fua1_type;
 //typedef bit_masks<768> fua2_type; //768
 //typedef bit_masks<1536> fua3_type; //1536
 //typedef bit_masks<1792> fua4_type; //1792
-//typedef bit_masks<2048> fua5_type; //2048
+//typedef bit_masks<1792> fua5_type; //2048
 //typedef bit_masks<1792> fua6_type; //1792, zero disables this functionality
 
 typedef bit_masks<256> fua1_type;
 typedef bit_masks<768> fua2_type; //768
-typedef bit_masks<1536> fua3_type; //1536
+typedef bit_masks<1792> fua3_type; //1536
 typedef bit_masks<1792> fua4_type; //1792
-typedef bit_masks<3072> fua5_type; //2048
-typedef bit_masks<4096> fua6_type; //1792, zero disables this functionality
+typedef bit_masks<1792> fua5_type; //2048
+typedef bit_masks<1792> fua6_type; //1792, zero disables this functionality
 
 //consolidated
 //128
@@ -95,9 +95,10 @@ starters stFamily[] = {
 	{54,42,30,27,21}, //5
 	{56,44,30,27,21}, //6 shift right (only b6b is a bit better than for 50,40,30,27,20)
 	{58,45,31,27,21}, //7
-	{52,42,38,25,23}, //8 for low u4
+	{52,42,38,33,30}, //8 for low u4
 	{43,29,26,20,18}, //9 original -1
-	{45,31,27,21,19}, //10 original +1/0
+	{44,30,27,21,18}, //10 original but u6 down
+	{44,30,27,21,15}, //11 original McGuire 16s with lower U6
 };
 
 struct fastState {
@@ -126,7 +127,7 @@ struct forecastState {
 class fastClueIterator {
 private:
 	void forecastIterateLevel(int currentUaIndex = 0);
-	void fastIterateLevel0(int currentUaIndex) __attribute__ ((noinline));
+	//void fastIterateLevel0(int currentUaIndex) __attribute__ ((noinline));
 	void fastIterateLevel1(int currentUaIndex) __attribute__ ((noinline));
 	void fastIterateLevel2(int currentUaIndex) __attribute__ ((noinline));
 	void fastIterateLevel3(int currentUaIndex) __attribute__ ((noinline));
@@ -139,7 +140,7 @@ private:
 	void fastIterateLevel13(int currentUaIndex) __attribute__ ((noinline));
 	void fastIterateLevel(int currentUaIndex = 0) __attribute__ ((noinline));
 	void switch2bm();
-	void checkPuzzle(bm128 &dc, int startPos = 0);
+	void checkPuzzle(int clueNumber, bm128 dc = _mm_undefined_si128 (), int startPos = 0);
 	fastClueIterator();
 public:
 	ua1_type hittingMasks[81];
@@ -219,67 +220,92 @@ void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
 	clueNumber++;
 }
 
-void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
-	fastState &oldState = state[1];
-	//fastState &newState = state[0];
-	//newState.deadClues = oldState.deadClues;
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(oldState.deadClues);
-		goto done;
-	}
-	else {
-		register __m256i setMask = oldState.fSetMask.getTopWord();
-		uset &u = fUsets[currentUaIndex];
-		for(int i = 0; i < u.nbits; i++) {
-			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
-				continue;
-			s0++;
-			//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
-			if(fua1_type::isHitting(fHittingMasks[cluePosition].getTopWord(), setMask)) {
-				d0++;
-				//all UA are hit, check the puzzle for uniqueness
-				//solve
-				clueNumber = 0;
-				clues[cluePosition] = g.digits[cluePosition];
-				checkPuzzle(oldState.deadClues);
-				clues[cluePosition] = 0;
-			}
-			//newState.deadClues.setBit(cluePosition);
-		}
-	}
-done:
-	clueNumber = 1;
-}
+//void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
+//	fastState &oldState = state[1];
+//	if(currentUaIndex == INT_MAX) {
+//		//iterate over all non-dead clues
+//		checkPuzzle(oldState.deadClues);
+//		goto done;
+//	}
+//	else {
+//		register __m256i setMask = oldState.fSetMask.getTopWord();
+//		uset &u = fUsets[currentUaIndex];
+//		for(int i = 0; i < u.nbits; i++) {
+//			int cluePosition = u.positions[i];
+//			if(oldState.deadClues.isBitSet(cluePosition))
+//				continue;
+//			s0++;
+//			//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
+//			if(fua1_type::isHitting(fHittingMasks[cluePosition].getTopWord(), setMask)) {
+//				d0++;
+//				//all UA are hit, check the puzzle for uniqueness
+//				//solve
+//				clueNumber = 0;
+//				clues[cluePosition] = g.digits[cluePosition];
+//				checkPuzzle(oldState.deadClues);
+//				clues[cluePosition] = 0;
+//			}
+//		}
+//	}
+//done:
+//	clueNumber = 1;
+//}
 void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
 	fastState &oldState = state[2];
-	fastState &newState = state[1];
-	newState.deadClues = oldState.deadClues;
+	bm128 deadClues1 = oldState.deadClues; //dead clues after clue 2 placement
 	if(currentUaIndex == INT_MAX) {
 		//iterate over all non-dead clues
-		checkPuzzle(newState.deadClues);
+		checkPuzzle(2, deadClues1);
 		goto done;
 	}
 	else {
-		//uset u((fUa)[currentUaIndex].bitmap128);
 		clueNumber = 1;
-		uset &u = fUsets[currentUaIndex];
-		for(int i = 0; i < u.nbits; i++) {
+		register __m256i setMask2 = oldState.fSetMask.getTopWord(); //unhit ua1 after clue 2 placement
+		uset &u = fUsets[currentUaIndex]; //topmost unhit ua1 after clue 2 placement
+		for(int i = 0; i < u.nbits; i++) { //iterate clue 1
 			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
+			if(deadClues1.isBitSet(cluePosition))
 				continue;
 			s1++;
 			if(state[2].fSetMask2.isHittingAll(fHittingMasks2[cluePosition])) {
 				d1++;
 				//all ua2 are hit, check ua1
-				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				int nextUaIndex = newState.fSetMask.firstUnhit();
+				//newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+				register __m256i setMask1 = fua1_type::hitWord(fHittingMasks[cluePosition].getTopWord(), setMask2);
+				//int nextUaIndex = newState.fSetMask.firstUnhit();
+				int nextUaIndex = fua1_type::firstUnhitWord(setMask1);
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel0(nextUaIndex);
+
+				//fastIterateLevel0(nextUaIndex);
+				if(nextUaIndex == INT_MAX) {
+					//iterate over all non-dead clues
+					checkPuzzle(1, deadClues1);
+					//goto done;
+				}
+				else {
+					//register __m256i setMask1 = oldState.fSetMask.getTopWord();
+					uset &u = fUsets[nextUaIndex];
+					for(int i = 0; i < u.nbits; i++) { //iterate clue 0
+						int clue0Position = u.positions[i];
+						if(deadClues1.isBitSet(clue0Position))
+							continue;
+						s0++;
+						//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
+						if(fua1_type::isHitting(fHittingMasks[clue0Position].getTopWord(), setMask1)) {
+							d0++;
+							//all UA are hit, check the puzzle for uniqueness
+							//solve
+							clueNumber = 0;
+							clues[clue0Position] = g.digits[clue0Position];
+							checkPuzzle(0);
+							clues[clue0Position] = 0;
+						}
+					}
+				}
+				clueNumber = 1;
 				clues[cluePosition] = 0;
 			}
-			newState.deadClues.setBit(cluePosition);
+			deadClues1.setBit(cluePosition);
 		}
 	}
 done:
@@ -291,7 +317,7 @@ void fastClueIterator::fastIterateLevel2(int currentUaIndex) {
 	newState.deadClues = oldState.deadClues;
 	if(currentUaIndex == INT_MAX) {
 		//iterate over all non-dead clues
-		checkPuzzle(newState.deadClues);
+		checkPuzzle(3, newState.deadClues);
 		goto done;
 	}
 	else {
@@ -324,7 +350,7 @@ void fastClueIterator::fastIterateLevel3(int currentUaIndex) {
 	newState.deadClues = oldState.deadClues;
 	if(currentUaIndex == INT_MAX) {
 		//iterate over all non-dead clues
-		checkPuzzle(newState.deadClues);
+		checkPuzzle(4, newState.deadClues);
 		goto done;
 	}
 	else {
@@ -358,7 +384,7 @@ void fastClueIterator::fastIterateLevel4(int currentUaIndex) {
 	newState.deadClues = oldState.deadClues;
 	if(currentUaIndex == INT_MAX) {
 		//iterate over all non-dead clues
-		checkPuzzle(newState.deadClues);
+		checkPuzzle(5, newState.deadClues);
 		goto done;
 	}
 	else {
@@ -393,7 +419,7 @@ void fastClueIterator::fastIterateLevel5(int currentUaIndex) {
 	newState.deadClues = oldState.deadClues;
 	if(currentUaIndex == INT_MAX) {
 		//iterate over all non-dead clues
-		checkPuzzle(newState.deadClues);
+		checkPuzzle(6, newState.deadClues);
 		goto done;
 	}
 	else {
@@ -425,6 +451,7 @@ done:
 }
 void fastClueIterator::fastIterateLevel9to6(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[clueNumber];
@@ -460,6 +487,7 @@ void fastClueIterator::fastIterateLevel9to6(int currentUaIndex) {
 
 void fastClueIterator::fastIterateLevel10(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[11];
@@ -501,6 +529,7 @@ void fastClueIterator::fastIterateLevel10(int currentUaIndex) {
 }
 void fastClueIterator::fastIterateLevel11(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[12];
@@ -539,6 +568,7 @@ void fastClueIterator::fastIterateLevel11(int currentUaIndex) {
 }
 void fastClueIterator::fastIterateLevel12(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[13];
@@ -573,6 +603,7 @@ void fastClueIterator::fastIterateLevel12(int currentUaIndex) {
 }
 void fastClueIterator::fastIterateLevel13(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[14];
@@ -612,6 +643,7 @@ void fastClueIterator::fastIterateLevel13(int currentUaIndex) {
 }
 void fastClueIterator::fastIterateLevel(int currentUaIndex) {
 	if(currentUaIndex == INT_MAX) {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
 	fastState &oldState = state[clueNumber];
@@ -715,6 +747,8 @@ next_s3:;
 						for (int s4 = starter.starter4 - 3; s4 < s3; s4++) {
 							sizedUset tttt = ttt;
 							if (tttt.join(ua[s4])) {
+								//if(tttt.getSize() > 55)
+								//	goto next_s4;
 								for (int s = 0; s < starter.starter4 - 3; s++) {
 									if (ua[s].isSubsetOf(tttt))
 										goto next_s4;
@@ -756,6 +790,8 @@ ua4composed:;
 								for (int s5 = starter.starter5 - 4; s5 < s4; s5++) {
 									sizedUset ttttt = tttt;
 									if (ttttt.join(ua[s5])) {
+										//if(ttttt.getSize() > 58)
+										//	goto next_s5;
 										for (int s = 0; s < starter.starter5 - 4; s++) {
 											if (ua[s].isSubsetOf(ttttt))
 												goto next_s5;
@@ -804,6 +840,8 @@ next_s5:;
 											for (int s6 = starter.starter6 - 5; s6 < s5; s6++) {
 												sizedUset tttttt = ttttt;
 												if (tttttt.join(ua[s6])) {
+													//if(tttttt.getSize() > 58)
+													//	goto next_s6;
 													for (int s = 0; s < starter.starter6 - 5; s++) {
 														if (ua[s].isSubsetOf(tttttt))
 															goto next_s6;
@@ -852,7 +890,7 @@ fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0) {
 	//nClues = 16;
 }
 
-void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
+void fastClueIterator::checkPuzzle(int clueNumber, bm128 dc, int startPos) {
 	if(clueNumber == 0) {
 		if(solve(clues, 2) == 1) {
 			ch81 puz;
@@ -867,7 +905,6 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 //		}
 	}
 	else {
-		clueNumber--;
 		for(int i = startPos; i < 81; i++) {
 			if(clues[i]) {	//given
 				continue;
@@ -876,21 +913,20 @@ void fastClueIterator::checkPuzzle(bm128 &dc, int startPos) {
 				continue;
 			}
 			clues[i] = g.digits[i];
-			checkPuzzle(dc, i + 1);
+			checkPuzzle(clueNumber - 1, dc, i + 1);
 			clues[i] = 0;
 		}
-		clueNumber++;
 	}
 }
 
 void fastClueIterator::iterate() {
-	//g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
 	//find all UA sets of size 4..12
 	g.findUA12();
 	usetListBySize &us = g.usetsBySize;
 	//printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
 	g.findUA4digits();
+	g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
 	//printf("\t%d\n", (int)us.size());
 
 	//debug
@@ -911,6 +947,7 @@ void fastClueIterator::iterate() {
 		sizedUset su;
 		su.bitmap128 = p->bitmap128; //don't calculate the size
 		su.setSize(p->nbits);
+		//if(p->nbits > 14) break;
 		//if(p->nbits <= 16) max16Index = uaActualSize; else break;
 		ua[uaActualSize++] = su; //store for hitting
 	}
@@ -959,7 +996,7 @@ void fastClueIterator::iterate() {
 //	if(g.usetsBySize.distributionBySize[4] <= 8)
 //		chosenFamily = 8;
 //	starter = stFamily[chosenFamily];
-	starter = stFamily[0]; //0 works best for random grid
+	starter = stFamily[0]; //0 works best for random grid, 8 for 17s
 
 	switch2bm();
 	//some info for debugging/optimization

@@ -175,8 +175,27 @@ public:
 	static bool isHitting(const __m256i hittingMask, const __m256i setMask) {
 		return _mm256_testc_si256(hittingMask, setMask);
 	}
+	static __m256i hitWord(const __m256i hittingMask, const __m256i setMask) {
+		return _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(hittingMask), _mm256_castsi256_pd(setMask)));
+	}
 	__m256i getTopWord() const {
 		return aBits[0].b256;
+	}
+	static int firstUnhitWord(const __m256i setMask) {
+		uint64_t bits;
+		if((bits = _mm256_extract_epi64(setMask, 0))) {
+			return __builtin_ctzll(bits); //almost always this is the only test
+		}
+		if((bits = _mm256_extract_epi64(setMask, 1))) {
+			return 64 + __builtin_ctzll(bits);
+		}
+		if((bits = _mm256_extract_epi64(setMask, 2))) {
+			return 128 + __builtin_ctzll(bits);
+		}
+		if((bits = _mm256_extract_epi64(setMask, 3))) {
+			return 192 + __builtin_ctzll(bits);
+		}
+		return INT_MAX;
 	}
 	void static bm128ToIndex(const bm128 *sets, int nsets, bit_masks &setMask, bit_masks hittingMasks[81]) {
 		fromBm128(nsets, sets, hittingMasks);
