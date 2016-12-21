@@ -84,8 +84,8 @@ public:
 	inline void clearBits(const bm128& r) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i);};
 	inline void clearBits(const bm128& r, const bm128& r1) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, r1.bitmap128.m128i_m128i);};
 	inline void clear() {bitmap128.m128i_m128i = _mm_setzero_si128();};
-	inline bool isSubsetOf(const bm128 &s) const {return equals(s.bitmap128.m128i_m128i, _mm_or_si128(bitmap128.m128i_m128i, s.bitmap128.m128i_m128i));}
-	inline bool clearsAll(const bm128 &s) const {return 1 == _mm_testc_si128(s.bitmap128.m128i_m128i, bitmap128.m128i_m128i);}
+	inline bool isSubsetOf(const bm128 &s) const {return 1 == _mm_testc_si128(s.bitmap128.m128i_m128i, bitmap128.m128i_m128i);}
+	//inline bool clearsAll(const bm128 &s) const {return 1 == _mm_testc_si128(s.bitmap128.m128i_m128i, bitmap128.m128i_m128i);}
 	inline bool operator< (const bm128 &rhs) const {
 		if(bitmap128.m128i_u64[1] < rhs.bitmap128.m128i_u64[1]) return true;
 		if(bitmap128.m128i_u64[1] > rhs.bitmap128.m128i_u64[1]) return false;

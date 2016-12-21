@@ -37,7 +37,7 @@ unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
 //typedef bit_masks<0> fua6_type;
 
 
-//typedef bit_masks<512> ua1_type; //closest to McGuire
+//typedef bit_masks<512> ua1_type; //closest to McGuire (smallest)
 //typedef bit_masks<8192> ua2_type;
 //typedef bit_masks<16384> ua3_type;
 //typedef bit_masks<32768> ua4_type;
@@ -51,33 +51,34 @@ unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
 //typedef bit_masks<1536> fua5_type;
 //typedef bit_masks<1536> fua6_type;
 
-typedef bit_masks<768> ua1_type; //768,1024
-typedef bit_masks<12800> ua2_type; //10240
-typedef bit_masks<32768> ua3_type; //32768
-typedef bit_masks<65536> ua4_type; //65536
-typedef bit_masks<40960> ua5_type; //40960
-typedef bit_masks<32768> ua6_type; //32768
 
+//typedef bit_masks<768> ua1_type; //768,1024  medium
+//typedef bit_masks<10240> ua2_type; //10240
+//typedef bit_masks<32768> ua3_type; //32768
+//typedef bit_masks<40960> ua4_type; //65536
+//typedef bit_masks<20480> ua5_type; //40960
+//typedef bit_masks<20480> ua6_type; //32768
+//
 //typedef bit_masks<256> fua1_type;
 //typedef bit_masks<768> fua2_type; //768
 //typedef bit_masks<1536> fua3_type; //1536
 //typedef bit_masks<1792> fua4_type; //1792
 //typedef bit_masks<1792> fua5_type; //2048
-//typedef bit_masks<1792> fua6_type; //1792, zero disables this functionality
+//typedef bit_masks<1536> fua6_type; //1792, zero disables this functionality
 
-typedef bit_masks<256> fua1_type;
-typedef bit_masks<768> fua2_type; //768
-typedef bit_masks<1792> fua3_type; //1536
-typedef bit_masks<1792> fua4_type; //1792
-typedef bit_masks<1792> fua5_type; //2048
-typedef bit_masks<1792> fua6_type; //1792, zero disables this functionality
+typedef bit_mask<768> bm1_index_type; //768,1024  large
+typedef bit_mask<12800> bm2_index_type; //10240
+typedef bit_mask<32768> bm3_index_type; //32768
+typedef bit_mask<65536> bm4_index_type; //65536
+typedef bit_mask<40960> bm5_index_type; //40960
+typedef bit_mask<32768> bm6_index_type; //32768
 
-//consolidated
-//128
-//384
-//1280
-//1536
-//1536
+typedef bit_mask<256> fbm1_index_type;
+typedef bit_mask<768> fbm2_index_type; //768
+typedef bit_mask<1792> fbm3_index_type; //1536
+typedef bit_mask<1792> fbm4_index_type; //1792
+typedef bit_mask<1792> fbm5_index_type; //2048
+typedef bit_mask<1792> fbm6_index_type; //1792, zero disables this functionality
 
 struct starters {
 	int starter2;
@@ -101,74 +102,84 @@ starters stFamily[] = {
 	{44,30,27,21,15}, //11 original McGuire 16s with lower U6
 };
 
-struct fastState {
-	bm128 deadClues;
-	bm128 setClues;
-	ua1_type setMask;
-	ua2_type setMask2;
-	ua3_type setMask3;
-	ua4_type setMask4;
-	ua5_type setMask5;
-	ua6_type setMask6;
-	fua1_type fSetMask;
-	fua2_type fSetMask2;
-	fua3_type fSetMask3;
-	fua4_type fSetMask4;
-	fua5_type fSetMask5;
-	fua6_type fSetMask6;
-	int positions[81];
-};
-struct forecastState {
-	bm128 deadClues;
-	//bm128 setClues;
-	ua1_type setMask;
-};
-
 class fastClueIterator {
 private:
-	void forecastIterateLevel(int currentUaIndex = 0);
-	//void fastIterateLevel0(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel1(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel2(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel3(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel4(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel5(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel9to6(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel10(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel11(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel12(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel13(int currentUaIndex) __attribute__ ((noinline));
-	void fastIterateLevel(int currentUaIndex = 0) __attribute__ ((noinline));
-	void switch2bm();
-	void checkPuzzle(int clueNumber, bm128 dc = _mm_undefined_si128 (), int startPos = 0);
+	//void forecastIterateLevel(int currentUaIndex = 0);
+	inline void fastIterateLevel0(const dead_clues_type &deadClues1, const fbm1_index_type fua1_alive1);
+	inline void fastIterateLevel1(const dead_clues_type &deadClues2,
+			const fbm1_index_type fua1_alive2, const fbm2_index_type &fua2_alive2);
+	inline void fastIterateLevel2(const dead_clues_type &deadClues3,
+			const fbm1_index_type fua1_alive3, const fbm2_index_type &fua2_alive3, const fbm3_index_type &fua3_alive3);
+	void fastIterateLevel3(const dead_clues_type &deadClues4,
+			const fbm1_index_type fua1_alive4, const fbm2_index_type &fua2_alive4, const fbm3_index_type &fua3_alive4,
+			const fbm4_index_type &fua4_alive4);
+	void fastIterateLevel4(const dead_clues_type &deadClues5,
+			const fbm1_index_type fua1_alive5, const fbm2_index_type &fua2_alive5, const fbm3_index_type &fua3_alive5,
+			const fbm4_index_type &fua4_alive5, const fbm5_index_type &fua5_alive5);
+	void fastIterateLevel5(const dead_clues_type &deadClues6,
+			const fbm1_index_type &fua1_alive6, const fbm2_index_type &fua2_alive6, const fbm3_index_type &fua3_alive6,
+			const fbm4_index_type &fua4_alive6, const fbm5_index_type &fua5_alive6, const fbm6_index_type &fua6_alive6);
+	void fastIterateLevel9to6(const dead_clues_type &deadClues_old,
+			const fbm1_index_type &fua1_alive_old, const fbm2_index_type &fua2_alive_old, const fbm3_index_type &fua3_alive_old,
+			const fbm4_index_type &fua4_alive_old, const fbm5_index_type &fua5_alive_old, const fbm6_index_type &fua6_alive_old);
+	void fastIterateLevel10(const dead_clues_type &deadClues11,
+			const bm1_index_type &ua1_alive11, const fbm2_index_type &fua2_alive11, const fbm3_index_type &fua3_alive11,
+			const fbm4_index_type &fua4_alive11, const fbm5_index_type &fua5_alive11, const fbm6_index_type &fua6_alive11);
+	void fastIterateLevel11(const dead_clues_type &deadClues12,
+			const bm1_index_type &ua1_alive12, const bm2_index_type &ua2_alive12, const bm3_index_type &ua3_alive12,
+			const fbm4_index_type &fua4_alive12, const fbm5_index_type &fua5_alive12, const fbm6_index_type &fua6_alive12);
+	void fastIterateLevel12(const dead_clues_type &deadClues13,
+			const bm1_index_type &ua1_alive13, const bm2_index_type &ua2_alive13, const bm3_index_type &ua3_alive13,
+			const bm4_index_type &ua4_alive13, const fbm5_index_type &fua5_alive13, const fbm6_index_type &fua6_alive13);
+	void fastIterateLevel13(const dead_clues_type &deadClues14,
+			const bm1_index_type &ua1_alive14, const bm2_index_type &ua2_alive14, const bm3_index_type &ua3_alive14,
+			const bm4_index_type &ua4_alive14, const bm5_index_type &ua5_alive14, const bm6_index_type &ua6_alive14);
+	void fastIterateLevel(const dead_clues_type &deadClues_old,
+			const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
+			const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old);
+	void buildComposites();
+	void checkPuzzle();
+	void checkPuzzle(int clueNumber, const dead_clues_type &dc, int startPos = 0);
 	fastClueIterator();
 public:
-	ua1_type hittingMasks[81];
-	ua2_type hittingMasks2[81];
-	ua3_type hittingMasks3[81];
-	ua4_type hittingMasks4[81];
-	ua5_type hittingMasks5[81];
-	ua6_type hittingMasks6[81];
-	fua1_type fHittingMasks[81];  //7+ (10)
-	fua2_type fHittingMasks2[81]; //6+ (11)
-	fua3_type fHittingMasks3[81]; //6+ (11)
-	fua4_type fHittingMasks4[81]; //5+ (12)
-	fua5_type fHittingMasks5[81]; //4+ (13)
-	fua6_type fHittingMasks6[81]; //4+ (13)?
-	sizedUset ua[ua1_type::maxSize];
-	sizedUset ua2[ua2_type::maxSize];
-	sizedUset ua3[ua3_type::maxSize];
-	sizedUset ua4[ua4_type::maxSize];
-	sizedUset ua5[ua5_type::maxSize];
-	sizedUset ua6[ua6_type::maxSize];
-	sizedUset fUa[fua1_type::maxSize];
-	sizedUset fUa2[fua2_type::maxSize];
-	sizedUset fUa3[fua3_type::maxSize];
-	sizedUset fUa4[fua4_type::maxSize];
-	sizedUset fUa5[fua5_type::maxSize];
-	sizedUset fUa6[fua6_type::maxSize];
-	uset usets[ua1_type::maxSize]; //same as ua but with sizes
-	uset fUsets[fua1_type::maxSize]; //same as fUa but with sizes
+	bm1_index_type ua1_indexes[81];
+	bm2_index_type ua2_indexes[81];
+	bm3_index_type ua3_indexes[81];
+	bm4_index_type ua4_indexes[81];
+	bm5_index_type ua5_indexes[81];
+	bm6_index_type ua6_indexes[81];
+	fbm1_index_type fua1_indexes[81];
+	fbm2_index_type fua2_indexes[81];
+	fbm3_index_type fua3_indexes[81];
+	fbm4_index_type fua4_indexes[81];
+	fbm5_index_type fua5_indexes[81];
+	fbm6_index_type fua6_indexes[81];
+//	ua1_type hittingMasks[81];
+//	ua2_type hittingMasks2[81];
+//	ua3_type hittingMasks3[81];
+//	ua4_type hittingMasks4[81];
+//	ua5_type hittingMasks5[81];
+//	ua6_type hittingMasks6[81];
+//	fua1_type fHittingMasks[81];  //7+ (10)
+//	fua2_type fHittingMasks2[81]; //6+ (11)
+//	fua3_type fHittingMasks3[81]; //6+ (11)
+//	fua4_type fHittingMasks4[81]; //5+ (12)
+//	fua5_type fHittingMasks5[81]; //4+ (13)
+//	fua6_type fHittingMasks6[81]; //4+ (13)?
+	sizedUset ua[bm1_index_type::maxSize];
+	sizedUset ua2[bm2_index_type::maxSize];
+	sizedUset ua3[bm3_index_type::maxSize];
+	sizedUset ua4[bm4_index_type::maxSize];
+	sizedUset ua5[bm5_index_type::maxSize];
+	sizedUset ua6[bm6_index_type::maxSize];
+	sizedUset fUa[fbm1_index_type::maxSize];
+	sizedUset fUa2[fbm2_index_type::maxSize];
+	sizedUset fUa3[fbm3_index_type::maxSize];
+	sizedUset fUa4[fbm4_index_type::maxSize];
+	sizedUset fUa5[fbm5_index_type::maxSize];
+	sizedUset fUa6[fbm6_index_type::maxSize];
+	uset usets[bm1_index_type::maxSize]; //same as ua but with sizes
+	uset fUsets[fbm1_index_type::maxSize]; //same as fUa but with sizes
 	int uaActualSize;
 	int ua2ActualSize;
 	int ua3ActualSize;
@@ -182,13 +193,21 @@ public:
 	int fua5ActualSize;
 	int fua6ActualSize;
 
+	bm1_index_type ua1_alive_initial;
+	bm2_index_type ua2_alive_initial;
+	bm3_index_type ua3_alive_initial;
+	bm4_index_type ua4_alive_initial;
+	bm5_index_type ua5_alive_initial;
+	bm6_index_type ua6_alive_initial;
+
+	dead_clues_type deadClues_initial;
+
 	int nClues;
 	grid &g;
 	unsigned int nPuzzles;
 	unsigned int nChecked;
 	int clueNumber; //nClues - 1 .. 0
-	fastState state[25];
-	forecastState fState[11];
+	//forecastState fState[11];
 	std::set< int > topUA;
 	starters starter;
 	char clues[81];
@@ -196,29 +215,29 @@ public:
 	fastClueIterator(grid &g);
 	void iterate();
 };
-void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
-	forecastState &oldState = fState[clueNumber];
-	clueNumber--;
-	forecastState &newState = fState[clueNumber];
-	newState.deadClues = oldState.deadClues;
-	//prepare state for the next clue
-	uset u((ua)[currentUaIndex].bitmap128);
-	u &= maskLSB[81];
-	u.clearBits(oldState.deadClues);
-	u.positionsByBitmap();
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		//printf("clue[%d] using ua[%3d] cell[%2.d]\n", clueNumber, currentUaIndex, cluePosition);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = newState.setMask.firstUnhit();
-		topUA.insert(nextUaIndex);
-		if(clueNumber) {
-			forecastIterateLevel(nextUaIndex); //call recursively
-		}
-		newState.deadClues.setBit(cluePosition);
-	}
-	clueNumber++;
-}
+//void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
+//	forecastState &oldState = fState[clueNumber];
+//	clueNumber--;
+//	forecastState &newState = fState[clueNumber];
+//	newState.deadClues = oldState.deadClues;
+//	//prepare state for the next clue
+//	uset u((ua)[currentUaIndex].bitmap128);
+//	u &= maskLSB[81];
+//	u.clearBits(oldState.deadClues);
+//	u.positionsByBitmap();
+//	for(int i = 0; i < u.nbits; i++) {
+//		int cluePosition = u.positions[i];
+//		//printf("clue[%d] using ua[%3d] cell[%2.d]\n", clueNumber, currentUaIndex, cluePosition);
+//		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
+//		int nextUaIndex = newState.setMask.firstUnhit();
+//		topUA.insert(nextUaIndex);
+//		if(clueNumber) {
+//			forecastIterateLevel(nextUaIndex); //call recursively
+//		}
+//		newState.deadClues.setBit(cluePosition);
+//	}
+//	clueNumber++;
+//}
 
 //void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
 //	fastState &oldState = state[1];
@@ -250,438 +269,500 @@ void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
 //done:
 //	clueNumber = 1;
 //}
-void fastClueIterator::fastIterateLevel1(int currentUaIndex) {
-	fastState &oldState = state[2];
-	bm128 deadClues1 = oldState.deadClues; //dead clues after clue 2 placement
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(2, deadClues1);
-		goto done;
+//void fastClueIterator::fastIterateLevel1(int currentUaIndex, bm128& deadClues2) {
+//	fastState &oldState = state[2];
+//	//register bm128 deadClues1 = oldState.deadClues; //dead clues after clue 2 placement
+//	register bm128 deadClues1 = deadClues2; //dead clues after clue 2 placement
+//	if(currentUaIndex == INT_MAX) {
+//		//iterate over all non-dead clues
+//		checkPuzzle(2, deadClues1);
+//		goto done;
+//	}
+//	else {
+//		clueNumber = 1;
+//		register __m256i setMask2 = oldState.fSetMask.getTopWord(); //unhit ua1 after clue 2 placement
+//		uset &u = fUsets[currentUaIndex]; //topmost unhit ua1 after clue 2 placement
+//		for(int i = 0; i < u.nbits; i++) { //iterate clue 1
+//			int cluePosition = u.positions[i];
+//			if(deadClues1.isBitSet(cluePosition))
+//				continue;
+//			s1++;
+//			if(state[2].fSetMask2.isHittingAll(fHittingMasks2[cluePosition])) {
+//				d1++;
+//				//all ua2 are hit, check ua1
+//				//newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
+//				register __m256i setMask1 = fua1_type::hitWord(fHittingMasks[cluePosition].getTopWord(), setMask2);
+//				//int nextUaIndex = newState.fSetMask.firstUnhit();
+//				int nextUaIndex = fua1_type::firstUnhitWord(setMask1);
+//				clues[cluePosition] = g.digits[cluePosition];
+//
+//				//fastIterateLevel0(nextUaIndex);
+//				if(nextUaIndex == INT_MAX) {
+//					//iterate over all non-dead clues
+//					checkPuzzle(1, deadClues1);
+//					//goto done;
+//				}
+//				else {
+//					//register __m256i setMask1 = oldState.fSetMask.getTopWord();
+//					uset &u = fUsets[nextUaIndex];
+//					for(int i = 0; i < u.nbits; i++) { //iterate clue 0
+//						int clue0Position = u.positions[i];
+//						if(deadClues1.isBitSet(clue0Position))
+//							continue;
+//						s0++;
+//						//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
+//						if(fua1_type::isHitting(fHittingMasks[clue0Position].getTopWord(), setMask1)) {
+//							d0++;
+//							//all UA are hit, check the puzzle for uniqueness
+//							//solve
+//							clueNumber = 0;
+//							clues[clue0Position] = g.digits[clue0Position];
+//							checkPuzzle(0);
+//							clues[clue0Position] = 0;
+//						}
+//					}
+//				}
+//				clueNumber = 1;
+//				clues[cluePosition] = 0;
+//			}
+//			deadClues1.setBit(cluePosition);
+//		}
+//	}
+//done:
+//	clueNumber = 2;
+//}
+void fastClueIterator::fastIterateLevel0(const dead_clues_type & deadClues1, const fbm1_index_type fua1_alive1) {
+	int uaIndex0 = fua1_alive1.getMinIndex();
+	if(uaIndex0 != INT_MAX) {
+		clueNumber = 0;
+		const uset &u = fUsets[uaIndex0];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues1.isBitSet(cluePosition)) //todo: we know the latest position isn't dead
+				continue;
+			s0++;
+			if(fua1_alive1.isSubsetOf(fua1_indexes[cluePosition])) {
+				d0++;
+				clues[cluePosition] = g.digits[cluePosition];
+				checkPuzzle();
+				clues[cluePosition] = 0;
+			}
+		}
+		clueNumber = 1;
 	}
 	else {
+		//iterate over all non-dead clues
+		checkPuzzle(1, deadClues1);
+	}
+}
+void fastClueIterator::fastIterateLevel1(const dead_clues_type & deadClues2,
+		const fbm1_index_type fua1_alive2, const fbm2_index_type & fua2_alive2) {
+	int uaIndex1 = fua1_alive2.getMinIndex();
+	if(uaIndex1 != INT_MAX) {
 		clueNumber = 1;
-		register __m256i setMask2 = oldState.fSetMask.getTopWord(); //unhit ua1 after clue 2 placement
-		uset &u = fUsets[currentUaIndex]; //topmost unhit ua1 after clue 2 placement
-		for(int i = 0; i < u.nbits; i++) { //iterate clue 1
+		dead_clues_type deadClues1(deadClues2);
+		const uset &u = fUsets[uaIndex1];
+		for(int i = 0; i < u.nbits; i++) {
 			int cluePosition = u.positions[i];
-			if(deadClues1.isBitSet(cluePosition))
+			if(deadClues2.isBitSet(cluePosition))
 				continue;
 			s1++;
-			if(state[2].fSetMask2.isHittingAll(fHittingMasks2[cluePosition])) {
+			if(fua2_alive2.isSubsetOf(fua2_indexes[cluePosition])) {
 				d1++;
-				//all ua2 are hit, check ua1
-				//newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				register __m256i setMask1 = fua1_type::hitWord(fHittingMasks[cluePosition].getTopWord(), setMask2);
-				//int nextUaIndex = newState.fSetMask.firstUnhit();
-				int nextUaIndex = fua1_type::firstUnhitWord(setMask1);
+				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-
-				//fastIterateLevel0(nextUaIndex);
-				if(nextUaIndex == INT_MAX) {
-					//iterate over all non-dead clues
-					checkPuzzle(1, deadClues1);
-					//goto done;
-				}
-				else {
-					//register __m256i setMask1 = oldState.fSetMask.getTopWord();
-					uset &u = fUsets[nextUaIndex];
-					for(int i = 0; i < u.nbits; i++) { //iterate clue 0
-						int clue0Position = u.positions[i];
-						if(deadClues1.isBitSet(clue0Position))
-							continue;
-						s0++;
-						//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
-						if(fua1_type::isHitting(fHittingMasks[clue0Position].getTopWord(), setMask1)) {
-							d0++;
-							//all UA are hit, check the puzzle for uniqueness
-							//solve
-							clueNumber = 0;
-							clues[clue0Position] = g.digits[clue0Position];
-							checkPuzzle(0);
-							clues[clue0Position] = 0;
-						}
-					}
-				}
-				clueNumber = 1;
+				fastIterateLevel0(deadClues1, fua1_alive1);
+//				{
+//					int uaIndex0 = fua1_alive1.getMinIndex();
+//					if(uaIndex0 != INT_MAX) {
+//						clueNumber = 0;
+//						const uset &u = fUsets[uaIndex0];
+//						for(int i = 0; i < u.nbits; i++) {
+//							int cluePosition = u.positions[i];
+//							if(deadClues1.isBitSet(cluePosition))
+//								continue;
+//							s0++;
+//							if(fua1_alive1.isSubsetOf(fua1_indexes[cluePosition])) {
+//								d0++;
+//								clues[cluePosition] = g.digits[cluePosition];
+//								checkPuzzle();
+//								clues[cluePosition] = 0;
+//							}
+//						}
+//						clueNumber = 1;
+//					}
+//					else {
+//						//iterate over all non-dead clues
+//						checkPuzzle(1, deadClues1);
+//					}
+//				}
 				clues[cluePosition] = 0;
 			}
 			deadClues1.setBit(cluePosition);
 		}
-	}
-done:
-	clueNumber = 2;
-}
-void fastClueIterator::fastIterateLevel2(int currentUaIndex) {
-	fastState &oldState = state[3];
-	fastState &newState = state[2];
-	newState.deadClues = oldState.deadClues;
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(3, newState.deadClues);
-		goto done;
+		clueNumber = 2;
 	}
 	else {
+		//iterate over all non-dead clues
+		checkPuzzle(2, deadClues2);
+	}
+}
+void fastClueIterator::fastIterateLevel2(const dead_clues_type & deadClues3,
+		const fbm1_index_type fua1_alive3, const fbm2_index_type & fua2_alive3, const fbm3_index_type & fua3_alive3) {
+	int uaIndex2 = fua1_alive3.getMinIndex();
+	if(uaIndex2 != INT_MAX) {
 		clueNumber = 2;
-		uset &u = fUsets[currentUaIndex];
+		dead_clues_type deadClues2(deadClues3);
+		const uset &u = fUsets[uaIndex2];
 		for(int i = 0; i < u.nbits; i++) {
 			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
+			if(deadClues3.isBitSet(cluePosition))
 				continue;
 			s2++;
-			if(state[3].fSetMask3.isHittingAll(fHittingMasks3[cluePosition])) {
+			if(fua3_alive3.isSubsetOf(fua3_indexes[cluePosition])) {
 				d2++;
-				//all ua3 are hit, now hit ua2 and ua
-				state[2].fSetMask2.hitOnly(state[3].fSetMask2, fHittingMasks2[cluePosition]);
-				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				int nextUaIndex = newState.fSetMask.firstUnhit();
+				fbm2_index_type fua2_alive2(fua2_alive3, fua2_indexes[cluePosition]); //hit
+				fbm1_index_type fua1_alive2(fua1_alive3, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel1(nextUaIndex);
+				fastIterateLevel1(deadClues2, fua1_alive2, fua2_alive2);
 				clues[cluePosition] = 0;
 			}
-			newState.deadClues.setBit(cluePosition);
+			deadClues2.setBit(cluePosition);
 		}
-	}
-done:
-	clueNumber = 3;
-}
-void fastClueIterator::fastIterateLevel3(int currentUaIndex) {
-	fastState &oldState = state[4];
-	fastState &newState = state[3];
-	newState.deadClues = oldState.deadClues;
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(4, newState.deadClues);
-		goto done;
+		clueNumber = 3;
 	}
 	else {
+		//iterate over all non-dead clues
+		checkPuzzle(3, deadClues3);
+	}
+}
+void fastClueIterator::fastIterateLevel3(const dead_clues_type & deadClues4,
+		const fbm1_index_type fua1_alive4, const fbm2_index_type & fua2_alive4, const fbm3_index_type & fua3_alive4,
+		const fbm4_index_type & fua4_alive4) {
+	int uaIndex3 = fua1_alive4.getMinIndex();
+	if(uaIndex3 != INT_MAX) {
 		clueNumber = 3;
-		uset &u = fUsets[currentUaIndex];
+		dead_clues_type deadClues3(deadClues4);
+		const uset &u = fUsets[uaIndex3];
 		for(int i = 0; i < u.nbits; i++) {
 			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
+			if(deadClues4.isBitSet(cluePosition))
 				continue;
 			s3++;
-			if(state[4].fSetMask4.isHittingAll(fHittingMasks4[cluePosition])) {
+			if(fua4_alive4.isSubsetOf(fua4_indexes[cluePosition])) {
 				d3++;
-				//all ua4 are hit, now hit ua3, ua2 and ua
-				state[3].fSetMask3.hitOnly(state[4].fSetMask3, fHittingMasks3[cluePosition]);
-				state[3].fSetMask2.hitOnly(state[4].fSetMask2, fHittingMasks2[cluePosition]);
-				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				int nextUaIndex = newState.fSetMask.firstUnhit();
+				fbm3_index_type fua3_alive3(fua3_alive4, fua3_indexes[cluePosition]); //hit
+				fbm2_index_type fua2_alive3(fua2_alive4, fua2_indexes[cluePosition]); //hit
+				fbm1_index_type fua1_alive3(fua1_alive4, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel2(nextUaIndex);
+				fastIterateLevel2(deadClues3, fua1_alive3, fua2_alive3, fua3_alive3);
 				clues[cluePosition] = 0;
 			}
-			newState.deadClues.setBit(cluePosition);
+			deadClues3.setBit(cluePosition);
 		}
-	}
-done:
-	clueNumber = 4;
-}
-void fastClueIterator::fastIterateLevel4(int currentUaIndex) {
-	fastState &oldState = state[5];
-	fastState &newState = state[4];
-	newState.deadClues = oldState.deadClues;
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(5, newState.deadClues);
-		goto done;
+		clueNumber = 4;
 	}
 	else {
+		//iterate over all non-dead clues
+		checkPuzzle(4, deadClues4);
+	}
+}
+void fastClueIterator::fastIterateLevel4(const dead_clues_type & deadClues5,
+		const fbm1_index_type fua1_alive5, const fbm2_index_type & fua2_alive5, const fbm3_index_type & fua3_alive5,
+		const fbm4_index_type & fua4_alive5, const fbm5_index_type & fua5_alive5) {
+	int uaIndex5 = fua1_alive5.getMinIndex();
+	if(uaIndex5 != INT_MAX) {
 		clueNumber = 4;
-		uset &u = fUsets[currentUaIndex];
+		dead_clues_type deadClues4(deadClues5);
+		const uset &u = fUsets[uaIndex5];
 		for(int i = 0; i < u.nbits; i++) {
 			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
+			if(deadClues5.isBitSet(cluePosition))
 				continue;
 			s4++;
-			if(state[5].fSetMask5.isHittingAll(fHittingMasks5[cluePosition])) {
+			if(fua5_alive5.isSubsetOf(fua5_indexes[cluePosition])) {
 				d4++;
-				//all ua5 are hit, now hit ua4, ua3, ua2 and ua
-				state[4].fSetMask4.hitOnly(state[5].fSetMask4, fHittingMasks4[cluePosition]);
-				state[4].fSetMask3.hitOnly(state[5].fSetMask3, fHittingMasks3[cluePosition]);
-				state[4].fSetMask2.hitOnly(state[5].fSetMask2, fHittingMasks2[cluePosition]);
-				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				int nextUaIndex = newState.fSetMask.firstUnhit();
+				fbm4_index_type fua4_alive4(fua4_alive5, fua4_indexes[cluePosition]); //hit
+				fbm3_index_type fua3_alive4(fua3_alive5, fua3_indexes[cluePosition]); //hit
+				fbm2_index_type fua2_alive4(fua2_alive5, fua2_indexes[cluePosition]); //hit
+				fbm1_index_type fua1_alive4(fua1_alive5, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel3(nextUaIndex);
+				fastIterateLevel3(deadClues4, fua1_alive4, fua2_alive4, fua3_alive4, fua4_alive4);
 				clues[cluePosition] = 0;
 			}
-			newState.deadClues.setBit(cluePosition);
+			deadClues4.setBit(cluePosition);
 		}
-	}
-done:
-	clueNumber = 5;
-}
-void fastClueIterator::fastIterateLevel5(int currentUaIndex) {
-	fastState &oldState = state[6];
-	fastState &newState = state[5];
-	newState.deadClues = oldState.deadClues;
-	if(currentUaIndex == INT_MAX) {
-		//iterate over all non-dead clues
-		checkPuzzle(6, newState.deadClues);
-		goto done;
+		clueNumber = 5;
 	}
 	else {
+		//iterate over all non-dead clues
+		checkPuzzle(5, deadClues5);
+	}
+}
+void fastClueIterator::fastIterateLevel5(const dead_clues_type & deadClues6,
+		const fbm1_index_type & fua1_alive6, const fbm2_index_type & fua2_alive6, const fbm3_index_type & fua3_alive6,
+		const fbm4_index_type & fua4_alive6, const fbm5_index_type & fua5_alive6, const fbm6_index_type & fua6_alive6) {
+	int uaIndex6 = fua1_alive6.getMinIndex();
+	if(uaIndex6 != INT_MAX) {
 		clueNumber = 5;
-		uset &u = fUsets[currentUaIndex];
+		dead_clues_type deadClues5(deadClues6);
+		const uset &u = fUsets[uaIndex6];
 		for(int i = 0; i < u.nbits; i++) {
 			int cluePosition = u.positions[i];
-			if(oldState.deadClues.isBitSet(cluePosition))
+			if(deadClues6.isBitSet(cluePosition))
 				continue;
 			s5++;
-			if((fua6_type::maxSize == 0) || oldState.fSetMask6.isHittingAll(fHittingMasks6[cluePosition])) {
+			if(fua6_alive6.isSubsetOf(fua6_indexes[cluePosition])) {
 				d5++;
-				//all ua6 are hit, now hit ua5, ua4, ua3, ua2 and ua
-				newState.fSetMask5.hitOnly(oldState.fSetMask5, fHittingMasks5[cluePosition]);
-				newState.fSetMask4.hitOnly(oldState.fSetMask4, fHittingMasks4[cluePosition]);
-				newState.fSetMask3.hitOnly(oldState.fSetMask3, fHittingMasks3[cluePosition]);
-				newState.fSetMask2.hitOnly(oldState.fSetMask2, fHittingMasks2[cluePosition]);
-				newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-				int nextUaIndex = newState.fSetMask.firstUnhit();
+				fbm5_index_type fua5_alive5(fua5_alive6, fua5_indexes[cluePosition]); //hit
+				fbm4_index_type fua4_alive5(fua4_alive6, fua4_indexes[cluePosition]); //hit
+				fbm3_index_type fua3_alive5(fua3_alive6, fua3_indexes[cluePosition]); //hit
+				fbm2_index_type fua2_alive5(fua2_alive6, fua2_indexes[cluePosition]); //hit
+				fbm1_index_type fua1_alive5(fua1_alive6, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel4(nextUaIndex);
+				fastIterateLevel4(deadClues5,
+						fua1_alive5, fua2_alive5, fua3_alive5,
+						fua4_alive5, fua5_alive5);
 				clues[cluePosition] = 0;
 			}
-			newState.deadClues.setBit(cluePosition);
+			deadClues5.setBit(cluePosition);
 		}
+		clueNumber = 6;
 	}
-done:
-	clueNumber = 6;
+	else {
+		//iterate over all non-dead clues
+		checkPuzzle(6, deadClues6);
+	}
 }
-void fastClueIterator::fastIterateLevel9to6(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
+void fastClueIterator::fastIterateLevel9to6(const dead_clues_type &deadClues_old,
+		const fbm1_index_type &fua1_alive_old, const fbm2_index_type &fua2_alive_old, const fbm3_index_type &fua3_alive_old,
+		const fbm4_index_type &fua4_alive_old, const fbm5_index_type &fua5_alive_old, const fbm6_index_type &fua6_alive_old) {
+	int uaIndex_old = fua1_alive_old.getMinIndex();
+	if(uaIndex_old != INT_MAX) {
+		clueNumber--;
+		dead_clues_type deadClues_new(deadClues_old);
+		const uset &u = fUsets[uaIndex_old];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues_old.isBitSet(cluePosition))
+				continue;
+			fbm6_index_type fua6_alive_new(fua6_alive_old, fua6_indexes[cluePosition]); //hit
+			fbm5_index_type fua5_alive_new(fua5_alive_old, fua5_indexes[cluePosition]); //hit
+			fbm4_index_type fua4_alive_new(fua4_alive_old, fua4_indexes[cluePosition]); //hit
+			fbm3_index_type fua3_alive_new(fua3_alive_old, fua3_indexes[cluePosition]); //hit
+			fbm2_index_type fua2_alive_new(fua2_alive_old, fua2_indexes[cluePosition]); //hit
+			fbm1_index_type fua1_alive_new(fua1_alive_old, fua1_indexes[cluePosition]); //hit
+			clues[cluePosition] = g.digits[cluePosition];
+			if(clueNumber == 6) {
+				fastIterateLevel5(deadClues_new,
+						fua1_alive_new, fua2_alive_new, fua3_alive_new,
+						fua4_alive_new, fua5_alive_new, fua6_alive_new);
+			}
+			else {
+				fastIterateLevel9to6(deadClues_new,
+						fua1_alive_new, fua2_alive_new, fua3_alive_new,
+						fua4_alive_new, fua5_alive_new, fua6_alive_new);
+			}
+			clues[cluePosition] = 0;
+			deadClues_new.setBit(cluePosition);
+		}
+		clueNumber++;
+	}
+	else {
 		printf("UA exhausted after placing clue number %d\n", clueNumber);
 		return;
 	}
-	fastState &oldState = state[clueNumber];
-	clueNumber--;
-	fastState &newState = state[clueNumber];
-	newState.deadClues = oldState.deadClues;
-	uset &u = fUsets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		if(fua6_type::maxSize) {
-			newState.fSetMask6.hitOnly(oldState.fSetMask6, fHittingMasks6[cluePosition]);
+}
+void fastClueIterator::fastIterateLevel10(const dead_clues_type &deadClues11,
+		const bm1_index_type &ua1_alive11, const fbm2_index_type &fua2_alive11, const fbm3_index_type &fua3_alive11,
+		const fbm4_index_type &fua4_alive11, const fbm5_index_type &fua5_alive11, const fbm6_index_type &fua6_alive11) {
+	int uaIndex11 = ua1_alive11.getMinIndex();
+	if(uaIndex11 != INT_MAX) {
+		clueNumber = 10;
+		dead_clues_type deadClues10(deadClues11);
+		const uset &u = usets[uaIndex11];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues11.isBitSet(cluePosition))
+				continue;
+			fbm6_index_type fua6_alive10(fua6_alive11, fua6_indexes[cluePosition]); //hit
+			fbm5_index_type fua5_alive10(fua5_alive11, fua5_indexes[cluePosition]); //hit
+			fbm4_index_type fua4_alive10(fua4_alive11, fua4_indexes[cluePosition]); //hit
+			fbm3_index_type fua3_alive10(fua3_alive11, fua3_indexes[cluePosition]); //hit
+			fbm2_index_type fua2_alive10(fua2_alive11, fua2_indexes[cluePosition]); //hit
+			bm1_index_type ua1_alive10(ua1_alive11, ua1_indexes[cluePosition]); //hit
+			fuaActualSize = ua1_alive10.copyAlive(ua, fUa, fbm1_index_type::maxSize, deadClues10); //extract
+			//printf("fuaActualSize=%d", fuaActualSize);
+			std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
+			//fuaActualSize = (std::unique(fUa, fUa + fuaActualSize) - &fUa[0]);
+			//printf("\t%d\n", fuaActualSize);
+			for(int n = 0; n < fuaActualSize; n++) {
+				fUsets[n] = fUa[n];
+				fUsets[n] &= maskLSB[81];
+				fUsets[n].positionsByBitmap();
+			}
+			fbm1_index_type fua1_alive10(fUa, fuaActualSize, fua1_indexes); //rebuild
+			clues[cluePosition] = g.digits[cluePosition];
+			fastIterateLevel9to6(deadClues10,
+					fua1_alive10, fua2_alive10, fua3_alive10,
+					fua4_alive10, fua5_alive10, fua6_alive10);
+			clues[cluePosition] = 0;
+			deadClues10.setBit(cluePosition);
 		}
-		newState.fSetMask5.hitOnly(oldState.fSetMask5, fHittingMasks5[cluePosition]);
-		newState.fSetMask4.hitOnly(oldState.fSetMask4, fHittingMasks4[cluePosition]);
-		newState.fSetMask3.hitOnly(oldState.fSetMask3, fHittingMasks3[cluePosition]);
-		newState.fSetMask2.hitOnly(oldState.fSetMask2, fHittingMasks2[cluePosition]);
-		newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-		int nextUaIndex = newState.fSetMask.firstUnhit();
-		clues[cluePosition] = g.digits[cluePosition];
-		if(clueNumber == 6) {
-			fastIterateLevel5(nextUaIndex);
-		}
-		else {
-			fastIterateLevel9to6(nextUaIndex); //call recursively
-		}
-		clues[cluePosition] = 0;
-		newState.deadClues.setBit(cluePosition);
+		clueNumber = 11;
 	}
-	clueNumber++;
+	else {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
+		return;
+	}
+}
+void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12,
+		const bm1_index_type &ua1_alive12, const bm2_index_type &ua2_alive12, const bm3_index_type &ua3_alive12,
+		const fbm4_index_type &fua4_alive12, const fbm5_index_type &fua5_alive12, const fbm6_index_type &fua6_alive12) {
+	int uaIndex12 = ua1_alive12.getMinIndex();
+	if(uaIndex12 != INT_MAX) {
+		clueNumber = 11;
+		dead_clues_type deadClues11(deadClues12);
+		const uset &u = usets[uaIndex12];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues12.isBitSet(cluePosition))
+				continue;
+			fbm6_index_type fua6_alive11(fua6_alive12, fua6_indexes[cluePosition]); //hit
+			fbm5_index_type fua5_alive11(fua5_alive12, fua5_indexes[cluePosition]); //hit
+			fbm4_index_type fua4_alive11(fua4_alive12, fua4_indexes[cluePosition]); //hit
+			bm3_index_type ua3_alive11(ua3_alive12, ua3_indexes[cluePosition]); //hit
+			fua3ActualSize = ua3_alive11.copyAlive(ua3, fUa3, fbm3_index_type::maxSize, deadClues11); //extract
+			fbm3_index_type fua3_alive11(fUa3, fua3ActualSize, fua3_indexes); //rebuild
+			bm2_index_type ua2_alive11(ua2_alive12, ua2_indexes[cluePosition]); //hit
+			fua2ActualSize = ua2_alive11.copyAlive(ua2, fUa2, fbm2_index_type::maxSize, deadClues11); //extract
+			fbm2_index_type fua2_alive11(fUa2, fua2ActualSize, fua2_indexes); //rebuild
+			bm1_index_type ua1_alive11(ua1_alive12, ua1_indexes[cluePosition]); //hit
+			clues[cluePosition] = g.digits[cluePosition];
+			fastIterateLevel10(deadClues11,
+					ua1_alive11, fua2_alive11, fua3_alive11,
+					fua4_alive11, fua5_alive11, fua6_alive11);
+			clues[cluePosition] = 0;
+			deadClues11.setBit(cluePosition);
+		}
+		clueNumber = 12;
+	}
+	else {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
+		return;
+	}
+}
+void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13,
+		const bm1_index_type &ua1_alive13, const bm2_index_type &ua2_alive13, const bm3_index_type &ua3_alive13,
+		const bm4_index_type &ua4_alive13, const fbm5_index_type &fua5_alive13, const fbm6_index_type &fua6_alive13) {
+	int uaIndex13 = ua1_alive13.getMinIndex();
+	if(uaIndex13 != INT_MAX) {
+		clueNumber = 12;
+		dead_clues_type deadClues12(deadClues13);
+		const uset &u = usets[uaIndex13];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues13.isBitSet(cluePosition))
+				continue;
+			fbm6_index_type fua6_alive12(fua6_alive13, fua6_indexes[cluePosition]); //hit
+			fbm5_index_type fua5_alive12(fua5_alive13, fua5_indexes[cluePosition]); //hit
+			bm4_index_type ua4_alive12(ua4_alive13, ua4_indexes[cluePosition]); //hit
+			fua4ActualSize = ua4_alive12.copyAlive(ua4, fUa4, fbm4_index_type::maxSize, deadClues12); //extract
+			fbm4_index_type fua4_alive12(fUa4, fua4ActualSize, fua4_indexes); //rebuild
+			bm3_index_type ua3_alive12(ua3_alive13, ua3_indexes[cluePosition]); //hit
+			bm2_index_type ua2_alive12(ua2_alive13, ua2_indexes[cluePosition]); //hit
+			bm1_index_type ua1_alive12(ua1_alive13, ua1_indexes[cluePosition]); //hit
+			clues[cluePosition] = g.digits[cluePosition];
+			fastIterateLevel11(deadClues12,
+					ua1_alive12, ua2_alive12, ua3_alive12,
+					fua4_alive12, fua5_alive12, fua6_alive12);
+			clues[cluePosition] = 0;
+			deadClues12.setBit(cluePosition);
+		}
+		clueNumber = 13;
+	}
+	else {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
+		return;
+	}
+}
+void fastClueIterator::fastIterateLevel13(const dead_clues_type &deadClues14,
+		const bm1_index_type &ua1_alive14, const bm2_index_type &ua2_alive14, const bm3_index_type &ua3_alive14,
+		const bm4_index_type &ua4_alive14, const bm5_index_type &ua5_alive14, const bm6_index_type &ua6_alive14) {
+	int uaIndex14 = ua1_alive14.getMinIndex();
+	if(uaIndex14 != INT_MAX) {
+		clueNumber = 13;
+		dead_clues_type deadClues13(deadClues14);
+		const uset &u = usets[uaIndex14];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues14.isBitSet(cluePosition))
+				continue;
+			bm6_index_type ua6_alive13(ua6_alive14, ua6_indexes[cluePosition]); //hit
+			fua6ActualSize = ua6_alive13.copyAlive(ua6, fUa6, fbm6_index_type::maxSize, deadClues13); //extract
+			fbm6_index_type fua6_alive13(fUa6, fua6ActualSize, fua6_indexes); //rebuild
+			bm5_index_type ua5_alive13(ua5_alive14, ua5_indexes[cluePosition]); //hit
+			fua5ActualSize = ua5_alive13.copyAlive(ua5, fUa5, fbm5_index_type::maxSize, deadClues13); //extract
+			fbm5_index_type fua5_alive13(fUa5, fua5ActualSize, fua5_indexes); //rebuild
+			bm4_index_type ua4_alive13(ua4_alive14, ua4_indexes[cluePosition]); //hit
+			bm3_index_type ua3_alive13(ua3_alive14, ua3_indexes[cluePosition]); //hit
+			bm2_index_type ua2_alive13(ua2_alive14, ua2_indexes[cluePosition]); //hit
+			bm1_index_type ua1_alive13(ua1_alive14, ua1_indexes[cluePosition]); //hit
+			clues[cluePosition] = g.digits[cluePosition];
+			fastIterateLevel12(deadClues13,
+					ua1_alive13, ua2_alive13, ua3_alive13,
+					ua4_alive13, fua5_alive13, fua6_alive13);
+			clues[cluePosition] = 0;
+			deadClues13.setBit(cluePosition);
+		}
+		clueNumber = 14;
+	}
+	else {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
+		return;
+	}
+}
+void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old,
+		const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
+		const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) {
+	int uaIndex_old = ua1_alive_old.getMinIndex();
+	if(uaIndex_old != INT_MAX) {
+		clueNumber--;
+		dead_clues_type deadClues_new(deadClues_old);
+		const uset &u = usets[uaIndex_old];
+		for(int i = 0; i < u.nbits; i++) {
+			int cluePosition = u.positions[i];
+			if(deadClues_old.isBitSet(cluePosition))
+				continue;
+			bm6_index_type ua6_alive_new(ua6_alive_old, ua6_indexes[cluePosition]); //hit
+			bm5_index_type ua5_alive_new(ua5_alive_old, ua5_indexes[cluePosition]); //hit
+			bm4_index_type ua4_alive_new(ua4_alive_old, ua4_indexes[cluePosition]); //hit
+			bm3_index_type ua3_alive_new(ua3_alive_old, ua3_indexes[cluePosition]); //hit
+			bm2_index_type ua2_alive_new(ua2_alive_old, ua2_indexes[cluePosition]); //hit
+			bm1_index_type ua1_alive_new(ua1_alive_old, ua1_indexes[cluePosition]); //hit
+			clues[cluePosition] = g.digits[cluePosition];
+			if(clueNumber == 14) {
+			fastIterateLevel13(deadClues_new,
+					ua1_alive_new, ua2_alive_new, ua3_alive_new,
+					ua4_alive_new, ua5_alive_new, ua6_alive_new);
+			}
+			else {
+				fastIterateLevel(deadClues_new,
+						ua1_alive_new, ua2_alive_new, ua3_alive_new,
+						ua4_alive_new, ua5_alive_new, ua6_alive_new);
+			}
+			clues[cluePosition] = 0;
+			deadClues_new.setBit(cluePosition);
+		}
+		clueNumber++;
+	}
+	else {
+		printf("UA exhausted after placing clue number %d\n", clueNumber);
+		return;
+	}
 }
 
-void fastClueIterator::fastIterateLevel10(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
-		printf("UA exhausted after placing clue number %d\n", clueNumber);
-		return;
-	}
-	fastState &oldState = state[11];
-	clueNumber = 10;
-	fastState &newState = state[10];
-	newState.deadClues = oldState.deadClues;
-	uset &u = usets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		clues[cluePosition] = g.digits[cluePosition];
-		//update composite UA requiring 1, 2, 3, 4, 5 and 6 clues
-		if(fua6_type::maxSize) {
-			newState.fSetMask6.hitOnly(oldState.fSetMask6, fHittingMasks6[cluePosition]);
-		}
-		newState.fSetMask5.hitOnly(oldState.fSetMask5, fHittingMasks5[cluePosition]);
-		newState.fSetMask4.hitOnly(oldState.fSetMask4, fHittingMasks4[cluePosition]);
-		newState.fSetMask3.hitOnly(oldState.fSetMask3, fHittingMasks3[cluePosition]);
-		newState.fSetMask2.hitOnly(oldState.fSetMask2, fHittingMasks2[cluePosition]);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		//consolidate ua to fUa
-		fuaActualSize = newState.setMask.copyAlive(ua, fUa, fua1_type::maxSize, newState.deadClues);
-		//printf("fuaActualSize=%d", fuaActualSize);
-		std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
-		//fuaActualSize = (std::unique(fUa, fUa + fuaActualSize) - &fUa[0]);
-		//printf("\t%d\n", fuaActualSize);
-		for(int n = 0; n < fuaActualSize; n++) {
-			fUsets[n] = fUa[n];
-			fUsets[n] &= maskLSB[81];
-			fUsets[n].positionsByBitmap();
-		}
-		fua1_type::bm128ToIndex(fUa, fuaActualSize, newState.fSetMask, fHittingMasks);
-		fastIterateLevel9to6(0);
-		newState.deadClues.setBit(cluePosition);
-		clues[cluePosition] = 0;
-	}
-	clueNumber = 11;
-}
-void fastClueIterator::fastIterateLevel11(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
-		printf("UA exhausted after placing clue number %d\n", clueNumber);
-		return;
-	}
-	fastState &oldState = state[12];
-	clueNumber = 11;
-	fastState &newState = state[11];
-	newState.deadClues = oldState.deadClues;
-	uset &u = usets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		clues[cluePosition] = g.digits[cluePosition];
-		//update composite UA requiring 1, 2, 3, 4, 5 and 6 clues
-		if(fua6_type::maxSize) {
-			newState.fSetMask6.hitOnly(oldState.fSetMask6, fHittingMasks6[cluePosition]);
-		}
-		newState.fSetMask5.hitOnly(oldState.fSetMask5, fHittingMasks5[cluePosition]);
-		newState.fSetMask4.hitOnly(oldState.fSetMask4, fHittingMasks4[cluePosition]);
-		newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
-		//consolidate ua3 to fUa3
-		fua3ActualSize = newState.setMask3.copyAlive(ua3, fUa3, fua3_type::maxSize, newState.deadClues);
-		//std::sort(fUa3, fUa3 + fua3ActualSize, sizedUset::isSmaller);
-		fua3_type::bm128ToIndex(fUa3, fua3ActualSize, newState.fSetMask3, fHittingMasks3);
-		newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
-		//consolidate ua2 to fUa2
-		fua2ActualSize = newState.setMask2.copyAlive(ua2, fUa2, fua2_type::maxSize, newState.deadClues);
-		//std::sort(fUa2, fUa2 + fua2ActualSize, sizedUset::isSmaller);
-		fua2_type::bm128ToIndex(fUa2, fua2ActualSize, newState.fSetMask2, fHittingMasks2);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = newState.setMask.firstUnhit();
-		fastIterateLevel10(nextUaIndex);
-		newState.deadClues.setBit(cluePosition);
-		clues[cluePosition] = 0;
-	}
-	clueNumber = 12;
-}
-void fastClueIterator::fastIterateLevel12(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
-		printf("UA exhausted after placing clue number %d\n", clueNumber);
-		return;
-	}
-	fastState &oldState = state[13];
-	clueNumber = 12;
-	fastState &newState = state[12];
-	newState.deadClues = oldState.deadClues;
-	uset &u = usets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		clues[cluePosition] = g.digits[cluePosition];
-		//update composite UA requiring 1, 2, 3, 4, 5 and 6 clues
-		if(fua6_type::maxSize) {
-			newState.fSetMask6.hitOnly(oldState.fSetMask6, fHittingMasks6[cluePosition]);
-		}
-		newState.fSetMask5.hitOnly(oldState.fSetMask5, fHittingMasks5[cluePosition]);
-		newState.setMask4.hitOnly(oldState.setMask4, hittingMasks4[cluePosition]);
-		//consolidate ua4 to fUa4
-		fua4ActualSize = newState.setMask4.copyAlive(ua4, fUa4, fua4_type::maxSize, newState.deadClues);
-		//std::sort(fUa4, fUa4 + fua4ActualSize, sizedUset::isSmaller);
-		fua4_type::bm128ToIndex(fUa4, fua4ActualSize, newState.fSetMask4, fHittingMasks4);
-		newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
-		newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = newState.setMask.firstUnhit();
-		fastIterateLevel11(nextUaIndex); //call recursively
-		newState.deadClues.setBit(cluePosition);
-		clues[cluePosition] = 0;
-	}
-	clueNumber= 13;
-}
-void fastClueIterator::fastIterateLevel13(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
-		printf("UA exhausted after placing clue number %d\n", clueNumber);
-		return;
-	}
-	fastState &oldState = state[14];
-	clueNumber = 13;
-	fastState &newState = state[13];
-	newState.deadClues = oldState.deadClues;
-	uset &u = usets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		clues[cluePosition] = g.digits[cluePosition];
-		//update composite UA requiring 1, 2, 3, 4, 5 and 6 clues
-		if(fua6_type::maxSize) {
-//			newState.fSetMask6.hitOnly(oldState.fSetMask6, fHittingMasks6[cluePosition]);
-			newState.setMask6.hitOnly(oldState.setMask6, hittingMasks6[cluePosition]);
-			//consolidate ua6 to fUa6
-			fua6ActualSize = newState.setMask6.copyAlive(ua6, fUa6, fua6_type::maxSize, newState.deadClues);
-			//std::sort(fUa6, fUa6 + fua6ActualSize, sizedUset::isSmaller);
-			fua6_type::bm128ToIndex(fUa6, fua6ActualSize, newState.fSetMask6, fHittingMasks6);
-		}
-		newState.setMask5.hitOnly(oldState.setMask5, hittingMasks5[cluePosition]);
-		//consolidate ua5 to fUa5
-		fua5ActualSize = newState.setMask5.copyAlive(ua5, fUa5, fua5_type::maxSize, newState.deadClues);
-		//std::sort(fUa5, fUa5 + fua5ActualSize, sizedUset::isSmaller);
-		fua5_type::bm128ToIndex(fUa5, fua5ActualSize, newState.fSetMask5, fHittingMasks5);
-		newState.setMask4.hitOnly(oldState.setMask4, hittingMasks4[cluePosition]);
-		newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
-		newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = newState.setMask.firstUnhit();
-		fastIterateLevel12(nextUaIndex);
-		newState.deadClues.setBit(cluePosition);
-		clues[cluePosition] = 0;
-	}
-	clueNumber = 14;
-}
-void fastClueIterator::fastIterateLevel(int currentUaIndex) {
-	if(currentUaIndex == INT_MAX) {
-		printf("UA exhausted after placing clue number %d\n", clueNumber);
-		return;
-	}
-	fastState &oldState = state[clueNumber];
-	clueNumber--;
-	fastState &newState = state[clueNumber];
-	newState.deadClues = oldState.deadClues;
-	uset &u = usets[currentUaIndex];
-	for(int i = 0; i < u.nbits; i++) {
-		int cluePosition = u.positions[i];
-		if(oldState.deadClues.isBitSet(cluePosition))
-			continue;
-		clues[cluePosition] = g.digits[cluePosition];
-		//update composite UA requiring 1, 2, 3, 4, 5 and 6 clues
-		if(fua6_type::maxSize) {
-			newState.setMask6.hitOnly(oldState.setMask6, hittingMasks6[cluePosition]);
-		}
-		newState.setMask5.hitOnly(oldState.setMask5, hittingMasks5[cluePosition]);
-		newState.setMask4.hitOnly(oldState.setMask4, hittingMasks4[cluePosition]);
-		newState.setMask3.hitOnly(oldState.setMask3, hittingMasks3[cluePosition]);
-		newState.setMask2.hitOnly(oldState.setMask2, hittingMasks2[cluePosition]);
-		newState.setMask.hitOnly(oldState.setMask, hittingMasks[cluePosition]);
-		int nextUaIndex = newState.setMask.firstUnhit();
-		if(clueNumber == 14) {
-			fastIterateLevel13(nextUaIndex);
-		}
-		else {
-			fastIterateLevel(nextUaIndex); //call recursively
-		}
-		newState.deadClues.setBit(cluePosition);
-		clues[cluePosition] = 0;
-	}
-	clueNumber++;
-}
-
-//b6b.txt 58.3"
-//b6a.txt 69.2
-//rnd1.txt 22.7
-void fastClueIterator::switch2bm() {
+void fastClueIterator::buildComposites() {
 	//compose ordinary UA
 	//ua1_type::bm128ToIndex(ua, uaActualSize, state[clueNumber].setMask, hittingMasks);
 
@@ -697,16 +778,14 @@ void fastClueIterator::switch2bm() {
 				}
 				ua2[ua2ActualSize] = tt;
 				ua2ActualSize++;
-				if(ua2ActualSize >= ua2_type::maxSize)
+				if(ua2ActualSize >= bm2_index_type::maxSize)
 					goto ua2composed;
 			}
 next_s2:;
 		}
 	}
 	ua2composed:;
-	//std::sort(ua2, ua2 + ua2ActualSize, sizedUset::isSmaller);
-	ua2_type::bm128ToIndex(ua2, ua2ActualSize, state[clueNumber].setMask2, hittingMasks2);
-	//ua2_type::debug_check_hitting_masks(ua2ActualSize, ua2, hittingMasks2);
+	ua2_alive_initial = bm2_index_type(ua2, ua2ActualSize, ua2_indexes); //build
 
 	//compose UA3
 	ua3ActualSize = 0;
@@ -723,7 +802,7 @@ next_s2:;
 						}
 						ua3[ua3ActualSize] = ttt;
 						ua3ActualSize++;
-						if(ua3ActualSize >= ua3_type::maxSize)
+						if(ua3ActualSize >= bm3_index_type::maxSize)
 							goto ua3composed;
 					}
 next_s3:;
@@ -733,7 +812,8 @@ next_s3:;
 	}
 
 	ua3composed:;
-	ua3_type::bm128ToIndex(ua3, ua3ActualSize, state[clueNumber].setMask3, hittingMasks3);
+	//ua3_type::bm128ToIndex(ua3, ua3ActualSize, state[clueNumber].setMask3, hittingMasks3);
+	ua3_alive_initial = bm3_index_type(ua3, ua3ActualSize, ua3_indexes); //build
 
 	//compose UA4
 	ua4ActualSize = 0;
@@ -755,7 +835,7 @@ next_s3:;
 								}
 								ua4[ua4ActualSize] = tttt;
 								ua4ActualSize++;
-								if(ua4ActualSize >= ua4_type::maxSize)
+								if(ua4ActualSize >= bm4_index_type::maxSize)
 									goto ua4composed;
 							}
 next_s4:;
@@ -767,7 +847,8 @@ next_s4:;
 	}
 
 ua4composed:;
-	ua4_type::bm128ToIndex(ua4, ua4ActualSize, state[clueNumber].setMask4, hittingMasks4);
+	//ua4_type::bm128ToIndex(ua4, ua4ActualSize, state[clueNumber].setMask4, hittingMasks4);
+	ua4_alive_initial = bm4_index_type(ua4, ua4ActualSize, ua4_indexes); //build
 
 	//compose UA5
 	//	//inject an artificial UA5 for band 3
@@ -798,7 +879,7 @@ ua4composed:;
 										}
 										ua5[ua5ActualSize] = ttttt;
 										ua5ActualSize++;
-										if(ua5ActualSize >= ua5_type::maxSize)
+										if(ua5ActualSize >= bm5_index_type::maxSize)
 											goto ua5composed;
 									}
 next_s5:;
@@ -812,7 +893,8 @@ next_s5:;
 	}
 
 	ua5composed:;
-	ua5_type::bm128ToIndex(ua5, ua5ActualSize, state[clueNumber].setMask5, hittingMasks5);
+	//ua5_type::bm128ToIndex(ua5, ua5ActualSize, state[clueNumber].setMask5, hittingMasks5);
+	ua5_alive_initial = bm5_index_type(ua5, ua5ActualSize, ua5_indexes); //build
 
 	//compose UA6
 	ua6ActualSize = 0;
@@ -823,7 +905,7 @@ next_s5:;
 //	ua6[0] = tt;
 //	ua6ActualSize = 1;
 
-	if(fua6_type::maxSize) {
+	if(bm6_index_type::maxSize) {
 		for ( int s1 = starter.starter6;  s1 < uaActualSize;  s1++ ) {
 			for (int s2 = starter.starter6 - 1; s2 < s1; s2++) {
 				sizedUset tt = ua[s1];
@@ -864,7 +946,7 @@ next_s5:;
 //													}
 													ua6[ua6ActualSize] = tttttt;
 													ua6ActualSize++;
-													if(ua6ActualSize >= ua6_type::maxSize)
+													if(ua6ActualSize >= bm6_index_type::maxSize)
 														goto ua6composed;
 												}
 next_s6:;
@@ -879,7 +961,8 @@ next_s6:;
 			}
 		}
 		ua6composed:;
-		ua6_type::bm128ToIndex(ua6, ua6ActualSize, state[clueNumber].setMask6, hittingMasks6);
+		//ua6_type::bm128ToIndex(ua6, ua6ActualSize, state[clueNumber].setMask6, hittingMasks6);
+		ua6_alive_initial = bm6_index_type(ua6, ua6ActualSize, ua6_indexes); //build
 	}
 }
 
@@ -890,19 +973,9 @@ fastClueIterator::fastClueIterator(grid &g) : g(g), clueNumber(0) {
 	//nClues = 16;
 }
 
-void fastClueIterator::checkPuzzle(int clueNumber, bm128 dc, int startPos) {
+void fastClueIterator::checkPuzzle(int clueNumber, const dead_clues_type &dc, int startPos) {
 	if(clueNumber == 0) {
-		if(solve(clues, 2) == 1) {
-			ch81 puz;
-			puz.toString(clues, puz.chars);
-			printf("%81.81s\n", puz.chars);
-			nPuzzles++;
-		}
-		nChecked++;
-//		//debug
-//		if(nChecked % 300000 == 0) {
-//			printf("checked %d, found %d\n", nChecked, nPuzzles);
-//		}
+		checkPuzzle();
 	}
 	else {
 		for(int i = startPos; i < 81; i++) {
@@ -917,6 +990,19 @@ void fastClueIterator::checkPuzzle(int clueNumber, bm128 dc, int startPos) {
 			clues[i] = 0;
 		}
 	}
+}
+void fastClueIterator::checkPuzzle() {
+	if(solve(clues, 2) == 1) {
+		ch81 puz;
+		puz.toString(clues, puz.chars);
+		printf("%81.81s\n", puz.chars);
+		nPuzzles++;
+	}
+	nChecked++;
+//	//debug
+//	if(nChecked % 300000 == 0) {
+//		printf("checked %d, found %d\n", nChecked, nPuzzles);
+//	}
 }
 
 void fastClueIterator::iterate() {
@@ -942,7 +1028,7 @@ void fastClueIterator::iterate() {
 	//init the top of the stack
 	int curUA = 0;
 	uaActualSize = 0;
-	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && uaActualSize < ua1_type::maxSize; p++, curUA++) {
+	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && uaActualSize < bm1_index_type::maxSize; p++, curUA++) {
 		usets[uaActualSize] = *p; //structure copy
 		sizedUset su;
 		su.bitmap128 = p->bitmap128; //don't calculate the size
@@ -956,7 +1042,8 @@ void fastClueIterator::iterate() {
 	//return;
 
 	//compose ordinary UA
-	ua1_type::bm128ToIndex(ua, uaActualSize, state[nClues].setMask, hittingMasks);
+	//ua1_type::bm128ToIndex(ua, uaActualSize, state[nClues].setMask, hittingMasks);
+	ua1_alive_initial = bm1_index_type(ua, uaActualSize, ua1_indexes); //build
 
 //	clueNumber = 9;
 //	fState[clueNumber].deadClues.clear();
@@ -973,8 +1060,9 @@ void fastClueIterator::iterate() {
 //	return;
 
 	clueNumber = nClues; //stack pointer to the "empty" puzzle
-	state[clueNumber].deadClues.clear();
-	state[clueNumber].setClues.clear();
+	deadClues_initial.clear(); //no forced non-givens
+	//state[clueNumber].deadClues.clear();
+	//state[clueNumber].setClues.clear();
 	for(int i = 0; i < 81; i++) {
 		clues[i] = 0;
 	}
@@ -998,7 +1086,7 @@ void fastClueIterator::iterate() {
 //	starter = stFamily[chosenFamily];
 	starter = stFamily[0]; //0 works best for random grid, 8 for 17s
 
-	switch2bm();
+	buildComposites();
 	//some info for debugging/optimization
 	//printf("\t%d clues\n", nClues);
 	printf("ua =%d\t", uaActualSize);
@@ -1008,7 +1096,9 @@ void fastClueIterator::iterate() {
 	printf("ua5=%d\t", ua5ActualSize);
 	printf("ua6=%d\n", ua6ActualSize);
 
-	fastIterateLevel();
+	fastIterateLevel(deadClues_initial,
+		ua1_alive_initial, ua2_alive_initial, ua3_alive_initial,
+		ua4_alive_initial, ua5_alive_initial, ua6_alive_initial);
 	//printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
 	s0=100*d0/s0;//d0/=1000000;
 	s1=100*d1/s1;d1/=1000000;

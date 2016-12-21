@@ -9,6 +9,31 @@
 #include "t_128.h"
 #include <immintrin.h>
 
+class dclues : public bm128 {
+public:
+//	inline void setBit(const int theBit) {
+//		if(theBit > 63) {
+//			bitmap128.m128i_u64[1] |= ((uint64_t)1 << (theBit & 63));
+//		}
+//		else {
+//			bitmap128.m128i_u64[0] |= ((uint64_t)1 << theBit);
+//		}
+//	}
+//	inline bool isBitSet(const int theBit) const {
+//		//return bm128::isBitSet(theBit);
+//		if(theBit > 63) {
+//			return 0 != (bitmap128.m128i_u64[1] & (((uint64_t)1) << (theBit & 63)));
+//		}
+//		else {
+//			return 0 != (bitmap128.m128i_u64[0] & (((uint64_t)1) << theBit));
+//		}
+//	}
+};
+
+//typedef bm128 dead_clues_type;
+typedef dclues dead_clues_type;
+
+
 //#if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 //#include <intrin.h> //MS _BitScanForward
 //#pragma intrinsic(_BitScanForward)
@@ -32,7 +57,7 @@ template <int maxElements> class bit_masks {
 	int actualWords;
 
 	inline int getNumWords() const {
-		if(maxWords > 5) return actualWords; //should be resolved at compile time
+		if(maxWords > 3) return actualWords; //should be resolved at compile time
 		return maxWords;
 	}
 
@@ -302,87 +327,194 @@ public:
 //	}
 };
 
+/**
+ *  @brief A bitmap container for masking and retrieving bits in linear time
+ *
+ *  @tparam _Key  The maximal boolean elements to hold.
+*/
+template <int maxElements> class bit_mask {
+	static const int maxWords = maxElements / 256;
+
+	bm256 aBits[maxElements / 256];
+	int actualWords;
+
+    /**
+     *  @brief  gets the actual number of used words in runtime, or
+     *  maximal words for smaller instances which is resolved at compile time.
+     *  @return actualWords <= return <= maxWords
+     */
+	inline int getNumWords() const {
+		if(maxWords > 1) return actualWords; //should be resolved at compile time
+		return maxWords;
+	}
+public:
+	static const int maxSize = maxElements;
+	inline bit_mask() = default;
+   /**
+     *  @brief  Creates a %bit_mask with bits from the given mask cleared by the bits of the second mask.
+     *
+     *  @param  source_mask Source mask.
+     *  @param  clear_mask  Clearing mask.
+     */
+	inline bit_mask(const bit_mask &source_mask, const bit_mask &clear_mask) : actualWords(source_mask.actualWords) {
+		for(int i = 0; i < getNumWords(); i++) {
+			aBits[i].b256 = _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(clear_mask.aBits[i].b256), _mm256_castsi256_pd(source_mask.aBits[i].b256)));
+		}
+	}
+    /**
+     *  @brief  Creates a %bit_mask with bits set up to the given size.
+     *  Also populates a family of 81 bit_masks by transposing
+     *  the given 81-bit list.
+     *
+     *  @param  usets Source bits to store in clearIndexes.
+     *  @param  nUsets Size of the source and respectively actual size of the created bit_mask.
+     *  @param  clearIndexes[81] Target bit_masks with transposed bits for later clearing.
+     */
+	inline bit_mask(const bm128 *usets, int nUsets, bit_mask clearIndexes[81]) : actualWords(min((nUsets + 255) / 256, maxWords)){
+		//populate the target clearIndexes family
+		//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
+		//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
+		//http://hackers-delight.org.ua/048.htm
+		bm128 ss;
+		if(nUsets >= maxElements) {
+			nUsets = maxElements;
+		}
+		int nSlices = (nUsets + 15) / 16;
+		const bm128 * const s = usets;
+		for (int slice = 0; slice < nSlices; slice++) { //process 16 rows slice from the source at once
+			//process first 80 bits
+			for (int srcCol = 0; srcCol < 10; srcCol++) { //process 8 bits at once, repeat 10 times
+				for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source
+					ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[srcCol];
+				}
+				ss.transposeSlice(ss); // 16 bits * 8 columns for the target
+				for (int destRow = 0; destRow < 8; destRow++) {
+					clearIndexes[srcCol * 8 + destRow].aBits[slice / 16].u16[slice % 16] = ss.bitmap128.m128i_u16[destRow];
+				}
+			}
+			//process the 81-st bit
+			for (int srcSliceRow = 0; srcSliceRow < 16; srcSliceRow++) { //fetch 8 bits * 16 rows from source, only first bit is used
+				ss.bitmap128.m128i_u8[srcSliceRow] = s[slice*16+srcSliceRow].bitmap128.m128i_u8[10];
+			}
+			ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
+			ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
+			clearIndexes[80].aBits[slice / 16].u16[slice % 16] = ss.bitmap128.m128i_u16[0];
+		}
+		//populate all valid bits for this instance with 1, and all beyond the actual size with 0
+		//actualWords = (nUsets + 255) / 256;
+		//if(actualWords > maxWords) actualWords = maxWords;
+		__m256i all1 = _mm256_set1_epi64x(-1);
+		for(int i = 0; i < maxWords; i++) {
+			if(i < actualWords - 1) {
+				aBits[i].b256 = all1;
+			}
+			else if(i == actualWords - 1) {
+				//the transitional word between all-ones and all-zeroes
+				int j = 256 * actualWords - nUsets; //how many upper bits in this word must be cleared
+				union { //in attempt to leave the class data pure __m256i
+					__m256i b256;
+					__m128i b128[2];
+				} tr;
+				tr.b256 = all1;
+				if(j >= 128) {
+					//clear the upper 128 bits
+					tr.b128[1] = _mm_setzero_si128();
+					j -= 128;
+					//clear the higher part of the lower bits
+					tr.b128[0] = maskLSB[128 - j].m128i_m128i;
+				}
+				else {
+					//leave the lower 128 bits set
+					//clear the part of the upper bits
+					tr.b128[1] = maskLSB[128 - j].m128i_m128i;
+				}
+				aBits[i].b256 = tr.b256;
+			}
+			else {
+				aBits[i].b256 = _mm256_setzero_si256();
+			}
+		}
+	}
+    /**
+     *  @brief  Get the index of the first bit set or INT_MAX if all are zero.
+     *
+     *  @return A zero based index up to the size, or INT_MAX for empty bit_mask
+     */
+	inline int getMinIndex() const {
+
+		for(int i = 0; i < getNumWords(); i++) { //slow
+			uint64_t bits;
+			if((bits = _mm256_extract_epi64(aBits[i].b256, 0))) {
+				return i * 256 + __builtin_ctzll(bits); //almost always this is the only test
+			}
+			if((bits = _mm256_extract_epi64(aBits[i].b256, 1))) {
+				return i * 256 + 64 + __builtin_ctzll(bits);
+			}
+			if((bits = _mm256_extract_epi64(aBits[i].b256, 2))) {
+				return i * 256 + 128 + __builtin_ctzll(bits);
+			}
+			if((bits = _mm256_extract_epi64(aBits[i].b256, 3))) {
+				return i * 256 + 192 + __builtin_ctzll(bits);
+			}
+		}
+		return INT_MAX;
+
+//		for(int i = 0; i < getNumWords(); i++) {
+//			if(aBits[i].u64[0]) {
+//				return i * 256 + __builtin_ctzll(aBits[i].u64[0]); //almost always this is the only test
+//			}
+//			if(aBits[i].u64[1]) {
+//				return i * 256 + 64 + __builtin_ctzll(aBits[i].u64[1]);
+//			}
+//			if(aBits[i].u64[2]) {
+//				return i * 256 + 128 + __builtin_ctzll(aBits[i].u64[2]);
+//			}
+//			if(aBits[i].u64[3]) {
+//				return i * 256 + 192 + __builtin_ctzll(aBits[i].u64[3]);
+//			}
+//		}
+//		return INT_MAX;
+	}
+    /**
+     *  @brief  Checks whether the given mask covers all or the bits.
+     *
+     *  @param  clear_mask The mask to be applied.
+     *  @return True if the bits in the mask are subset of the bits in the clear_mask
+     */
+	inline bool isSubsetOf(const bit_mask & clear_mask) const {
+		for(int i = 0; i < getNumWords(); i++) {
+			if(0 == _mm256_testc_si256(clear_mask.aBits[i].b256, aBits[i].b256))
+				return false;
+//			if(!bm128(aBits[i].b128[0]).isSubsetOf(clear_mask.aBits[i].b128[0])) return false;
+//			if(!bm128(aBits[i].b128[1]).isSubsetOf(clear_mask.aBits[i].b128[1])) return false;
+		}
+		return true;
+	}
+	int copyAlive(const sizedUset *original, sizedUset *target, int target_size, const dead_clues_type &deadClues) const {
+		int num_inserted = 0;
+		for(int i = 0; i < getNumWords(); i++) {
+			for(int j = 0; j < 4; j++) {
+				int base = i * 256 + j * 64;
+				for(uint64_t bits = aBits[i].u64[j]; bits; bits &= (bits - 1)) {
+					int offset = __builtin_ctzll(bits);
+					sizedUset s = original[base + offset];
+					s.clearBits(deadClues);
+					s.setSize(); //calculate new size for the later reordering
+					if(s.getSize() == 0) {
+						target[0] = s;
+						//printf("unhit UA within the dead clues identified during the consolidation\n");
+						return 1; //a zero length UA
+					}
+					target[num_inserted++] = s;
+					if(num_inserted >= target_size)
+						return target_size;
+				}
+			}
+		}
+		return num_inserted;
+	}
+};
+
 struct BitMask768 : public bit_masks<768> {};
-
-//struct UATable {
-//	bm128 *rows;
-//	int size;
-//	UATable(const UATable &src, int hitClue) {
-//		rows = bm128::allocate(src.size);
-//		size = 0;
-//		const bm128 &mask = bitSet[hitClue];
-//		for(int r = 0; r < src.size; r++) {
-//			if(mask.isDisjoint(src.rows[r])) {
-//				rows[size++] = src.rows[r];
-//			}
-//		}
-//	};
-//	UATable(const UATable &src, const bm128 &mask) {
-//		rows = bm128::allocate(src.size);
-//		size = 0;
-//		for(int r = 0; r < src.size; r++) {
-//			if(mask.isDisjoint(src.rows[r])) {
-//				rows[size++] = src.rows[r];
-//			}
-//		}
-//	};
-//	UATable() : rows(NULL), size(0) {};
-//	~UATable() {
-//		if(rows) bm128::deallocate(rows);
-//	};
-//	void setSize(int theSize) {
-//		size = theSize;
-//		if(rows) bm128::deallocate(rows);
-//		rows = bm128::allocate(size);
-//	}
-//};
-//
-//struct fastUATable {
-//	const UATable &table;
-//	BitMask768 hittingMasks[81]; //one index per cell
-//	BitMask768 validRowsIndex[81]; //stack, one index per clue, 1=valid, 0=invalid
-//	fastUATable(const UATable &srcTable, int cellNumber) : table(srcTable) {
-//		BitMask768 &theIndex = validRowsIndex[cellNumber];
-//		for(int c = 0; c < 81; c++) {
-//			hittingMasks[c].setAll();
-//		}
-//		theIndex.setAll(); //all rows are valid
-//		int truncatedSize = table.size;
-//		if(truncatedSize >= 768) {
-//			truncatedSize = 768;
-//		}
-//		else { // we have empty bits at the end; clear them from the index then forget the size
-//			int firstPartialBlock = (truncatedSize - 1) << 7;
-//			int fillerSizeInPartialBlock = 127 - ((truncatedSize - 1) & 0x7f);
-//			theIndex.aBits[firstPartialBlock].clearBits(maskLSB[fillerSizeInPartialBlock]);
-//			for(int e = firstPartialBlock + 1; e < 6; e++) {
-//				theIndex.aBits[e].clear();
-//			}
-//		}
-//		//create the hitting masks (i.e. the bitmap indexes per cell position)
-//		//todo: optimize for better cache hits, use small squares, or at least more reads but less writes
-//		for(int r = 0; r < truncatedSize; r++) {
-//			const bm128 &row = table.rows[r];
-//			for(int c = 0; c < 81; c++) {
-//				if(row.isBitSet(c)) {
-//					hittingMasks[c].aBits[r << 7].clearBit(r & 0x7f);
-//				}
-//			}
-//		}
-//		//now we have indexes created and validRowsIndex[cellNumber] set to '1' up to the effective size and to '0' till the end
-//	};
-//};
-
-//struct tresholds {
-//	int positions[81]; //non-zero position means valid treshold
-//	int minClueIndex;
-//	int maxClueIndex;
-//	UATable *flatTables[81][16]; //valid prior to switching to bitmap indexing
-//	fastUATable *indexedTables[81][16]; //valid after swithing to bitmap indexing
-//	tresholds() {
-//		memset(positions, 0, sizeof(int) * 81); //invalidate positions
-//		minClueIndex = maxClueIndex = 0;
-//	}
-//};
 
 #endif //BITMASK768_H_INCLUDED
