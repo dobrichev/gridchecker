@@ -22,63 +22,47 @@ using namespace std;
 
 unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
 
-//typedef bit_masks<384> ua1_type; //McGuire
-//typedef bit_masks<8192> ua2_type;
-//typedef bit_masks<16384> ua3_type;
-//typedef bit_masks<32768> ua4_type;
-//typedef bit_masks<16384> ua5_type;
-//typedef bit_masks<0> ua6_type;
+//typedef bit_mask<512> bm1_index_type; //closest to McGuire (smallest)
+//typedef bit_mask<8192> bm2_index_type; //10240
+//typedef bit_mask<16384> bm3_index_type; //32768
+//typedef bit_mask<32768> bm4_index_type; //65536
+//typedef bit_mask<16384> bm5_index_type; //40960
+//typedef bit_mask<8192> bm6_index_type; //32768
 //
-//typedef bit_masks<128> fua1_type;
-//typedef bit_masks<384> fua2_type;
-//typedef bit_masks<1280> fua3_type;
-//typedef bit_masks<1536> fua4_type;
-//typedef bit_masks<1536> fua5_type;
-//typedef bit_masks<0> fua6_type;
+//typedef bit_mask<256> fbm1_index_type;
+//typedef bit_mask<512> fbm2_index_type; //768
+//typedef bit_mask<1280> fbm3_index_type; //1536
+//typedef bit_mask<1536> fbm4_index_type; //1792
+//typedef bit_mask<1536> fbm5_index_type; //2048
+//typedef bit_mask<1536> fbm6_index_type; //1792
 
-
-//typedef bit_masks<512> ua1_type; //closest to McGuire (smallest)
-//typedef bit_masks<8192> ua2_type;
-//typedef bit_masks<16384> ua3_type;
-//typedef bit_masks<32768> ua4_type;
-//typedef bit_masks<16384> ua5_type;
-//typedef bit_masks<8192> ua6_type;
-//
-//typedef bit_masks<256> fua1_type;
-//typedef bit_masks<512> fua2_type;
-//typedef bit_masks<1280> fua3_type;
-//typedef bit_masks<1536> fua4_type;
-//typedef bit_masks<1536> fua5_type;
-//typedef bit_masks<1536> fua6_type;
-
-
-//typedef bit_masks<768> ua1_type; //768,1024  medium
-//typedef bit_masks<10240> ua2_type; //10240
-//typedef bit_masks<32768> ua3_type; //32768
-//typedef bit_masks<40960> ua4_type; //65536
-//typedef bit_masks<20480> ua5_type; //40960
-//typedef bit_masks<20480> ua6_type; //32768
-//
-//typedef bit_masks<256> fua1_type;
-//typedef bit_masks<768> fua2_type; //768
-//typedef bit_masks<1536> fua3_type; //1536
-//typedef bit_masks<1792> fua4_type; //1792
-//typedef bit_masks<1792> fua5_type; //2048
-//typedef bit_masks<1536> fua6_type; //1792, zero disables this functionality
-
-typedef bit_mask<768> bm1_index_type; //768,1024  large
+typedef bit_mask<768> bm1_index_type; //768,1024  medium
 typedef bit_mask<10240> bm2_index_type; //10240
 typedef bit_mask<32768> bm3_index_type; //32768
-typedef bit_mask<65536> bm4_index_type; //65536
-typedef bit_mask<40960> bm5_index_type; //40960
-typedef bit_mask<32768> bm6_index_type; //32768
+typedef bit_mask<40960> bm4_index_type; //65536
+typedef bit_mask<20480> bm5_index_type; //40960
+typedef bit_mask<20480> bm6_index_type; //32768
 
 typedef bit_mask<256> fbm1_index_type;
 typedef bit_mask<768> fbm2_index_type; //768
-typedef bit_mask<1792> fbm3_index_type; //1536
+typedef bit_mask<1536> fbm3_index_type; //1536
 typedef bit_mask<1792> fbm4_index_type; //1792
 typedef bit_mask<1792> fbm5_index_type; //2048
-typedef bit_mask<1792> fbm6_index_type; //1792, zero disables this functionality
+typedef bit_mask<1536> fbm6_index_type; //1792
+
+//typedef bit_mask<768> bm1_index_type; //768,1024  large
+//typedef bit_mask<10240> bm2_index_type; //10240
+//typedef bit_mask<32768> bm3_index_type; //32768
+//typedef bit_mask<65536> bm4_index_type; //65536
+//typedef bit_mask<40960> bm5_index_type; //40960
+//typedef bit_mask<32768> bm6_index_type; //32768
+//
+//typedef bit_mask<256> fbm1_index_type;
+//typedef bit_mask<768> fbm2_index_type; //768
+//typedef bit_mask<1792> fbm3_index_type; //1536
+//typedef bit_mask<1792> fbm4_index_type; //1792
+//typedef bit_mask<1792> fbm5_index_type; //2048
+//typedef bit_mask<1792> fbm6_index_type; //1792, zero disables this functionality
 
 struct starters {
 	int starter2;
@@ -100,6 +84,7 @@ starters stFamily[] = {
 	{43,29,26,20,18}, //9 original -1
 	{44,30,27,21,18}, //10 original but u6 down
 	{44,30,27,21,15}, //11 original McGuire 16s with lower U6
+	{44,30,27,21,20}, //12 original but u6 up
 };
 
 class fastClueIterator {
