@@ -337,12 +337,12 @@ struct nhbOptions {
 
 struct uaOptions {
 	unsigned long long maxsolutioncount;
-	int nAttempts;
-	int nCells;
-	int mcnUaSizeLimit;
-	int maxuasize;
-	int minuasize;
-	int minvalency;
+	unsigned int nAttempts;
+	unsigned int nCells;
+	unsigned int mcnUaSizeLimit;
+	unsigned int maxuasize;
+	unsigned int minuasize;
+	unsigned int minvalency;
 	bool randomSearch;
 	bool digit4Search;
 	bool digit5Search;
@@ -396,7 +396,7 @@ struct uaOptions {
 		v = opt.getValue("attempts");
 		if(v) {
 			nAttempts = atoi(v);
-			if(nAttempts < 0) {
+			if(nAttempts <= 0) {
 				cout << "Error: Number of attempts must be a positive integer!" << endl;
 				return -1;
 			}
@@ -453,9 +453,9 @@ struct scanOptions {
 		fix2boxes,
 		fixauto
 	};
-        fixModes fixMode;
-	int nClues;
-	int progressSeconds;
+	fixModes fixMode;
+	unsigned int nClues;
+	unsigned int progressSeconds;
 	bool batchMode;
 	const char *gridFileName;
 	const char *cluemask;
@@ -572,7 +572,7 @@ struct scanOptions {
 		v = opt.getValue("progressseconds");
 		if(v) {
 			progressSeconds = atoi(v);
-			if(progressSeconds < 0) {
+			if(progressSeconds <= 0) {
 				cout << "Error: Progress can be updated in positive time intervals." << endl;
 				return -1;
 			}

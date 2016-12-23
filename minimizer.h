@@ -106,7 +106,7 @@ struct checkAndMark {
 			//compose a puzzle with initial givens with those from the mask excluded
 			ch81 p = maxPuz; //structure copy
 			size_t mask = masks[n];
-			for(int theBit = 0; theBit < fl.nbits; theBit++) {
+			for(unsigned int theBit = 0; theBit < fl.nbits; theBit++) {
 				if(mask & (1 << theBit)) {
 					//clear this floating clue
 					p.chars[fl.positions[theBit]] = 0;

@@ -202,7 +202,7 @@ void templates::getComplementaryTemplates() { //read k-rookeries from stdin and 
 			continue;
 		}
 		puzzleSet templ;
-		for(int s = 0; s < nSol; s++) {
+		for(unsigned int s = 0; s < nSol; s++) {
 			for(int i = 0; i < 81; i++) {
 				if(p1[s].chars[i] <= n) {
 					p1[s].chars[i] = 0;

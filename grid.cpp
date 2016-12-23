@@ -1179,9 +1179,9 @@ unsigned long long grid::findUAinPuzzle(const char *puz) {
 }
 void grid::findUAbyPuzzleBox(const char *puz) {
 	unsigned char hideThem[81];
-	for(int box = 0; box < 9; box++) {
+	for(unsigned int box = 0; box < 9; box++) {
 		int k = 0;
-		for(int j = 0; j < 81; j++) {
+		for(unsigned int j = 0; j < 81; j++) {
 			if(puz[j] == 0 && boxByCellIndex[j] != box)
 				hideThem[k++] = j;
 		}
@@ -1240,9 +1240,9 @@ void grid::findUA2bands() {
 	int nOldUA = static_cast<int>(usetsBySize.size());
 	printf("Finding UA by removing occurences of digits in 2 bands.\n");
 	printf("Bands\t\tSol\tNew UA\tTotal UA\n");
-	for(int d1 = 1; d1 <= 2; d1++) { //5-rookeries
-		for(int d2 = d1 + 1; d2 <= 3; d2++) {
-			for(int j = 0, k = 0; j < 81; j++) {
+	for(unsigned int d1 = 1; d1 <= 2; d1++) { //5-rookeries
+		for(unsigned int d2 = d1 + 1; d2 <= 3; d2++) {
+			for(unsigned int j = 0, k = 0; j < 81; j++) {
 				if(bandByCellIndex[j] == d1 - 1 || bandByCellIndex[j] == d2 - 1)
 					hideThem[k++] = j;
 			}
@@ -1254,9 +1254,9 @@ void grid::findUA2bands() {
 	}
 	printf("Finding UA by removing occurences of digits in 2 stacks.\n");
 	printf("Stacks\t\tSol\tNew UA\tTotal UA\n");
-	for(int d1 = 1; d1 <= 2; d1++) { //5-rookeries
-		for(int d2 = d1 + 1; d2 <= 3; d2++) {
-			for(int j = 0, k = 0; j < 81; j++) {
+	for(unsigned int d1 = 1; d1 <= 2; d1++) { //5-rookeries
+		for(unsigned int d2 = d1 + 1; d2 <= 3; d2++) {
+			for(unsigned int j = 0, k = 0; j < 81; j++) {
 				if(stackByCellIndex[j] == d1 - 1 || stackByCellIndex[j] == d2 - 1)
 					hideThem[k++] = j;
 			}
@@ -1319,11 +1319,11 @@ void grid::findUA4boxes() {
 	//int nOldUA = static_cast<int>(usetsBySize.size());
 	//printf("Finding UA by removing digits from 5 boxes.\n");
 	//printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
-	for(int d1 = 1; d1 <= 6; d1++) { //4-boxes
-		for(int d2 = d1 + 1; d2 <= 7; d2++) {
-			for(int d3 = d2 + 1; d3 <= 8; d3++) {
-				for(int d4 = d3 + 1; d4 <= 9; d4++) {
-					for(int j = 0, k = 0; j < 81; j++) {
+	for(unsigned int d1 = 1; d1 <= 6; d1++) { //4-boxes
+		for(unsigned int d2 = d1 + 1; d2 <= 7; d2++) {
+			for(unsigned int d3 = d2 + 1; d3 <= 8; d3++) {
+				for(unsigned int d4 = d3 + 1; d4 <= 9; d4++) {
+					for(unsigned int j = 0, k = 0; j < 81; j++) {
 						if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1)
 							hideThem[k++] = j;
 					}
@@ -1341,12 +1341,12 @@ void grid::findUA5boxes() {
 	//int nOldUA = static_cast<int>(usetsBySize.size());
 	//printf("Finding UA by removing digits from 5 boxes.\n");
 	//printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
-	for(int d1 = 1; d1 <= 5; d1++) { //5-boxes
-		for(int d2 = d1 + 1; d2 <= 6; d2++) {
-			for(int d3 = d2 + 1; d3 <= 7; d3++) {
-				for(int d4 = d3 + 1; d4 <= 8; d4++) {
-					for(int d5 = d4 + 1; d5 <= 9; d5++) {
-						for(int j = 0, k = 0; j < 81; j++) {
+	for(unsigned int d1 = 1; d1 <= 5; d1++) { //5-boxes
+		for(unsigned int d2 = d1 + 1; d2 <= 6; d2++) {
+			for(unsigned int d3 = d2 + 1; d3 <= 7; d3++) {
+				for(unsigned int d4 = d3 + 1; d4 <= 8; d4++) {
+					for(unsigned int d5 = d4 + 1; d5 <= 9; d5++) {
+						for(unsigned int j = 0, k = 0; j < 81; j++) {
 							if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1 || boxByCellIndex[j] == d5 - 1)
 								hideThem[k++] = j;
 						}
@@ -1393,15 +1393,15 @@ void grid::findMaximalCliques() {
 void grid::findMaximalCliques(clique &theClique, usetListBySize &usetsBySize) {
 	lightweightCliqueList maximalCliques;
 	bm128 *ualist;
-	int i = 0, uasize = static_cast <int>(usetsBySize.size());
-	int maxUaSize = uasize + 100;
+	unsigned int i = 0, uasize = static_cast <unsigned int>(usetsBySize.size());
+	unsigned int maxUaSize = uasize + 100;
 	ualist = (bm128*)_mm_malloc(maxUaSize * sizeof(bm128), 16);
 	lightweightClique stackIndexes;
 	bm128 stackBitmaps[20], bm;
-	int stackTop; //also current clique number - 1
+	unsigned int stackTop; //also current clique number - 1
 	//copy the unavoidable sets to an array for faster access
 	//int maxSize = 13;
-	int maxSize = opt.uaOpt->mcnUaSizeLimit; //13
+	unsigned int maxSize = opt.uaOpt->mcnUaSizeLimit; //13
 	for(usetListBySize::const_iterator ua = usetsBySize.begin(); ua != usetsBySize.end(); ua++) {
 		if(ua->nbits > maxSize)
 			break;
@@ -1412,7 +1412,7 @@ void grid::findMaximalCliques(clique &theClique, usetListBySize &usetsBySize) {
 	//printf("Finding Maximal Cliques using unavoidable sets of size up to %d.\n", maxSize);
 again:
 	bm.clear();
-	int mcn = 0;
+	unsigned int mcn = 0;
 	stackTop = 0; //also current clique number - 1
 	//printf("Using %i unavoidable sets.\n", uasize);
 	for(i = 0;; i++) {
@@ -1459,14 +1459,14 @@ again:
 		printf("\nMCN=%i, Maximal Cliques found=%i.\n", mcn, (int)maximalCliques.size());
 	}
 	char buf[1000];
-	for(i = 0; i < (int)maximalCliques.size(); i++) {
+	for(i = 0; i < maximalCliques.size(); i++) {
 		uset ns;
 		if(opt.verbose) {
 			printf("Clique %3.3d\n", i);
 		}
 		bm.clear();
 		combinations = 1;
-		for(int j = 0; j < mcn; j++) {
+		for(unsigned int j = 0; j < mcn; j++) {
 			ns.bitmap128.m128i_m128i = ualist[maximalCliques[i].memberIndexes[j]].bitmap128.m128i_m128i;
 			ns.positionsByBitmap();
 			combinations *= ns.nbits;
@@ -1587,12 +1587,12 @@ int grid::fromString(const char* buf) {
 }
 
 void grid::MinimizeUA(uset &ua) const {
-	int minPositionIndexToRemove = 0;
+	unsigned int minPositionIndexToRemove = 0;
 	while(minPositionIndexToRemove < ua.nbits) {
 		uset oldUA = ua;
 		ua.clearBit(ua.positions[minPositionIndexToRemove]);
 		//this should work a bit faster than ua.positinsByBitmap()
-		for(int j = minPositionIndexToRemove + 1; j < ua.nbits; j++)
+		for(unsigned int j = minPositionIndexToRemove + 1; j < ua.nbits; j++)
 			ua.positions[j - 1] = ua.positions[j];
 		ua.nbits--;
 		if(isUA(ua)) {
@@ -1701,19 +1701,19 @@ void grid::ua2puzzle(const uset &s, char *puzzle) const {
 	for(int i = 0; i < 81; i++) {
 		puzzle[i] = digits[i];
 	}
-	for(int i = 0; i < s.nbits; i++) {
+	for(unsigned int i = 0; i < s.nbits; i++) {
 		puzzle[s.positions[i]] = 0;
 	}
-};
+}
 
 void grid::ua2InvariantPuzzle(const uset &s, char *puzzle) const {
 	for(int i = 0; i < 81; i++) {
 		puzzle[i] = 0;
 	}
-	for(int i = 0; i < s.nbits; i++) {
+	for(unsigned int i = 0; i < s.nbits; i++) {
 		puzzle[s.positions[i]] = digits[s.positions[i]];
 	}
-};
+}
 
 unsigned long long grid::getSolutionCount(const uset &s) const {
 	return getSolutionCount(s, INT_MAX);
@@ -1805,7 +1805,7 @@ nextPuz:
 //__declspec(noinline) bool grid::isMinimalUA(const uset &s) const {
 NOINLINE bool grid::isMinimalUA(const uset &s) const {
 	//since there are minimal UA with > 2 solutions this is the (only?) way to check for minimality
-	for(int i = 0; i < s.nbits; i++) {
+	for(unsigned int i = 0; i < s.nbits; i++) {
 		uset u = s;
 		u.clearBit(s.positions[i]);
 		u.positionsByBitmap();
@@ -2093,9 +2093,9 @@ int processUA() {
 	}
 	else { //find UA from multi-solution puzzle --unav < puzzlelist.txt > ua.txt
 		//const int maxSol = 13100000;
-		int maxSol = 13100000;
+		unsigned int maxSol = 13100000;
 		if(opt.uaOpt->maxsolutioncount) {
-			maxSol = (int)opt.uaOpt->maxsolutioncount;
+			maxSol = (unsigned int)opt.uaOpt->maxsolutioncount;
 		}
 		//char sol[maxSol][81];
 		//char (*sol)[maxSol][81] = (char(*)[maxSol][81])malloc(maxSol * 81);
@@ -2131,7 +2131,7 @@ int processUA() {
 					printf("Maximum solutions reached!\n");
 				}
 				else {
-					for(int s = 0; s < nSol; s++) {
+					for(unsigned int s = 0; s < nSol; s++) {
 						memcpy(g.digits, &sol[s * 81], 81);
 						digit2bitmap(g.digits, g.gridBM);
 						g.usetsBySize.clear();

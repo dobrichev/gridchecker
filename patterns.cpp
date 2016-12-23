@@ -229,7 +229,7 @@ struct pat {
 		for(int i = 1; i < automorphismLevel; i++) { //skip the non-morphed at 0
 			//morph the pussle
 			for(int j = 0; j < 81; j++) {
-				m[maps[i].chars[j]] = p[j];
+				m[(int)maps[i].chars[j]] = p[j];
 			}
 			minRelabel(m, test);
 			if(memcmp(test, res, 81) < 0) { //store the best at res

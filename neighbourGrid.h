@@ -19,8 +19,8 @@ extern int neighbourhood(const char* fname, const char* knownsfname);
 
 struct neighbourGrid {
 	lightweightUsetList us;
-	int minWormholeSize;
-	int maxWormholeSize;
+	unsigned int minWormholeSize;
+	unsigned int maxWormholeSize;
 	neighbourGrid(void);
 };
 

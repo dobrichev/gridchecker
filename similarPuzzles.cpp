@@ -255,7 +255,7 @@ void checkForTwinsSS(const ch81 &puzOriginal, const ch81 &solOriginal, const int
 		if(nSol == maxSol) {
 			printf("checkForTwinsSS: The maximum of %d solutions reached!\n", maxSol);
 		}
-		for(int i = 1; i < nSol; i++) { //skip the original solution
+		for(unsigned int i = 1; i < nSol; i++) { //skip the original solution
 			//compose the complementary puzzle
 			puzModified = solutions[i];
 			for(int i = 0; i < 81; i++) {
@@ -548,7 +548,7 @@ void doPlusMinimalUnique(puzzleSet &puzzles, const int depth) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif //_OPENMP
-	for(int i = 0; i < nPuzzles; i++) {
+	for(unsigned int i = 0; i < nPuzzles; i++) {
 		char p1[81 * 81 * 9];
 		subCanoner sc;
 		//int p1Size = solverPlus1(index[i]->chars, p1, true, false);

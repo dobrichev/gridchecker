@@ -44,7 +44,7 @@ struct ch81 {
 		//p[81] = 0;
 		return nClues;
 	}
-	int fromString(const char *p) {
+	unsigned int fromString(const char *p) {
 		int nClues = 81;
 		for(int i = 0; i < 81; i++) {
 			chars[i] = p[i] - '0';
@@ -55,7 +55,7 @@ struct ch81 {
 		}
 		return nClues;
 	}
-	int patternFromString(const char *p) {
+	unsigned int patternFromString(const char *p) {
 		int nClues = 81;
 		for(int i = 0; i < 81; i++) {
 			chars[i] = ((p[i] >= '1' && p[i] <= '9') ? 1 : (nClues--, 0));

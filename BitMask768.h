@@ -344,12 +344,12 @@ template <int maxElements> class bit_mask {
      *  @return actualWords <= return <= maxWords
      */
 	inline int getNumWords() const {
-		if(maxWords > 1) return actualWords; //should be resolved at compile time
+		if(maxWords > 5) return actualWords; //should be resolved at compile time
 		return maxWords;
 	}
 public:
 	static const int maxSize = maxElements;
-	inline bit_mask() = default;
+	inline bit_mask() : actualWords(0) {};
    /**
      *  @brief  Creates a %bit_mask with bits from the given mask cleared by the bits of the second mask.
      *
@@ -370,7 +370,7 @@ public:
      *  @param  nUsets Size of the source and respectively actual size of the created bit_mask.
      *  @param  clearIndexes[81] Target bit_masks with transposed bits for later clearing.
      */
-	inline bit_mask(const bm128 *usets, int nUsets, bit_mask clearIndexes[81]) : actualWords(min((nUsets + 255) / 256, maxWords)){
+	inline bit_mask(const bm128 *usets, int nUsets, bit_mask clearIndexes[81]) : actualWords(min((nUsets + 255) / 256, static_cast<int>(maxWords))){
 		//populate the target clearIndexes family
 		//http://mischasan.wordpress.com/2011/10/03/the-full-sse2-bit-matrix-transpose-routine/
 		//http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/, mn
@@ -442,38 +442,38 @@ public:
      */
 	inline int getMinIndex() const {
 
-		for(int i = 0; i < getNumWords(); i++) { //slow
-			uint64_t bits;
-			if((bits = _mm256_extract_epi64(aBits[i].b256, 0))) {
-				return i * 256 + __builtin_ctzll(bits); //almost always this is the only test
-			}
-			if((bits = _mm256_extract_epi64(aBits[i].b256, 1))) {
-				return i * 256 + 64 + __builtin_ctzll(bits);
-			}
-			if((bits = _mm256_extract_epi64(aBits[i].b256, 2))) {
-				return i * 256 + 128 + __builtin_ctzll(bits);
-			}
-			if((bits = _mm256_extract_epi64(aBits[i].b256, 3))) {
-				return i * 256 + 192 + __builtin_ctzll(bits);
-			}
-		}
-		return INT_MAX;
-
-//		for(int i = 0; i < getNumWords(); i++) {
-//			if(aBits[i].u64[0]) {
-//				return i * 256 + __builtin_ctzll(aBits[i].u64[0]); //almost always this is the only test
+//		for(int i = 0; i < getNumWords(); i++) { //slow
+//			uint64_t bits;
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 0))) {
+//				return i * 256 + __builtin_ctzll(bits); //almost always this is the only test
 //			}
-//			if(aBits[i].u64[1]) {
-//				return i * 256 + 64 + __builtin_ctzll(aBits[i].u64[1]);
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 1))) {
+//				return i * 256 + 64 + __builtin_ctzll(bits);
 //			}
-//			if(aBits[i].u64[2]) {
-//				return i * 256 + 128 + __builtin_ctzll(aBits[i].u64[2]);
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 2))) {
+//				return i * 256 + 128 + __builtin_ctzll(bits);
 //			}
-//			if(aBits[i].u64[3]) {
-//				return i * 256 + 192 + __builtin_ctzll(aBits[i].u64[3]);
+//			if((bits = _mm256_extract_epi64(aBits[i].b256, 3))) {
+//				return i * 256 + 192 + __builtin_ctzll(bits);
 //			}
 //		}
 //		return INT_MAX;
+
+		for(int i = 0; i < getNumWords(); i++) { //dirty but faster
+			if(aBits[i].u64[0]) {
+				return i * 256 + __builtin_ctzll(aBits[i].u64[0]); //almost always this is the only test
+			}
+			if(aBits[i].u64[1]) {
+				return i * 256 + 64 + __builtin_ctzll(aBits[i].u64[1]);
+			}
+			if(aBits[i].u64[2]) {
+				return i * 256 + 128 + __builtin_ctzll(aBits[i].u64[2]);
+			}
+			if(aBits[i].u64[3]) {
+				return i * 256 + 192 + __builtin_ctzll(aBits[i].u64[3]);
+			}
+		}
+		return INT_MAX;
 	}
     /**
      *  @brief  Checks whether the given mask covers all or the bits.
@@ -490,7 +490,7 @@ public:
 		}
 		return true;
 	}
-	int copyAlive(const sizedUset *original, sizedUset *target, int target_size, const dead_clues_type &deadClues) const {
+	int copyAlive(const sizedUset *original, sizedUset *target, int target_size, __restrict const dead_clues_type &deadClues) const {
 		int num_inserted = 0;
 		for(int i = 0; i < getNumWords(); i++) {
 			for(int j = 0; j < 4; j++) {

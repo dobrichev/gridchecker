@@ -224,7 +224,7 @@ int minimizer::initFast(const minimizer & parent, int stateIndex) {
 
 void minimizer::enumerateState(int stateIndex) {
 	uset &u = usets[state[stateIndex].uaIndex];
-	for(int n = 0; n < u.nbits; n++) {
+	for(unsigned int n = 0; n < u.nbits; n++) {
 		int cluePos = u.positions[n];
 		if(state[stateIndex].deadClues.isBitSet(cluePos)) {
 			continue;
@@ -390,7 +390,7 @@ void minimizer::combineFloating() {
 			//this combination is the largest and still unique => is minimal
 			//output the puzzle
 			ch81 p = puz; //structure copy
-			for(int theBit = 0; theBit < fl.nbits; theBit++) {
+			for(unsigned int theBit = 0; theBit < fl.nbits; theBit++) {
 				if(mask & (1 << theBit)) {
 					//clear this floating clue
 					p.chars[fl.positions[theBit]] = 0;

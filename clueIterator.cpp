@@ -52,7 +52,7 @@ void clueIterator::remap() {
 	int pos = 0; //start from the rightmost bits
 	for(int i = 0; i <= theClique.size; i++) {
 		//the last element contain rest of the cells w/o fixed clues
-		for(int j = 0; j < theClique.ua[i].nbits; j++) {
+		for(unsigned int j = 0; j < theClique.ua[i].nbits; j++) {
 			theMapper.map(theClique.ua[i].positions[j], theClique.ua[i].mappedTo[j]);
 			pos++;
 		}
@@ -60,11 +60,11 @@ void clueIterator::remap() {
 			state[i].maxPositionLimitsByUA = pos;
 	}
 	//place the fixed non-clues at leftmost
-	for(int i = 0; i < theClique.fixedNonClues.nbits; i++) {
+	for(unsigned int i = 0; i < theClique.fixedNonClues.nbits; i++) {
 		theMapper.map(theClique.fixedNonClues.positions[i], 80 - i);
 	}
 	//then place the fixed clues
-	for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+	for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 		theMapper.map(theClique.fixedClues.positions[i], 80 - theClique.fixedNonClues.nbits - i);
 	}
 	//finally remap the whole list of UA sets
@@ -76,7 +76,7 @@ void clueIterator::remapUA() {
 	for(usetListBySize::const_iterator s = usetsBySize.begin(); s != usetsBySize.end(); s++) {
 		uset u;
 		u.nbits = s->nbits;
-		for(int k = 0; k < s->nbits; k++) {
+		for(unsigned int k = 0; k < s->nbits; k++) {
 			u.positions[k] = theMapper.g2i[s->positions[k]];
 		}
 		u.bitmapByPositions();
@@ -90,8 +90,8 @@ void clueIterator::removeLargeUA() {
 	////Choose UA size upper limit so the number of UA sets up to this size to be >= NUM_PACKS * 128
 	//if(usetsBySize.size() <= CountLimit)
 	//	return; //nothing to truncate
-	int uaCount = 0;
-	int maxSize = 1;
+	unsigned int uaCount = 0;
+	unsigned int maxSize = 1;
 	for(int i = 1; i < 81; i++) {
 		if(uaCount + usetsBySize.distributionBySize[i] > numUaSizeLimit) {
 			break; //use uaCount and maxSize from previous iteration
@@ -165,7 +165,7 @@ void clueIterator::iterateBoxes(const int numClues) {
 			//progressUpdate = 0;
 			state[nClues].cluePosition = 81;
 			//set the 9 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+			for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 				state[nClues - 1 - i].cluePosition = 80 - i;
 			}
 			printf("\nStarting enumeration of valid puzzles of size 9+%d for box %d fixed.\n", nClues - 9, box + 1);
@@ -245,7 +245,7 @@ void clueIterator::iterateDigits(const int numClues) {
 			//progressUpdate = 0;
 			state[nClues].cluePosition = 81;
 			//set the 9 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+			for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 				state[nClues - 1 - i].cluePosition = 80 - i;
 			}
 			printf("\nStarting enumeration of valid puzzles of size 9+%d for digit %d fixed.\n", nClues - 9, box + 1);
@@ -330,7 +330,7 @@ void clueIterator::iterate2Boxes(const int numClues) {
 				//progressUpdate = 0;
 				state[nClues].cluePosition = 81;
 				//set the 18 fixed clues
-				for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+				for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 					state[nClues - 1 - i].cluePosition = 80 - i;
 				}
 				printf("\nStarting enumeration of valid puzzles of size 18+%d for boxes (%d,%d) fixed.\n", nClues - 18, d1 + 1, d2 + 1);
@@ -424,7 +424,7 @@ void clueIterator::iterate2digits(const int numClues) {
 			//progressUpdate = 0;
 			state[nClues].cluePosition = 81;
 			//set the 18 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+			for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 				state[nClues - 1 - i].cluePosition = 80 - i;
 			}
 			//printf("\nStarting enumeration of valid puzzles of size 18+%d for digits (%d,%d) fixed.\n", nClues - 18, d1 + 1, d2 + 1);
@@ -508,7 +508,7 @@ void clueIterator::iterate3digits(const int numClues) {
 			//progressUpdate = 0;
 			state[nClues].cluePosition = 81;
 			//set the 18 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+			for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 				state[nClues - 1 - i].cluePosition = 80 - i;
 			}
 			printf("\nStarting enumeration of valid puzzles of size 27+%d for digits (%d,%d,%d) fixed.\n", nClues - 27, d1 + 1, d2 + 1, d3 + 1);
@@ -721,7 +721,7 @@ void clueIterator::iterateFixedCells(const char *fixed, const int minClues, cons
 		nChecked = 0;
 		state[nClues].cluePosition = 81;
 		//set the clues
-		for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+		for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 			state[nClues - 1 - i].cluePosition = 80 - i;
 		}
 		//start from leftmost (most significant) clue
@@ -764,7 +764,7 @@ void clueIterator::iterateBand(const int numClues) {
 	nChecked = 0;
 	state[nClues].cluePosition = 81;
 	//set the 54 fixed clues
-	for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+	for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 		state[nClues - 1 - i].cluePosition = 80 - i;
 	}
 	//start from leftmost (most significant) clue
@@ -800,7 +800,7 @@ void clueIterator::iterateFixed(const int numClues) {
 	nChecked = 0;
 	state[nClues].cluePosition = 81;
 	//set the fixed clues
-	for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+	for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 		state[nClues - 1 - i].cluePosition = 80 - theClique.fixedNonClues.nbits - i;
 	}
 	//start from leftmost (most significant) clue
@@ -854,7 +854,7 @@ void clueIterator::iterateBands(const int numClues) {
 			//progressUpdate = 0;
 			state[nClues].cluePosition = 81;
 			//set the 27 fixed clues
-			for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+			for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 				state[nClues - 1 - i].cluePosition = 80 - i;
 			}
 			printf("\nStarting enumeration of valid puzzles of size 27+%d for band %d fixed.\n", nClues - 27, band + 1);
@@ -936,7 +936,7 @@ int clueIterator::prepareGrid() {
 	forcedClues.positionsByBitmap();
 	if(forcedClues.nbits) {
 		printf("%d forced clues:", forcedClues.nbits); //debug
-		for(int i = 0; i < forcedClues.nbits; i++) { //debug
+		for(unsigned int i = 0; i < forcedClues.nbits; i++) { //debug
 			printf(" %d", forcedClues.positions[i]); //debug
 		}
 		printf("\n"); //debug
@@ -1203,7 +1203,7 @@ void clueIterator::iterate() {
 
 	state[nClues].cluePosition = 81;
 	//set the fixed clues if any
-	for(int i = 0; i < theClique.fixedClues.nbits; i++) {
+	for(unsigned int i = 0; i < theClique.fixedClues.nbits; i++) {
 		state[nClues - 1 - i].cluePosition = 80 - i;
 	}
 	printf("\nStarting enumeration of all valid puzzles of size up to %d.\n", nClues);
@@ -1370,7 +1370,7 @@ NOINLINE double clueIterator::progress() {
 	for(n = 0; n < clueNumber; n++) {
 		state[n].cluePosition = n;
 	}
-	for(n = 0; n < nClues - theClique.fixedClues.nbits; n++) {
+	for(unsigned n = 0; n < nClues - theClique.fixedClues.nbits; n++) {
 		p += NoK[state[n].cluePosition][n];
 	}
 	p /= NoK[81 - theClique.fixedClues.nbits][nClues - 1 - theClique.fixedClues.nbits];
@@ -1467,7 +1467,7 @@ void chunkProcessor::iterateClue(const bm128 *sets, const int *lsb, const int ns
 				}
 				//here u contains all possibilities for the last clue
 				u.positionsByBitmap();
-				for(int pos = 0; pos < u.nbits; pos++) {
+				for(unsigned int pos = 0; pos < u.nbits; pos++) {
 					state[0].cluePosition = u.positions[pos];
 					printf("checkPuzzle() from iterateClue()\n");
 					checkPuzzle();
@@ -2554,14 +2554,14 @@ int scanGridFromFile() {
 }
 int scanUnavForPuzzles() {
 	char buf[3000];
-	int nClues = opt.scanOpt->nClues;
+	unsigned int nClues = opt.scanOpt->nClues;
 	if(nClues <= 1)
 		return 1; //stupid parameter
 	if(nClues > 20)
 		return 1; //stupid parameter
 	while(fgets(buf, sizeof(buf), stdin)) {
 		ch81 puz;
-		int puzSize = puz.fromString(buf);
+		unsigned int puzSize = puz.fromString(buf);
 		if(puzSize <= nClues - 1)
 			continue; //no room for numclues
 		int	nSol = (int)solve(puz.chars, 30, buf);
@@ -2589,7 +2589,7 @@ int scanUnavForPuzzles() {
 				int perm = Digit2Bitmap[nClues] - 1; //start with rightmost nClues - 1 bits set
 				while(0 == (perm & Digit2Bitmap[puzSize + 1])) {
 					memset(buf, 0, 81); //start from empty puzzle
-					for(int i = 0; i < puzSize; i++) {
+					for(unsigned int i = 0; i < puzSize; i++) {
 						if(0 == (perm & Digit2Bitmap[i + 1]))
 							continue;
 						buf[uua.positions[i]] = g.digits[uua.positions[i]];
@@ -2597,7 +2597,7 @@ int scanUnavForPuzzles() {
 					//advance to next permutation
 					int t = (perm | (perm - 1)) + 1;
 					perm = t | ((((t & -t) / (perm & -perm)) >> 1) - 1);
-					for(int uaClue = 0; uaClue < ua.nbits; uaClue++) {
+					for(unsigned int uaClue = 0; uaClue < ua.nbits; uaClue++) {
 						buf[ua.positions[uaClue]] = g.digits[ua.positions[uaClue]]; //set the external given
 						//check the puzzle
 						if(1 == solve(g.gridBM, buf, 2)) {

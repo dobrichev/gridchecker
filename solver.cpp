@@ -1402,16 +1402,16 @@ level3_done:
 		in[i] = 0;
 	}
 level4_done:
-	if(found)
-		if(verbose) {
+	if (found) {
+		if (verbose) {
 			int j = 0;
-			for(int i = 0; i < 81; i++) {
-				if(bdCells[i] == 0) {
+			for (int i = 0; i < 81; i++) {
+				if (bdCells[i] == 0) {
 					//in[i] = sol[i];
 					j++;
 					printf("%c", sol[i] + '0');
 				}
-				else if(in[i]) {
+				else if (in[i]) {
 					j++;
 					printf("%c", sol[i] + '0');
 				}
@@ -1422,6 +1422,7 @@ level4_done:
 			printf("\t%d\t4", j); //puzzle<tab>num givens<tab>maximized puzzle<tab>num maximized givens<tab>backdoor size=4
 		}
 		return 4;
+	}
 	return 5;
 }
 
@@ -2290,10 +2291,10 @@ extern void solverXXL(const char* in) {
 	int res = 0;
 	int maxBits[81];
 	int floatingBits[81];
-	int floatingDigitOccurences[9];
-	for(int d = 0; d < 9; d++) {
-		floatingDigitOccurences[d] = 0;
-	}
+//	int floatingDigitOccurences[9];
+//	for(int d = 0; d < 9; d++) {
+//		floatingDigitOccurences[d] = 0;
+//	}
 	for(int n = 0; n < nGivens; n++) {
 		floatingBits[n] = 0;
 		maxBits[n] = 1;

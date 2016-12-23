@@ -30,10 +30,10 @@ bool ratingByDisjoints::operator< (const ratingByDisjoints &r) const {
 void ratingByDisjoints::setRate(const int size, const int rate) {numDJ[24 - size] = rate;}
 void ratingByDisjoints::setRate(const double rate) {ratePlus = rate;}
 
-sizedUset::sizedUset() {};
-sizedUset::sizedUset(const bm128 &bm) : bm128(bm) {setSize();};
-sizedUset::sizedUset(const bm128 &bm, const int size) : bm128(bm) {bitmap128.m128i_u32[3] = (uint32_t)size;};
-sizedUset::sizedUset(const sizedUset &bm) : bm128(bm) {};
+sizedUset::sizedUset() {}
+sizedUset::sizedUset(const bm128 &bm) : bm128(bm) {setSize();}
+sizedUset::sizedUset(const bm128 &bm, const int size) : bm128(bm) {bitmap128.m128i_u32[3] = (uint32_t)size;}
+sizedUset::sizedUset(const sizedUset &bm) : bm128(bm) {}
 int sizedUset::getSize() const {
 	return bitmap128.m128i_u32[3];
 }
@@ -73,8 +73,8 @@ int sizedUset::join(const sizedUset &rhs) {
 //}
 void sizedUset::operator=(const sizedUset &rhs) {bitmap128 = rhs.bitmap128;}
 
-uset::uset() : nbits(0) {};
-uset::uset(const bm128 &bm) : bm128(bm), nbits(0) {};
+uset::uset() : nbits(0) {}
+uset::uset(const bm128 &bm) : bm128(bm), nbits(0) {}
 bool uset::operator < (const uset &rhs) const {
 	if(positions[0] > rhs.positions[0]) return true;
 	if(positions[0] < rhs.positions[0]) return false;
@@ -112,18 +112,18 @@ void uset::positionsByBitmap() {
 void uset::bitmapByPositions() {
 	//bitmap128.m128i_m128i = _mm_setzero_si128 ();
 	clear();
-	for(int i = 0; i < nbits; i++)
+	for(unsigned int i = 0; i < nbits; i++)
 		setBit(positions[i]);
 }
 void uset::bitmapByIntegerPos(const int *pos, const int size) {
 	clear();
 	nbits = size;
-	for(int i = 0; i < nbits; i++)
+	for(unsigned int i = 0; i < nbits; i++)
 		setBit(pos[i]);
 }
 void uset::toString(char *r) const {
 	*r++ = '{';
-	for(int i = 0; i < nbits; i++) {
+	for(unsigned int i = 0; i < nbits; i++) {
 		*r++ = (char)('1' + positions[i] / 9);
 		*r++ = (char)('1' + positions[i] % 9);
 		*r++ = ',';
@@ -133,7 +133,7 @@ void uset::toString(char *r) const {
 }
 void uset::toString1(char *r) const {
 	*r++ = '(';
-	for(int i = 0; i < nbits - 1; i++) {
+	for(unsigned int i = 0; i < nbits - 1; i++) {
 		r += sprintf(r, "%2.2u,", (unsigned int)positions[i]);
 	}
 	sprintf(r, "%2.2u)", (unsigned int)positions[nbits - 1]);
@@ -168,7 +168,7 @@ void uset::fromPuzzle(const char* s) {
 		}
 	}
 }
-void uset::operator=(const bm128 &rhs) {bitmap128 = rhs.bitmap128;};
+void uset::operator=(const bm128 &rhs) {bitmap128 = rhs.bitmap128;}
 
 int lightweightUsetList::find2of3() const {
 	int n = 0;
@@ -234,7 +234,7 @@ void usetListBySize::removeSupersets() {
 //		}
 //	}
 //}
-void usetListBySize::getRate(const int maxSize, const bm128 &mask, ratingByDisjoints &rating) const {
+void usetListBySize::getRate(const unsigned int maxSize, const bm128 &mask, ratingByDisjoints &rating) const {
 	if(maxSize) { //for maxSize == 0 rate only by getNumDisjoints()
 		//max real disjoint sets are 16, but forcing non-givens complicates the things
 		//2 UA with common clue are disjoint after forcing the common clue to non-given
@@ -308,8 +308,8 @@ int usetListBySize::ReadFromFile(char const *filename) {
 	return 0;
 }
 
-cliqueMember::cliqueMember() : numDisjoints(0) {};
-cliqueMember::cliqueMember(const bm128 &bm) : uset(bm), numDisjoints(0) {};
+cliqueMember::cliqueMember() : numDisjoints(0) {}
+cliqueMember::cliqueMember(const bm128 &bm) : uset(bm), numDisjoints(0) {}
 void cliqueMember::setNumDisjoints(const bm128 &bm, const usetListBySize &ul) {
 	numDisjoints = 0;
 	for(usetListBySize::const_iterator us = ul.begin(); us != ul.end(); us++) {
@@ -339,7 +339,7 @@ void cliqueMember::rateCells(const usetListBySize &ul) {
 	if(ul.distributionBySize[6] > 54 || ul.distributionBySize[3] || ul.distributionBySize[2] || ul.distributionBySize[1]) {
 		maxSize = 0; //quietly rate only by number of DJ regardless of cliques
 	}
-	for(int i = 0; i < nbits; i++) {
+	for(unsigned int i = 0; i < nbits; i++) {
 		bm128 bm;
 		bm = accumulatedBM;
 		bm.clearBit(positions[i]);
@@ -351,7 +351,7 @@ void cliqueMember::rateCells(const usetListBySize &ul) {
 	int nUnorderedMembers = nbits;
 	while(nUnorderedMembers > 1) {
 		int bestIndex = -1;
-		for(int p = 0; p < nbits; p++) {
+		for(unsigned int p = 0; p < nbits; p++) {
 			if(mappedTo[p] == -1) {
 				if(bestIndex == -1)
 					bestIndex = p;
@@ -365,7 +365,7 @@ void cliqueMember::rateCells(const usetListBySize &ul) {
 		mappedTo[bestIndex] = (char)nUnorderedMembers;
 	}
 	//set the last position w/o checkings
-	for(int p = 0; p < nbits; p++) {
+	for(unsigned int p = 0; p < nbits; p++) {
 		if(mappedTo[p] == -1) {
 			mappedTo[p] = 0;
 			break;
@@ -373,7 +373,7 @@ void cliqueMember::rateCells(const usetListBySize &ul) {
 	}
 }
 
-clique::clique() : size(0), nPartitions(0) {fixedClues.clear(); fixedClues.nbits = 0; fixedNonClues.clear(); fixedNonClues.nbits = 0;};
+clique::clique() : size(0), nPartitions(0) {fixedClues.clear(); fixedClues.nbits = 0; fixedNonClues.clear(); fixedNonClues.nbits = 0;}
 void clique::insert(cliqueMember &m) {ua[size++] = m;}
 void clique::clear() {size = 0;}
 void clique::sortMembers(const usetListBySize &ul) {
@@ -428,7 +428,7 @@ void clique::sortMembers(const usetListBySize &ul) {
 		ua[m].rateCells(ul);
 	}
 	//remap intramember positions to desired grid positions
-	int offset = 0;
+	unsigned int offset = 0;
 	for(int partition = 0; partition < nPartitions; partition++) {
 		for(int m = 0; m < partitions[partition].numMembers; m++) {
 			for(int pos = 0; pos < partitions[partition].memberSizes; pos++) {
@@ -442,7 +442,7 @@ void clique::sortMembers(const usetListBySize &ul) {
 		if(opt.verbose) {
 			printf("\nReordering the rest %d cells.\n", ua[size].nbits);
 		}
-		for(int pos = 0; pos < ua[size].nbits; pos++) {
+		for(unsigned int pos = 0; pos < ua[size].nbits; pos++) {
 			ua[size].mappedTo[pos] = (char)(offset + pos);
 		}
 	}
@@ -476,7 +476,7 @@ void clique::sortBySize() {
 }
 void clique::createPartitions() {
 	nPartitions = -1;
-	int ps = -1;
+	unsigned int ps = 100;
 	bm128 bm;
 	bm.clear();
 	for(int i = 0; i < size; i++) {

@@ -106,24 +106,24 @@ void transformer5::byGrid(const char* sol)
 				test.col[0] = tc.perm[pc][0];
 				test.col[1] = tc.perm[pc][1];
 				test.col[2] = tc.perm[pc][2];
-				test.map[sol[tc.swap[b][test.row[0]][test.col[0]]]] = 1;
-				test.map[sol[tc.swap[b][test.row[0]][test.col[1]]]] = 2;
-				test.map[sol[tc.swap[b][test.row[0]][test.col[2]]]] = 3;
-				test.map[sol[tc.swap[b][test.row[1]][test.col[0]]]] = 4;
-				test.map[sol[tc.swap[b][test.row[1]][test.col[1]]]] = 5;
-				test.map[sol[tc.swap[b][test.row[1]][test.col[2]]]] = 6;
-				test.map[sol[tc.swap[b][test.row[2]][test.col[0]]]] = 7;
-				test.map[sol[tc.swap[b][test.row[2]][test.col[1]]]] = 8;
-				test.map[sol[tc.swap[b][test.row[2]][test.col[2]]]] = 9;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[0]]]] = 1;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[1]]]] = 2;
+				test.map[(int)sol[tc.swap[b][test.row[0]][test.col[2]]]] = 3;
+				test.map[(int)sol[tc.swap[b][test.row[1]][test.col[0]]]] = 4;
+				test.map[(int)sol[tc.swap[b][test.row[1]][test.col[1]]]] = 5;
+				test.map[(int)sol[tc.swap[b][test.row[1]][test.col[2]]]] = 6;
+				test.map[(int)sol[tc.swap[b][test.row[2]][test.col[0]]]] = 7;
+				test.map[(int)sol[tc.swap[b][test.row[2]][test.col[1]]]] = 8;
+				test.map[(int)sol[tc.swap[b][test.row[2]][test.col[2]]]] = 9;
 
 				/* order cols 4&5&6 */
 
 				k = 0;
 				for(i = 3; i < 9; i++) {
-					if(test.map[sol[tc.swap[b][test.row[1]][i]]] == 1) {
+					if(test.map[(int)sol[tc.swap[b][test.row[1]][i]]] == 1) {
 						l = tc.boxOffset[i];
 						for(j = 0; j < 3; j++) {
-							switch (test.map[sol[tc.swap[b][test.row[1]][j+l]]])
+							switch (test.map[(int)sol[tc.swap[b][test.row[1]][j+l]]])
 							{
 							case 1:
 								test.col[3] = j+l;
@@ -149,7 +149,7 @@ void transformer5::byGrid(const char* sol)
 				/* order row 4 */
 
 				for(i = 3; i < 9; i++) {
-					if(test.map[sol[tc.swap[b][i][test.col[1]]]] == 1) {
+					if(test.map[(int)sol[tc.swap[b][i][test.col[1]]]] == 1) {
 						test.row[3] = k = i;
 						break;
 					}
@@ -157,11 +157,11 @@ void transformer5::byGrid(const char* sol)
 
 				/* order rows 5&6 */
 
-				if(test.map[sol[tc.swap[b][tc.part[k][0]][test.col[4]]]] == 1) {
+				if(test.map[(int)sol[tc.swap[b][tc.part[k][0]][test.col[4]]]] == 1) {
 					test.row[4] = tc.part[k][0];
 					test.row[5] = tc.part[k][1];
 				}
-				else if(test.map[sol[tc.swap[b][tc.part[k][1]][test.col[4]]]] == 1) {
+				else if(test.map[(int)sol[tc.swap[b][tc.part[k][1]][test.col[4]]]] == 1) {
 					test.row[4] = tc.part[k][1];
 					test.row[5] = tc.part[k][0];
 				}
@@ -172,7 +172,7 @@ void transformer5::byGrid(const char* sol)
 				/* order row 7 */
 
 				for(i = 2; i < 5; i++) {
-					if(test.map[sol[tc.swap[b][tc.part[k][i]][test.col[2]]]] == 1) {
+					if(test.map[(int)sol[tc.swap[b][tc.part[k][i]][test.col[2]]]] == 1) {
 						test.row[6] = l = tc.part[k][i];
 						break;
 					}
@@ -180,11 +180,11 @@ void transformer5::byGrid(const char* sol)
 
 				/* order rows 8&9 */
 
-				if(test.map[sol[tc.swap[b][tc.part[l][0]][test.col[5]]]] == 1) {
+				if(test.map[(int)sol[tc.swap[b][tc.part[l][0]][test.col[5]]]] == 1) {
 					test.row[7] = tc.part[l][0];
 					test.row[8] = tc.part[l][1];
 				}
-				else if(test.map[sol[tc.swap[b][tc.part[l][1]][test.col[5]]]] == 1) {
+				else if(test.map[(int)sol[tc.swap[b][tc.part[l][1]][test.col[5]]]] == 1) {
 					test.row[7] = tc.part[l][1];
 					test.row[8] = tc.part[l][0];
 				}
@@ -195,13 +195,13 @@ void transformer5::byGrid(const char* sol)
 				/* order cols 7&8&9 */
 
 				for(i = 6; i < 9; i++) {
-					if(test.map[sol[tc.swap[b][test.row[2]][i]]] == 1) {
+					if(test.map[(int)sol[tc.swap[b][test.row[2]][i]]] == 1) {
 						test.col[6] = i;
 					}
-					else if(test.map[sol[tc.swap[b][test.row[5]][i]]] == 1) {
+					else if(test.map[(int)sol[tc.swap[b][test.row[5]][i]]] == 1) {
 						test.col[7] = i;
 					}
-					else if(test.map[sol[tc.swap[b][test.row[8]][i]]] == 1) {
+					else if(test.map[(int)sol[tc.swap[b][test.row[8]][i]]] == 1) {
 						test.col[8] = i;
 					}
 					else {

@@ -161,7 +161,7 @@ public:
 	bm128 *allUA;
 	int nAllUA;
 	int nClues;
-	int huntClues;
+	unsigned int huntClues;
 	grid &g;
 	unsigned int nPuzzles;
 	unsigned long long nChecked;
@@ -180,8 +180,8 @@ public:
 	clique theClique;
 	chunkList theChunks;
 	puzTextSet minimizedPuzzles;
-	int numUaSizeLimit; //include UA of size 0..n so UA count < numUaSizeLimit (1500)
-	int numUaTotalLimit; //add UA of larger size so total UA count to become numUaTotalLimit (2000)
+	unsigned int numUaSizeLimit; //include UA of size 0..n so UA count < numUaSizeLimit (1500)
+	unsigned int numUaTotalLimit; //add UA of larger size so total UA count to become numUaTotalLimit (2000)
 
 	clueIterator(grid &g);
 	void remap();

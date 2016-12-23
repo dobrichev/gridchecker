@@ -121,8 +121,8 @@ extern int neighbourhood(const char* fname, const char* knownsfname) {
 	gridsWithPuzzles::const_iterator puz;
 	puzzlesInGrid::const_iterator p;
 	int nKnowns = 0;
-	int maxMaxDist = 0;
-	int minMinDist = 99;
+	unsigned int maxMaxDist = 0;
+	unsigned int minMinDist = 99;
 	cout << "grid, Known Puzzles, Num Wormholes, Min Hamming Distance, Max Hamming Distance" << endl;
 	//myself
 	cout << endl << "Base grid (" << ngList.authoMorphisms << "):" << endl;

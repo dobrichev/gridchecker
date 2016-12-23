@@ -27,7 +27,7 @@ struct ratingByDisjoints {
 
 struct uset : public bm128 {
 	unsigned char positions[81];
-	int nbits;
+	unsigned int nbits;
 	//int digitMask;
 	//int numDisjoints;
 	uset(void);
@@ -65,7 +65,7 @@ public:
 	void insertNoSuperset(const uset &us);
 	void removeSupersets();
 	//void unused_setNumDisjionts ();
-	void getRate(const int maxSize, const bm128 &mask, ratingByDisjoints &rating) const;
+	void getRate(const unsigned int maxSize, const bm128 &mask, ratingByDisjoints &rating) const;
 	void setDistributions();
 	double getNumDisjoints(const bm128 &mask) const;
 	int ReadFromFile(char const *filename);
