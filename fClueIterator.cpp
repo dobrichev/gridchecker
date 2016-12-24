@@ -36,33 +36,33 @@ unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
 //typedef bit_mask<1536> fbm5_index_type; //2048
 //typedef bit_mask<1536> fbm6_index_type; //1792
 
-typedef bit_mask<768> bm1_index_type; //768,1024  medium
+//typedef bit_mask<768> bm1_index_type; //768,1024  medium
+//typedef bit_mask<10240> bm2_index_type; //10240
+//typedef bit_mask<32768> bm3_index_type; //32768
+//typedef bit_mask<40960> bm4_index_type; //40960
+//typedef bit_mask<20480> bm5_index_type; //20480
+//typedef bit_mask<10240> bm6_index_type; //20480
+//
+//typedef bit_mask<256> fbm1_index_type;
+//typedef bit_mask<1024> fbm2_index_type; //768
+//typedef bit_mask<1536> fbm3_index_type; //1536
+//typedef bit_mask<1792> fbm4_index_type; //1792
+//typedef bit_mask<1792> fbm5_index_type; //2048
+//typedef bit_mask<768> fbm6_index_type; //1792
+
+typedef bit_mask<768> bm1_index_type; //768,1024  large
 typedef bit_mask<10240> bm2_index_type; //10240
 typedef bit_mask<32768> bm3_index_type; //32768
-typedef bit_mask<40960> bm4_index_type; //65536
-typedef bit_mask<20480> bm5_index_type; //40960
+typedef bit_mask<65536> bm4_index_type; //65536
+typedef bit_mask<40960> bm5_index_type; //40960
 typedef bit_mask<20480> bm6_index_type; //32768
 
 typedef bit_mask<256> fbm1_index_type;
-typedef bit_mask<768> fbm2_index_type; //768
-typedef bit_mask<1536> fbm3_index_type; //1536
+typedef bit_mask<1024> fbm2_index_type; //768
+typedef bit_mask<1792> fbm3_index_type; //1536
 typedef bit_mask<1792> fbm4_index_type; //1792
 typedef bit_mask<1792> fbm5_index_type; //2048
-typedef bit_mask<1536> fbm6_index_type; //1792
-
-//typedef bit_mask<768> bm1_index_type; //768,1024  large
-//typedef bit_mask<10240> bm2_index_type; //10240
-//typedef bit_mask<32768> bm3_index_type; //32768
-//typedef bit_mask<65536> bm4_index_type; //65536
-//typedef bit_mask<40960> bm5_index_type; //40960
-//typedef bit_mask<32768> bm6_index_type; //32768
-//
-//typedef bit_mask<256> fbm1_index_type;
-//typedef bit_mask<768> fbm2_index_type; //768
-//typedef bit_mask<1792> fbm3_index_type; //1536
-//typedef bit_mask<1792> fbm4_index_type; //1792
-//typedef bit_mask<1792> fbm5_index_type; //2048
-//typedef bit_mask<1792> fbm6_index_type; //1792, zero disables this functionality
+typedef bit_mask<1792> fbm6_index_type; //1792
 
 struct starters {
 	int starter2;
@@ -75,7 +75,7 @@ starters stFamily[] = {
 	{44,30,27,21,19}, //0 original McGuire 16s
 	{46,33,28,20,19}, //1 low, test "a"
 	{46,34,28,20,19}, //2 low, test "a"
-	{47,37,29,22,19}, //3
+	{48,36,33,25,19}, //3 u4<10 && u6>=30
 	{50,40,30,27,20}, //4 yet higher
 	{54,42,30,27,21}, //5
 	{56,44,30,27,21}, //6 shift right (only b6b is a bit better than for 50,40,30,27,20)
@@ -85,46 +85,51 @@ starters stFamily[] = {
 	{44,30,27,21,18}, //10 original but u6 down
 	{44,30,27,21,15}, //11 original McGuire 16s with lower U6
 	{44,30,27,21,20}, //12 original but u6 up
+	{44,30,27,21,21}, //13 original but u6 +2
+	{45,30,27,21,19}, //14 original but u2 +1
+	{46,30,27,21,19}, //15 original but u2 +2
+	{50,30,27,21,19}, //16 original but u2 +6
 };
 
 class fastClueIterator {
 private:
 	//void forecastIterateLevel(int currentUaIndex = 0);
-	inline void fastIterateLevel0(const dead_clues_type deadClues1, const fbm1_index_type fua1_alive1) __attribute__((noinline));
-	inline void fastIterateLevel1(const dead_clues_type deadClues2,
+	inline void fastIterateLevel0(const dead_clues_type deadClues1, const dead_clues_type &setClues1,
+			const fbm1_index_type fua1_alive1) __attribute__((noinline));
+	inline void fastIterateLevel1(const dead_clues_type deadClues2, const dead_clues_type &setClues2,
 			const fbm1_index_type fua1_alive2, const fbm2_index_type &fua2_alive2) __attribute__((noinline));
-	inline void fastIterateLevel2(const dead_clues_type deadClues3,
+	inline void fastIterateLevel2(const dead_clues_type deadClues3, const dead_clues_type &setClues3,
 			const fbm1_index_type fua1_alive3, const fbm2_index_type &fua2_alive3, const fbm3_index_type &fua3_alive3) __attribute__((noinline));
-	void fastIterateLevel3(const dead_clues_type deadClues4,
+	void fastIterateLevel3(const dead_clues_type deadClues4, const dead_clues_type &setClues4,
 			const fbm1_index_type fua1_alive4, const fbm2_index_type &fua2_alive4, const fbm3_index_type &fua3_alive4,
 			const fbm4_index_type &fua4_alive4) __attribute__((noinline));
-	void fastIterateLevel4(const dead_clues_type &deadClues5,
+	void fastIterateLevel4(const dead_clues_type &deadClues5, const dead_clues_type &setClues5,
 			const fbm1_index_type fua1_alive5, const fbm2_index_type &fua2_alive5, const fbm3_index_type &fua3_alive5,
 			const fbm4_index_type &fua4_alive5, const fbm5_index_type &fua5_alive5) __attribute__((noinline));
-	void fastIterateLevel5(const dead_clues_type &deadClues6,
+	void fastIterateLevel5(const dead_clues_type &deadClues6, const dead_clues_type &setClues6,
 			const fbm1_index_type &fua1_alive6, const fbm2_index_type &fua2_alive6, const fbm3_index_type &fua3_alive6,
 			const fbm4_index_type &fua4_alive6, const fbm5_index_type &fua5_alive6, const fbm6_index_type &fua6_alive6) __attribute__((noinline));
-	void fastIterateLevel9to6(const dead_clues_type &deadClues_old,
+	void fastIterateLevel9to6(const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 			const fbm1_index_type &fua1_alive_old, const fbm2_index_type &fua2_alive_old, const fbm3_index_type &fua3_alive_old,
 			const fbm4_index_type &fua4_alive_old, const fbm5_index_type &fua5_alive_old, const fbm6_index_type &fua6_alive_old) __attribute__((noinline));
-	void fastIterateLevel10(const dead_clues_type &deadClues11,
-			const bm1_index_type &ua1_alive11, const fbm2_index_type &fua2_alive11, const fbm3_index_type &fua3_alive11,
+	void fastIterateLevel10(const dead_clues_type &deadClues11, const dead_clues_type &setClues11,
+			const bm1_index_type &ua1_alive11, const bm2_index_type &ua2_alive11, const fbm3_index_type &fua3_alive11,
 			const fbm4_index_type &fua4_alive11, const fbm5_index_type &fua5_alive11, const fbm6_index_type &fua6_alive11) __attribute__((noinline));
-	void fastIterateLevel11(const dead_clues_type &deadClues12,
+	void fastIterateLevel11(const dead_clues_type &deadClues12, const dead_clues_type &setClues12,
 			const bm1_index_type &ua1_alive12, const bm2_index_type &ua2_alive12, const bm3_index_type &ua3_alive12,
 			const fbm4_index_type &fua4_alive12, const fbm5_index_type &fua5_alive12, const fbm6_index_type &fua6_alive12) __attribute__((noinline));
-	void fastIterateLevel12(const dead_clues_type &deadClues13,
+	void fastIterateLevel12(const dead_clues_type &deadClues13, const dead_clues_type &setClues13,
 			const bm1_index_type &ua1_alive13, const bm2_index_type &ua2_alive13, const bm3_index_type &ua3_alive13,
 			const bm4_index_type &ua4_alive13, const fbm5_index_type &fua5_alive13, const fbm6_index_type &fua6_alive13) __attribute__((noinline));
-	void fastIterateLevel13(const dead_clues_type &deadClues14,
+	void fastIterateLevel13(const dead_clues_type &deadClues14, const dead_clues_type &setClues14,
 			const bm1_index_type &ua1_alive14, const bm2_index_type &ua2_alive14, const bm3_index_type &ua3_alive14,
 			const bm4_index_type &ua4_alive14, const bm5_index_type &ua5_alive14, const bm6_index_type &ua6_alive14) __attribute__((noinline));
-	void fastIterateLevel(const dead_clues_type &deadClues_old,
+	void fastIterateLevel(const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 			const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
 			const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) __attribute__((noinline));
 	void buildComposites();
-	void checkPuzzle();
-	void checkPuzzle(int clueNumber, const dead_clues_type & dc, int startPos = 0);
+	void checkPuzzle(const dead_clues_type &setClues);
+	void checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos = 0);
 	fastClueIterator();
 public:
 	bm1_index_type ua1_indexes[81];
@@ -145,14 +150,14 @@ public:
 	sizedUset ua4[bm4_index_type::maxSize];
 	sizedUset ua5[bm5_index_type::maxSize];
 	sizedUset ua6[bm6_index_type::maxSize];
-	sizedUset fUa[fbm1_index_type::maxSize];
+	sizedUset fUa[fbm1_index_type::maxSize + 100];
 	sizedUset fUa2[fbm2_index_type::maxSize];
 	sizedUset fUa3[fbm3_index_type::maxSize];
 	sizedUset fUa4[fbm4_index_type::maxSize];
 	sizedUset fUa5[fbm5_index_type::maxSize];
 	sizedUset fUa6[fbm6_index_type::maxSize];
 	uset usets[bm1_index_type::maxSize]; //same as ua but with sizes
-	uset fUsets[fbm1_index_type::maxSize]; //same as fUa but with sizes
+	uset fUsets[fbm1_index_type::maxSize + 100]; //same as fUa but with sizes
 	bm1_index_type ua1_alive_initial;
 	bm2_index_type ua2_alive_initial;
 	bm3_index_type ua3_alive_initial;
@@ -161,6 +166,7 @@ public:
 	bm6_index_type ua6_alive_initial;
 
 	dead_clues_type deadClues_initial;
+	dead_clues_type setClues_initial;
 
 	int fuaActualSize;
 	int fua2ActualSize;
@@ -304,7 +310,7 @@ public:
 //done:
 //	clueNumber = 2;
 //}
-void fastClueIterator::fastIterateLevel0(__restrict const dead_clues_type deadClues1, __restrict const fbm1_index_type fua1_alive1) {
+void fastClueIterator::fastIterateLevel0(__restrict const dead_clues_type deadClues1, const dead_clues_type &setClues1, __restrict const fbm1_index_type fua1_alive1) {
 	int uaIndex0 = fua1_alive1.getMinIndex();
 	if(uaIndex0 != INT_MAX) {
 		clueNumber = 0;
@@ -317,7 +323,9 @@ void fastClueIterator::fastIterateLevel0(__restrict const dead_clues_type deadCl
 			if(fua1_alive1.isSubsetOf(fua1_indexes[cluePosition])) {
 				d0++;
 				clues[cluePosition] = g.digits[cluePosition];
-				checkPuzzle();
+				dead_clues_type setClues0(setClues1);
+				setClues0.setBit(cluePosition);
+				checkPuzzle(setClues0);
 				clues[cluePosition] = 0;
 			}
 		}
@@ -325,10 +333,10 @@ void fastClueIterator::fastIterateLevel0(__restrict const dead_clues_type deadCl
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(1, deadClues1);
+		checkPuzzle(1, setClues1, deadClues1);
 	}
 }
-void fastClueIterator::fastIterateLevel1(__restrict const dead_clues_type deadClues2,
+void fastClueIterator::fastIterateLevel1(__restrict const dead_clues_type deadClues2, const dead_clues_type &setClues2,
 		__restrict const fbm1_index_type fua1_alive2, __restrict const fbm2_index_type & fua2_alive2) {
 	int uaIndex1 = fua1_alive2.getMinIndex();
 	if(uaIndex1 != INT_MAX) {
@@ -344,7 +352,9 @@ void fastClueIterator::fastIterateLevel1(__restrict const dead_clues_type deadCl
 				d1++;
 				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel0(deadClues1, fua1_alive1);
+				dead_clues_type setClues1(setClues2);
+				setClues1.setBit(cluePosition);
+				fastIterateLevel0(deadClues1, setClues1, fua1_alive1);
 //				{
 //					int uaIndex0 = fua1_alive1.getMinIndex();
 //					if(uaIndex0 != INT_MAX) {
@@ -377,10 +387,10 @@ void fastClueIterator::fastIterateLevel1(__restrict const dead_clues_type deadCl
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(2, deadClues2);
+		checkPuzzle(2, setClues2, deadClues2);
 	}
 }
-void fastClueIterator::fastIterateLevel2(__restrict const dead_clues_type deadClues3,
+void fastClueIterator::fastIterateLevel2(__restrict const dead_clues_type deadClues3, const dead_clues_type &setClues3,
 		__restrict const fbm1_index_type fua1_alive3, __restrict const fbm2_index_type & fua2_alive3, __restrict const fbm3_index_type & fua3_alive3) {
 	int uaIndex2 = fua1_alive3.getMinIndex();
 	if(uaIndex2 != INT_MAX) {
@@ -397,7 +407,9 @@ void fastClueIterator::fastIterateLevel2(__restrict const dead_clues_type deadCl
 				fbm2_index_type fua2_alive2(fua2_alive3, fua2_indexes[cluePosition]); //hit
 				fbm1_index_type fua1_alive2(fua1_alive3, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel1(deadClues2, fua1_alive2, fua2_alive2);
+				dead_clues_type setClues2(setClues3);
+				setClues2.setBit(cluePosition);
+				fastIterateLevel1(deadClues2, setClues2, fua1_alive2, fua2_alive2);
 				clues[cluePosition] = 0;
 			}
 			deadClues2.setBit(cluePosition);
@@ -406,10 +418,10 @@ void fastClueIterator::fastIterateLevel2(__restrict const dead_clues_type deadCl
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(3, deadClues3);
+		checkPuzzle(3, setClues3, deadClues3);
 	}
 }
-void fastClueIterator::fastIterateLevel3(__restrict const dead_clues_type deadClues4,
+void fastClueIterator::fastIterateLevel3(__restrict const dead_clues_type deadClues4, const dead_clues_type &setClues4,
 		__restrict const fbm1_index_type fua1_alive4, __restrict const fbm2_index_type & fua2_alive4, __restrict const fbm3_index_type & fua3_alive4,
 		__restrict const fbm4_index_type & fua4_alive4) {
 	int uaIndex3 = fua1_alive4.getMinIndex();
@@ -428,7 +440,9 @@ void fastClueIterator::fastIterateLevel3(__restrict const dead_clues_type deadCl
 				fbm2_index_type fua2_alive3(fua2_alive4, fua2_indexes[cluePosition]); //hit
 				fbm1_index_type fua1_alive3(fua1_alive4, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel2(deadClues3, fua1_alive3, fua2_alive3, fua3_alive3);
+				dead_clues_type setClues3(setClues4);
+				setClues3.setBit(cluePosition);
+				fastIterateLevel2(deadClues3, setClues3, fua1_alive3, fua2_alive3, fua3_alive3);
 				clues[cluePosition] = 0;
 			}
 			deadClues3.setBit(cluePosition);
@@ -437,10 +451,10 @@ void fastClueIterator::fastIterateLevel3(__restrict const dead_clues_type deadCl
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(4, deadClues4);
+		checkPuzzle(4, setClues4, deadClues4);
 	}
 }
-void fastClueIterator::fastIterateLevel4(__restrict const dead_clues_type & deadClues5,
+void fastClueIterator::fastIterateLevel4(__restrict const dead_clues_type & deadClues5, const dead_clues_type &setClues5,
 		__restrict const fbm1_index_type fua1_alive5, __restrict const fbm2_index_type & fua2_alive5, __restrict const fbm3_index_type & fua3_alive5,
 		__restrict const fbm4_index_type & fua4_alive5, __restrict const fbm5_index_type & fua5_alive5) {
 	int uaIndex5 = fua1_alive5.getMinIndex();
@@ -460,7 +474,9 @@ void fastClueIterator::fastIterateLevel4(__restrict const dead_clues_type & dead
 				fbm2_index_type fua2_alive4(fua2_alive5, fua2_indexes[cluePosition]); //hit
 				fbm1_index_type fua1_alive4(fua1_alive5, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel3(deadClues4, fua1_alive4, fua2_alive4, fua3_alive4, fua4_alive4);
+				dead_clues_type setClues4(setClues5);
+				setClues4.setBit(cluePosition);
+				fastIterateLevel3(deadClues4, setClues4, fua1_alive4, fua2_alive4, fua3_alive4, fua4_alive4);
 				clues[cluePosition] = 0;
 			}
 			deadClues4.setBit(cluePosition);
@@ -469,10 +485,10 @@ void fastClueIterator::fastIterateLevel4(__restrict const dead_clues_type & dead
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(5, deadClues5);
+		checkPuzzle(5, setClues5, deadClues5);
 	}
 }
-void fastClueIterator::fastIterateLevel5(__restrict const dead_clues_type & deadClues6,
+void fastClueIterator::fastIterateLevel5(__restrict const dead_clues_type & deadClues6, const dead_clues_type &setClues6,
 		__restrict const fbm1_index_type & fua1_alive6, __restrict const fbm2_index_type & fua2_alive6, __restrict const fbm3_index_type & fua3_alive6,
 		__restrict const fbm4_index_type & fua4_alive6, __restrict const fbm5_index_type & fua5_alive6, __restrict const fbm6_index_type & fua6_alive6) {
 	int uaIndex6 = fua1_alive6.getMinIndex();
@@ -493,7 +509,9 @@ void fastClueIterator::fastIterateLevel5(__restrict const dead_clues_type & dead
 				fbm2_index_type fua2_alive5(fua2_alive6, fua2_indexes[cluePosition]); //hit
 				fbm1_index_type fua1_alive5(fua1_alive6, fua1_indexes[cluePosition]); //hit
 				clues[cluePosition] = g.digits[cluePosition];
-				fastIterateLevel4(deadClues5,
+				dead_clues_type setClues5(setClues6);
+				setClues5.setBit(cluePosition);
+				fastIterateLevel4(deadClues5, setClues5,
 						fua1_alive5, fua2_alive5, fua3_alive5,
 						fua4_alive5, fua5_alive5);
 				clues[cluePosition] = 0;
@@ -504,10 +522,10 @@ void fastClueIterator::fastIterateLevel5(__restrict const dead_clues_type & dead
 	}
 	else {
 		//iterate over all non-dead clues
-		checkPuzzle(6, deadClues6);
+		checkPuzzle(6, setClues6, deadClues6);
 	}
 }
-void fastClueIterator::fastIterateLevel9to6(__restrict const dead_clues_type &deadClues_old,
+void fastClueIterator::fastIterateLevel9to6(__restrict const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 		__restrict const fbm1_index_type &fua1_alive_old, __restrict const fbm2_index_type &fua2_alive_old, __restrict const fbm3_index_type &fua3_alive_old,
 		__restrict const fbm4_index_type &fua4_alive_old, __restrict const fbm5_index_type &fua5_alive_old, __restrict const fbm6_index_type &fua6_alive_old) {
 	int uaIndex_old = fua1_alive_old.getMinIndex();
@@ -526,13 +544,15 @@ void fastClueIterator::fastIterateLevel9to6(__restrict const dead_clues_type &de
 			fbm2_index_type fua2_alive_new(fua2_alive_old, fua2_indexes[cluePosition]); //hit
 			fbm1_index_type fua1_alive_new(fua1_alive_old, fua1_indexes[cluePosition]); //hit
 			clues[cluePosition] = g.digits[cluePosition];
+			dead_clues_type setClues_new(setClues_old);
+			setClues_new.setBit(cluePosition);
 			if(clueNumber == 6) {
-				fastIterateLevel5(deadClues_new,
+				fastIterateLevel5(deadClues_new, setClues_new,
 						fua1_alive_new, fua2_alive_new, fua3_alive_new,
 						fua4_alive_new, fua5_alive_new, fua6_alive_new);
 			}
 			else {
-				fastIterateLevel9to6(deadClues_new,
+				fastIterateLevel9to6(deadClues_new, setClues_new,
 						fua1_alive_new, fua2_alive_new, fua3_alive_new,
 						fua4_alive_new, fua5_alive_new, fua6_alive_new);
 			}
@@ -546,8 +566,8 @@ void fastClueIterator::fastIterateLevel9to6(__restrict const dead_clues_type &de
 		return;
 	}
 }
-void fastClueIterator::fastIterateLevel10(__restrict const dead_clues_type &deadClues11,
-		__restrict const bm1_index_type &ua1_alive11, __restrict const fbm2_index_type &fua2_alive11, __restrict const fbm3_index_type &fua3_alive11,
+void fastClueIterator::fastIterateLevel10(__restrict const dead_clues_type &deadClues11, const dead_clues_type &setClues11,
+		__restrict const bm1_index_type &ua1_alive11, __restrict const bm2_index_type &ua2_alive11, __restrict const fbm3_index_type &fua3_alive11,
 		__restrict const fbm4_index_type &fua4_alive11, __restrict const fbm5_index_type &fua5_alive11, __restrict const fbm6_index_type &fua6_alive11) {
 	int uaIndex11 = ua1_alive11.getMinIndex();
 	if(uaIndex11 != INT_MAX) {
@@ -562,11 +582,16 @@ void fastClueIterator::fastIterateLevel10(__restrict const dead_clues_type &dead
 			fbm5_index_type fua5_alive10(fua5_alive11, fua5_indexes[cluePosition]); //hit
 			fbm4_index_type fua4_alive10(fua4_alive11, fua4_indexes[cluePosition]); //hit
 			fbm3_index_type fua3_alive10(fua3_alive11, fua3_indexes[cluePosition]); //hit
-			fbm2_index_type fua2_alive10(fua2_alive11, fua2_indexes[cluePosition]); //hit
+//			fbm2_index_type fua2_alive10(fua2_alive11, fua2_indexes[cluePosition]); //hit
+			bm2_index_type ua2_alive10(ua2_alive11, ua2_indexes[cluePosition]); //hit
+			fua2ActualSize = ua2_alive10.copyAlive(ua2, fUa2, fbm2_index_type::maxSize, deadClues10); //extract
+			fbm2_index_type fua2_alive10(fUa2, fua2ActualSize, fua2_indexes); //rebuild
+			//printf("fua2ActualSize=%d\n", fua2ActualSize);
 			bm1_index_type ua1_alive10(ua1_alive11, ua1_indexes[cluePosition]); //hit
-			fuaActualSize = ua1_alive10.copyAlive(ua, fUa, fbm1_index_type::maxSize, deadClues10); //extract
+			fuaActualSize = ua1_alive10.copyAlive(ua, fUa, sizeof(fUa)/sizeof(fUa[0]), deadClues10); //extract
 			//printf("fuaActualSize=%d", fuaActualSize);
-			std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
+			//std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
+			std::partial_sort(fUa, fUa + fbm1_index_type::maxSize, fUa + fuaActualSize, sizedUset::isSmaller);
 			//fuaActualSize = (std::unique(fUa, fUa + fuaActualSize) - &fUa[0]);
 			//printf("\t%d\n", fuaActualSize);
 			for(int n = 0; n < fuaActualSize; n++) {
@@ -576,7 +601,9 @@ void fastClueIterator::fastIterateLevel10(__restrict const dead_clues_type &dead
 			}
 			fbm1_index_type fua1_alive10(fUa, fuaActualSize, fua1_indexes); //rebuild
 			clues[cluePosition] = g.digits[cluePosition];
-			fastIterateLevel9to6(deadClues10,
+			dead_clues_type setClues10(setClues11);
+			setClues10.setBit(cluePosition);
+			fastIterateLevel9to6(deadClues10, setClues10,
 					fua1_alive10, fua2_alive10, fua3_alive10,
 					fua4_alive10, fua5_alive10, fua6_alive10);
 			clues[cluePosition] = 0;
@@ -589,7 +616,7 @@ void fastClueIterator::fastIterateLevel10(__restrict const dead_clues_type &dead
 		return;
 	}
 }
-void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12,
+void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12, const dead_clues_type &setClues12,
 		const bm1_index_type &ua1_alive12, const bm2_index_type &ua2_alive12, const bm3_index_type &ua3_alive12,
 		const fbm4_index_type &fua4_alive12, const fbm5_index_type &fua5_alive12, const fbm6_index_type &fua6_alive12) {
 	int uaIndex12 = ua1_alive12.getMinIndex();
@@ -608,12 +635,15 @@ void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12,
 			fua3ActualSize = ua3_alive11.copyAlive(ua3, fUa3, fbm3_index_type::maxSize, deadClues11); //extract
 			fbm3_index_type fua3_alive11(fUa3, fua3ActualSize, fua3_indexes); //rebuild
 			bm2_index_type ua2_alive11(ua2_alive12, ua2_indexes[cluePosition]); //hit
-			fua2ActualSize = ua2_alive11.copyAlive(ua2, fUa2, fbm2_index_type::maxSize, deadClues11); //extract
-			fbm2_index_type fua2_alive11(fUa2, fua2ActualSize, fua2_indexes); //rebuild
+//			bm2_index_type ua2_alive11(ua2_alive12, ua2_indexes[cluePosition]); //hit
+//			fua2ActualSize = ua2_alive11.copyAlive(ua2, fUa2, fbm2_index_type::maxSize, deadClues11); //extract
+//			fbm2_index_type fua2_alive11(fUa2, fua2ActualSize, fua2_indexes); //rebuild
 			bm1_index_type ua1_alive11(ua1_alive12, ua1_indexes[cluePosition]); //hit
 			clues[cluePosition] = g.digits[cluePosition];
-			fastIterateLevel10(deadClues11,
-					ua1_alive11, fua2_alive11, fua3_alive11,
+			dead_clues_type setClues11(setClues12);
+			setClues11.setBit(cluePosition);
+			fastIterateLevel10(deadClues11, setClues11,
+					ua1_alive11, ua2_alive11, fua3_alive11,
 					fua4_alive11, fua5_alive11, fua6_alive11);
 			clues[cluePosition] = 0;
 			deadClues11.setBit(cluePosition);
@@ -625,7 +655,7 @@ void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12,
 		return;
 	}
 }
-void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13,
+void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13, const dead_clues_type &setClues13,
 		const bm1_index_type &ua1_alive13, const bm2_index_type &ua2_alive13, const bm3_index_type &ua3_alive13,
 		const bm4_index_type &ua4_alive13, const fbm5_index_type &fua5_alive13, const fbm6_index_type &fua6_alive13) {
 	int uaIndex13 = ua1_alive13.getMinIndex();
@@ -646,7 +676,9 @@ void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13,
 			bm2_index_type ua2_alive12(ua2_alive13, ua2_indexes[cluePosition]); //hit
 			bm1_index_type ua1_alive12(ua1_alive13, ua1_indexes[cluePosition]); //hit
 			clues[cluePosition] = g.digits[cluePosition];
-			fastIterateLevel11(deadClues12,
+			dead_clues_type setClues12(setClues13);
+			setClues12.setBit(cluePosition);
+			fastIterateLevel11(deadClues12, setClues12,
 					ua1_alive12, ua2_alive12, ua3_alive12,
 					fua4_alive12, fua5_alive12, fua6_alive12);
 			clues[cluePosition] = 0;
@@ -659,7 +691,7 @@ void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13,
 		return;
 	}
 }
-void fastClueIterator::fastIterateLevel13(const dead_clues_type &deadClues14,
+void fastClueIterator::fastIterateLevel13(const dead_clues_type &deadClues14, const dead_clues_type &setClues14,
 		const bm1_index_type &ua1_alive14, const bm2_index_type &ua2_alive14, const bm3_index_type &ua3_alive14,
 		const bm4_index_type &ua4_alive14, const bm5_index_type &ua5_alive14, const bm6_index_type &ua6_alive14) {
 	int uaIndex14 = ua1_alive14.getMinIndex();
@@ -682,7 +714,9 @@ void fastClueIterator::fastIterateLevel13(const dead_clues_type &deadClues14,
 			bm2_index_type ua2_alive13(ua2_alive14, ua2_indexes[cluePosition]); //hit
 			bm1_index_type ua1_alive13(ua1_alive14, ua1_indexes[cluePosition]); //hit
 			clues[cluePosition] = g.digits[cluePosition];
-			fastIterateLevel12(deadClues13,
+			dead_clues_type setClues13(setClues14);
+			setClues13.setBit(cluePosition);
+			fastIterateLevel12(deadClues13, setClues13,
 					ua1_alive13, ua2_alive13, ua3_alive13,
 					ua4_alive13, fua5_alive13, fua6_alive13);
 			clues[cluePosition] = 0;
@@ -695,7 +729,7 @@ void fastClueIterator::fastIterateLevel13(const dead_clues_type &deadClues14,
 		return;
 	}
 }
-void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old,
+void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 		const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
 		const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) {
 	int uaIndex_old = ua1_alive_old.getMinIndex();
@@ -714,13 +748,15 @@ void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old,
 			bm2_index_type ua2_alive_new(ua2_alive_old, ua2_indexes[cluePosition]); //hit
 			bm1_index_type ua1_alive_new(ua1_alive_old, ua1_indexes[cluePosition]); //hit
 			clues[cluePosition] = g.digits[cluePosition];
+			dead_clues_type setClues_new(setClues_old);
+			setClues_new.setBit(cluePosition);
 			if(clueNumber == 14) {
-			fastIterateLevel13(deadClues_new,
+			fastIterateLevel13(deadClues_new, setClues_new,
 					ua1_alive_new, ua2_alive_new, ua3_alive_new,
 					ua4_alive_new, ua5_alive_new, ua6_alive_new);
 			}
 			else {
-				fastIterateLevel(deadClues_new,
+				fastIterateLevel(deadClues_new, setClues_new,
 						ua1_alive_new, ua2_alive_new, ua3_alive_new,
 						ua4_alive_new, ua5_alive_new, ua6_alive_new);
 			}
@@ -870,7 +906,6 @@ next_s5:;
 	ua5_alive_initial = bm5_index_type(ua5, ua5ActualSize, ua5_indexes); //build
 
 	//compose UA6
-	ua6ActualSize = 0;
 
 //	//inject an artificial UA6 for band 3
 //	sizedUset tt(maskLSB[27]);
@@ -878,26 +913,29 @@ next_s5:;
 //	ua6[0] = tt;
 //	ua6ActualSize = 1;
 
-	if(bm6_index_type::maxSize) {
-		for ( int s1 = starter.starter6;  s1 < uaActualSize;  s1++ ) {
-			for (int s2 = starter.starter6 - 1; s2 < s1; s2++) {
+	int st6 = starter.starter6;
+
+	while(st6 >= 10) { //dynamiccaly adjust starter down
+		ua6ActualSize = 0;
+		for ( int s1 = st6;  s1 < uaActualSize;  s1++ ) {
+			for (int s2 = st6 - 1; s2 < s1; s2++) {
 				sizedUset tt = ua[s1];
 				if(tt.join(ua[s2])) {
-					for (int s3 = starter.starter6 - 2; s3 < s2; s3++) {
+					for (int s3 = st6 - 2; s3 < s2; s3++) {
 						sizedUset ttt = tt;
 						if (ttt.join(ua[s3])) {
-							for (int s4 = starter.starter6 - 3; s4 < s3; s4++) {
+							for (int s4 = st6 - 3; s4 < s3; s4++) {
 								sizedUset tttt = ttt;
 								if (tttt.join(ua[s4])) {
-									for (int s5 = starter.starter6 - 4; s5 < s4; s5++) {
+									for (int s5 = st6 - 4; s5 < s4; s5++) {
 										sizedUset ttttt = tttt;
 										if (ttttt.join(ua[s5])) {
-											for (int s6 = starter.starter6 - 5; s6 < s5; s6++) {
+											for (int s6 = st6 - 5; s6 < s5; s6++) {
 												sizedUset tttttt = ttttt;
 												if (tttttt.join(ua[s6])) {
 													//if(tttttt.getSize() > 58)
 													//	goto next_s6;
-													for (int s = 0; s < starter.starter6 - 5; s++) {
+													for (int s = 0; s < st6 - 5; s++) {
 														if (ua[s].isSubsetOf(tttttt))
 															goto next_s6;
 													}
@@ -933,10 +971,14 @@ next_s6:;
 				}
 			}
 		}
-		ua6composed:;
-		//ua6_type::bm128ToIndex(ua6, ua6ActualSize, state[clueNumber].setMask6, hittingMasks6);
-		ua6_alive_initial = bm6_index_type(ua6, ua6ActualSize, ua6_indexes); //build
+		if(true || 4 * ua6ActualSize > bm6_index_type::maxSize) { //one third of the buffer
+			break;
+		}
+		st6--;
 	}
+	ua6composed:;
+	//ua6_type::bm128ToIndex(ua6, ua6ActualSize, state[clueNumber].setMask6, hittingMasks6);
+	ua6_alive_initial = bm6_index_type(ua6, ua6ActualSize, ua6_indexes); //build
 }
 
 fastClueIterator::fastClueIterator(grid &g) :
@@ -948,25 +990,40 @@ fastClueIterator::fastClueIterator(grid &g) :
 	//nClues = 16;
 }
 
-void fastClueIterator::checkPuzzle(int clueNumber, const dead_clues_type & dc, int startPos) {
+void fastClueIterator::checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos) {
 	if(clueNumber == 0) {
-		checkPuzzle();
+		checkPuzzle(setClues);
 	}
 	else {
 		for(int i = startPos; i < 81; i++) {
-			if(clues[i]) {	//given
+			if(setClues.isBitSet(i)) {	//given
+				//clues[i] = g.digits[i];
 				continue;
 			}
+			//clues[i] = 0;
+//			if(clues[i]) {	//given
+//				continue;
+//			}
 			if(dc.isBitSet(i)) { //dead clue
 				continue;
 			}
-			clues[i] = g.digits[i];
-			checkPuzzle(clueNumber - 1, dc, i + 1);
-			clues[i] = 0;
+			//clues[i] = g.digits[i];
+			dead_clues_type setClues_new(setClues);
+			setClues_new.setBit(i);
+			checkPuzzle(clueNumber - 1, setClues_new, dc, i + 1);
+			//clues[i] = 0;
 		}
 	}
 }
-void fastClueIterator::checkPuzzle() {
+void fastClueIterator::checkPuzzle(const dead_clues_type &setClues) {
+	for(int i = 0; i < 81; i++) {
+		if(setClues.isBitSet(i)) {	//given
+			clues[i] = g.digits[i];
+		}
+		else {
+			clues[i] = 0;
+		}
+	}
 	if(solve(clues, 2) == 1) {
 		ch81 puz;
 		puz.toString(clues, puz.chars);
@@ -1036,8 +1093,7 @@ void fastClueIterator::iterate() {
 
 	clueNumber = nClues; //stack pointer to the "empty" puzzle
 	deadClues_initial.clear(); //no forced non-givens
-	//state[clueNumber].deadClues.clear();
-	//state[clueNumber].setClues.clear();
+	setClues_initial.clear(); //no partial givens
 	for(int i = 0; i < 81; i++) {
 		clues[i] = 0;
 	}
@@ -1071,7 +1127,7 @@ void fastClueIterator::iterate() {
 	printf("ua5=%d\t", ua5ActualSize);
 	printf("ua6=%d\n", ua6ActualSize);
 
-	fastIterateLevel(deadClues_initial,
+	fastIterateLevel(deadClues_initial, setClues_initial,
 		ua1_alive_initial, ua2_alive_initial, ua3_alive_initial,
 		ua4_alive_initial, ua5_alive_initial, ua6_alive_initial);
 	//printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
