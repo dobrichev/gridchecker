@@ -32,17 +32,22 @@ void ratingByDisjoints::setRate(const double rate) {ratePlus = rate;}
 
 sizedUset::sizedUset() {}
 sizedUset::sizedUset(const bm128 &bm) : bm128(bm) {setSize();}
-sizedUset::sizedUset(const bm128 &bm, const int size) : bm128(bm) {bitmap128.m128i_u32[3] = (uint32_t)size;}
+sizedUset::sizedUset(const bm128 &bm, const int size) : bm128(bm) {setInt8_15(size);}
 sizedUset::sizedUset(const sizedUset &bm) : bm128(bm) {}
 int sizedUset::getSize() const {
-	return bitmap128.m128i_u32[3];
+	//return bitmap128.m128i_u32[3];
+	return toInt8_15();
 }
 void sizedUset::setSize() {
-	bitmap128.m128i_u32[3] = 0; //don't count the previous size itself
-	bitmap128.m128i_u32[3] = (uint32_t)popcount_128();
+	//bitmap128.m128i_u32[3] = 0; //don't count the previous size itself
+	//bitmap128.m128i_u32[3] = (uint32_t)popcount_128();
+	*this &= maskLSB[81]; //count only the 81 lsb
+	setInt8_15(popcount_128());
+
 }
 void sizedUset::setSize(int newSize) {
-	bitmap128.m128i_u32[3] = (uint32_t)newSize;
+	//bitmap128.m128i_u32[3] = (uint32_t)newSize;
+	setInt8_15(newSize);
 }
 //int sizedUset::decreaseSize() {
 //	return --bitmap128.m128i_u8[15];

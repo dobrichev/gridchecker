@@ -77,6 +77,8 @@ public:
 	inline uint64_t toInt64() const {return _mm_cvtsi128_si64(bitmap128.m128i_m128i);}
 	inline uint64_t toInt64_1() const {return _mm_extract_epi64(bitmap128.m128i_m128i, 1);}
 	inline int toInt32() const {return _mm_cvtsi128_si32(bitmap128.m128i_m128i);}
+	inline int toInt8_15() const {return _mm_extract_epi8(bitmap128.m128i_m128i, 15);}
+	inline void setInt8_15(int i) {bitmap128.m128i_m128i = _mm_insert_epi8(bitmap128.m128i_m128i, i, 15);}
 	//inline bool isBitSet(const int theBit) const {return equals(*this & bitSet[theBit].m128i_m128i, bitSet[theBit].m128i_m128i);};
 	inline bool isBitSet(const int theBit) const {return !_mm_testz_si128(this->bitmap128.m128i_m128i, bitSet[theBit].m128i_m128i);}
 	inline void setBit(const int theBit) {*this |= bitSet[theBit].m128i_m128i;};

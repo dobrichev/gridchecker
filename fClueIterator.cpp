@@ -22,11 +22,14 @@
 using namespace std;
 
 typedef std::queue< dead_clues_type > passedBitmaps_t;
-typedef struct {
+struct incomplete_puzzle_t {
 	dead_clues_type setClues;
 	dead_clues_type deadClues;
 	int nPositions;
-} incomplete_puzzle_t;
+	incomplete_puzzle_t(const dead_clues_type& s, const dead_clues_type &d,
+			int n) :
+			setClues(s), deadClues(d), nPositions(n) {}
+};
 typedef std::queue< incomplete_puzzle_t > passedIncompleteBitmaps_t;
 
 unsigned long long d0, d1, d2, d3, d4, d5, s0, s1, s2, s3, s4, s5; //debug
@@ -141,7 +144,7 @@ private:
 			const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
 			const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) __attribute__((noinline));
 	void buildComposites();
-	void checkPuzzle(const dead_clues_type &setClues);
+	//void checkPuzzle(const dead_clues_type &setClues);
 	void checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc);
 	void expandPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos = 0);
 	void solvePuzzle(const dead_clues_type &setClues);
@@ -183,7 +186,12 @@ public:
 	dead_clues_type deadClues_initial;
 	dead_clues_type setClues_initial;
 
-	passedBitmaps_t passedBM;
+	dead_clues_type *passedFinalUA_ptr;
+	dead_clues_type passedFinalUA[40000];
+	//incomplete_puzzle_t *passedFinalUAIncomplete_ptr;
+	//incomplete_puzzle_t passedFinalUAIncomplete[10000];
+
+	//passedBitmaps_t passedBM;
 	passedIncompleteBitmaps_t passedIncompleteBM;
 
 	int fuaActualSize;
@@ -203,7 +211,6 @@ public:
 	int nClues;
 	unsigned int nPuzzles;
 	unsigned int nChecked;
-	unsigned int maxQ;
 	grid &g;
 	//forecastState fState[11];
 	std::set< int > topUA;
@@ -332,8 +339,6 @@ void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const
 	int uaIndex0 = fua1_alive1.getMinIndex();
 	if(uaIndex0 != INT_MAX) {
 		const uset &u = fUsets[uaIndex0];
-		dead_clues_type success[64];
-		dead_clues_type *nSuccess = success;
 		for(unsigned int i = 0; i < u.nbits; i++) {
 			int cluePosition0 = u.positions[i];
 			const bm128 posMask0(bitSet[cluePosition0]);
@@ -344,12 +349,10 @@ void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const
 				//d0++;
 				dead_clues_type setClues0(setClues1);
 				setClues0 |= posMask0;
-				*nSuccess = setClues0;
-				nSuccess++;
+				*passedFinalUA_ptr = setClues0;
+				//if(passedFinalUA_ptr < passedFinalUA + sizeof(passedFinalUA) / sizeof(passedFinalUA[0]) - 1) passedFinalUA_ptr++;
+				passedFinalUA_ptr++;
 			}
-		}
-		for(dead_clues_type * i = success; i < nSuccess; i++) {
-			checkPuzzle(*i);
 		}
 	}
 	else {
@@ -364,14 +367,29 @@ void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const
 	if(uaIndex1 != INT_MAX) {
 		dead_clues_type deadClues1(deadClues2);
 		const uset &u = fUsets[uaIndex1];
+//		for(unsigned int i = 0; i < u.nbits; i++) {
+//			int cluePosition1 = u.positions[i];
+//			const bm128 posMask1(bitSet[cluePosition1]);
+//			if(posMask1.isSubsetOf(deadClues2))
+//				continue;
+//			//s1++;
+//			if(fua2_alive2.isSubsetOf(fua2_indexes[cluePosition1])) {
+//				//d1++;
+//				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition1]); //hit
+//				dead_clues_type setClues1(setClues2);
+//				setClues1 |= posMask1;
+//				fastIterateLevel0(deadClues1, setClues1, fua1_alive1);
+//			}
+//			deadClues1 |= posMask1;
+//		}
 		for(unsigned int i = 0; i < u.nbits; i++) {
 			int cluePosition1 = u.positions[i];
 			const bm128 posMask1(bitSet[cluePosition1]);
 			if(posMask1.isSubsetOf(deadClues2))
 				continue;
-			s1++;
+			//s1++;
 			if(fua2_alive2.isSubsetOf(fua2_indexes[cluePosition1])) {
-				d1++;
+				//d1++;
 				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition1]); //hit
 				dead_clues_type setClues1(setClues2);
 				setClues1 |= posMask1;
@@ -397,9 +415,9 @@ void fastClueIterator::fastIterateLevel2(const dead_clues_type deadClues3, const
 			const bm128 posMask2(bitSet[cluePosition2]);
 			if(posMask2.isSubsetOf(deadClues3))
 				continue;
-			s2++;
+			//s2++;
 			if(fua3_alive3.isSubsetOf(fua3_indexes[cluePosition2])) {
-				d2++;
+				//d2++;
 				fbm2_index_type fua2_alive2(fua2_alive3, fua2_indexes[cluePosition2]); //hit
 				fbm1_index_type fua1_alive2(fua1_alive3, fua1_indexes[cluePosition2]); //hit
 				dead_clues_type setClues2(setClues3);
@@ -482,6 +500,8 @@ void fastClueIterator::fastIterateLevel4(const dead_clues_type & deadClues5, con
 void fastClueIterator::fastIterateLevel5(const dead_clues_type & deadClues6, const dead_clues_type &setClues6,
 		const fbm1_index_type & fua1_alive6, const fbm2_index_type & fua2_alive6, const fbm3_index_type & fua3_alive6,
 		const fbm4_index_type & fua4_alive6, const fbm5_index_type & fua5_alive6, const fbm6_index_type & fua6_alive6) {
+	//passedFinalUA_ptr = passedFinalUA;
+	//passedFinalUAIncomplete_ptr = passedFinalUAIncomplete;
 	int uaIndex6 = fua1_alive6.getMinIndex();
 	if(uaIndex6 != INT_MAX) {
 		dead_clues_type deadClues5(deadClues6);
@@ -512,6 +532,15 @@ void fastClueIterator::fastIterateLevel5(const dead_clues_type & deadClues6, con
 	else {
 		printf("UA exhausted after placing clue number 5\n");
 	}
+//	for(dead_clues_type * i = passedFinalUA; i < passedFinalUA_ptr; i++) {
+//		solvePuzzle(*i);
+//	}
+//	passedFinalUA_ptr = passedFinalUA;
+
+	//	for(incomplete_puzzle_t * i = passedFinalUAIncomplete; i < passedFinalUAIncomplete_ptr; i++) {
+//		passedIncompleteBM.emplace(*i);
+//	}
+//	passedFinalUAIncomplete_ptr = passedFinalUAIncomplete;
 }
 void fastClueIterator::fastIterateLevel9to6(const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 		const fbm1_index_type &fua1_alive_old, const fbm2_index_type &fua2_alive_old, const fbm3_index_type &fua3_alive_old,
@@ -598,18 +627,26 @@ void fastClueIterator::fastIterateLevel10(const dead_clues_type &deadClues11, co
 	else {
 		printf("UA exhausted after placing clue number 10\n");
 	}
+	//solve the cached puzzles
+	for(dead_clues_type * i = passedFinalUA; i < passedFinalUA_ptr; i++) {
+		solvePuzzle(*i);
+	}
+	passedFinalUA_ptr = passedFinalUA;
+	//expand and solve the cached partial puzzles
 	while(! passedIncompleteBM.empty()) {
 		const incomplete_puzzle_t &incompl = passedIncompleteBM.front();
-		expandPuzzle(incompl.nPositions, incompl.setClues, incompl.deadClues); //expand to passedBM
+		//expandPuzzle(incompl.nPositions, incompl.setClues, incompl.deadClues); //expand to passedBM
+		expandPuzzle(nClues - incompl.setClues.popcount_128(), incompl.setClues, incompl.deadClues); //expand to passedBM
 		passedIncompleteBM.pop();
 	}
-	//	maxQ=71144 for lowUA1 grid
-	if(maxQ < passedBM.size()) maxQ = passedBM.size();
-	while(! passedBM.empty()) {
-		//dead_clues_type clues = passedBM.front();
-		solvePuzzle(passedBM.front());
-		passedBM.pop();
-	}
+//	//	maxQ=71144 for lowUA1 grid
+//	if(maxQ < passedBM.size()) maxQ = passedBM.size();
+//	//solve the cached puzzles
+//	while(! passedBM.empty()) {
+//		//dead_clues_type clues = passedBM.front();
+//		solvePuzzle(passedBM.front());
+//		passedBM.pop();
+//	}
 }
 void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12, const dead_clues_type &setClues12,
 		const bm1_index_type &ua1_alive12, const bm2_index_type &ua2_alive12, const bm3_index_type &ua3_alive12,
@@ -965,6 +1002,7 @@ next_s6:;
 }
 
 fastClueIterator::fastClueIterator(grid &g) :
+		passedFinalUA_ptr(passedFinalUA),
 		fuaActualSize(0), fua2ActualSize(0), fua3ActualSize(0), fua4ActualSize(
 				0), fua5ActualSize(0), fua6ActualSize(0), uaActualSize(0), ua2ActualSize(
 				0), ua3ActualSize(0), ua4ActualSize(0), ua5ActualSize(0), ua6ActualSize(
@@ -974,12 +1012,19 @@ fastClueIterator::fastClueIterator(grid &g) :
 }
 
 void fastClueIterator::checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc) {
-	incomplete_puzzle_t incompl;
-	incompl.setClues = setClues;
-	incompl.deadClues = dc;
-	incompl.nPositions = clueNumber;
-	passedIncompleteBM.emplace(incompl);
+	passedIncompleteBM.emplace(setClues, dc, clueNumber);
+
+//	incomplete_puzzle_t incompl;
+//	incompl.setClues = setClues;
+//	incompl.deadClues = dc;
+//	incompl.nPositions = clueNumber;
+//	passedIncompleteBM.emplace(incompl);
+
 	//passedIncompleteBM.push(incompl);
+//	passedFinalUAIncomplete_ptr->setClues = setClues;
+//	passedFinalUAIncomplete_ptr->deadClues = dc;
+//	passedFinalUAIncomplete_ptr->nPositions = clueNumber;
+//	passedFinalUAIncomplete_ptr++;
 }
 
 void fastClueIterator::expandPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos) {
@@ -1002,10 +1047,10 @@ void fastClueIterator::expandPuzzle(int clueNumber, const dead_clues_type &setCl
 	}
 }
 
-void fastClueIterator::checkPuzzle(const dead_clues_type &setClues) {
-	//passedBM.push(setClues);
-	passedBM.emplace(setClues);
-}
+//void fastClueIterator::checkPuzzle(const dead_clues_type &setClues) {
+//	//passedBM.push(setClues);
+//	passedBM.emplace(setClues);
+//}
 void fastClueIterator::solvePuzzle(const dead_clues_type &setClues) {
 	//todo: check against the long list of UA
 	char clues[88];
@@ -1115,19 +1160,18 @@ void fastClueIterator::iterate() {
 	printf("ua4=%d\t", ua4ActualSize);
 	printf("ua5=%d\t", ua5ActualSize);
 	printf("ua6=%d\n", ua6ActualSize);
-	maxQ = 0;
 
 	fastIterateLevel(deadClues_initial, setClues_initial,
 		ua1_alive_initial, ua2_alive_initial, ua3_alive_initial,
 		ua4_alive_initial, ua5_alive_initial, ua6_alive_initial);
 	//printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
 	//s0=100*d0/s0;//d0/=1000000;
-	s1=100*d1/s1;d1/=1000000;
-	s2=100*d2/s2;d2/=1000000;
+	//s1=100*d1/s1;d1/=1000000;
+	//s2=100*d2/s2;d2/=1000000;
 	s3=100*d3/s3;d3/=1000000;
 	s4=100*d4/s4;d4/=1000000;
 	s5=100*d5/s5;d5/=1000000;
-	printf("\n%llu(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\tmaxQ=%u\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5,maxQ);
+	printf("\n%llu(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5);
 }
 
 extern int fastScan() {
