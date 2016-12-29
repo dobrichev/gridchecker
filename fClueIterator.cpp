@@ -74,9 +74,9 @@ typedef bit_mask<40960> bm5_index_type; //40960
 typedef bit_mask<20480> bm6_index_type; //32768
 
 typedef bit_mask<256> fbm1_index_type;
-typedef bit_mask<1024> fbm2_index_type; //768
-typedef bit_mask<1792> fbm3_index_type; //1536
-typedef bit_mask<4096> fbm4_index_type; //1792
+typedef bit_mask<1024> fbm2_index_type; //1024
+typedef bit_mask<1792> fbm3_index_type; //1792
+typedef bit_mask<4096> fbm4_index_type; //4096
 typedef bit_mask<1792> fbm5_index_type; //2048
 typedef bit_mask<1792> fbm6_index_type; //1792
 
@@ -124,7 +124,7 @@ private:
 			__restrict const fbm4_index_type &fua4_alive5, __restrict const fbm5_index_type &fua5_alive5);
 	void fastIterateLevel5(__restrict const dead_clues_type &deadClues6, __restrict const dead_clues_type &setClues6,
 			__restrict const fbm1_index_type &fua1_alive6, __restrict const fbm2_index_type &fua2_alive6, __restrict const fbm3_index_type &fua3_alive6,
-			__restrict const fbm4_index_type &fua4_alive6, __restrict const fbm5_index_type &fua5_alive6, __restrict const fbm6_index_type &fua6_alive6) __attribute__((noinline));
+			__restrict const fbm4_index_type &fua4_alive6, __restrict const fbm5_index_type &fua5_alive6, __restrict const fbm6_index_type &fua6_alive6);
 	void fastIterateLevel9to6(const dead_clues_type &deadClues_old, const dead_clues_type &setClues_old,
 			const fbm1_index_type &fua1_alive_old, const fbm2_index_type &fua2_alive_old, const fbm3_index_type &fua3_alive_old,
 			const fbm4_index_type &fua4_alive_old, const fbm5_index_type &fua5_alive_old, const fbm6_index_type &fua6_alive_old) __attribute__((noinline));
@@ -187,7 +187,7 @@ public:
 	dead_clues_type setClues_initial;
 
 	dead_clues_type *passedFinalUA_ptr;
-	dead_clues_type passedFinalUA[40000];
+	dead_clues_type passedFinalUA[100000];
 	//incomplete_puzzle_t *passedFinalUAIncomplete_ptr;
 	//incomplete_puzzle_t passedFinalUAIncomplete[10000];
 
@@ -367,21 +367,6 @@ void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const
 	if(uaIndex1 != INT_MAX) {
 		dead_clues_type deadClues1(deadClues2);
 		const uset &u = fUsets[uaIndex1];
-//		for(unsigned int i = 0; i < u.nbits; i++) {
-//			int cluePosition1 = u.positions[i];
-//			const bm128 posMask1(bitSet[cluePosition1]);
-//			if(posMask1.isSubsetOf(deadClues2))
-//				continue;
-//			//s1++;
-//			if(fua2_alive2.isSubsetOf(fua2_indexes[cluePosition1])) {
-//				//d1++;
-//				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition1]); //hit
-//				dead_clues_type setClues1(setClues2);
-//				setClues1 |= posMask1;
-//				fastIterateLevel0(deadClues1, setClues1, fua1_alive1);
-//			}
-//			deadClues1 |= posMask1;
-//		}
 		for(unsigned int i = 0; i < u.nbits; i++) {
 			int cluePosition1 = u.positions[i];
 			const bm128 posMask1(bitSet[cluePosition1]);
@@ -445,9 +430,9 @@ void fastClueIterator::fastIterateLevel3(const dead_clues_type deadClues4, const
 			const bm128 posMask3(bitSet[cluePosition3]);
 			if(posMask3.isSubsetOf(deadClues4))
 				continue;
-			s3++;
+			//s3++;
 			if(fua4_alive4.isSubsetOf(fua4_indexes[cluePosition3])) {
-				d3++;
+				//d3++;
 				fbm3_index_type fua3_alive3(fua3_alive4, fua3_indexes[cluePosition3]); //hit
 				fbm2_index_type fua2_alive3(fua2_alive4, fua2_indexes[cluePosition3]); //hit
 				fbm1_index_type fua1_alive3(fua1_alive4, fua1_indexes[cluePosition3]); //hit
@@ -476,9 +461,9 @@ void fastClueIterator::fastIterateLevel4(const dead_clues_type & deadClues5, con
 			const bm128 posMask4(bitSet[cluePosition4]);
 			if(posMask4.isSubsetOf(deadClues5))
 				continue;
-			s4++;
+			//s4++;
 			if(fua5_alive5.isSubsetOf(fua5_indexes[cluePosition4])) {
-				d4++;
+				//d4++;
 				fbm4_index_type fua4_alive4(fua4_alive5, fua4_indexes[cluePosition4]); //hit
 				fbm3_index_type fua3_alive4(fua3_alive5, fua3_indexes[cluePosition4]); //hit
 				fbm2_index_type fua2_alive4(fua2_alive5, fua2_indexes[cluePosition4]); //hit
@@ -511,9 +496,9 @@ void fastClueIterator::fastIterateLevel5(const dead_clues_type & deadClues6, con
 			const bm128 posMask5(bitSet[cluePosition5]);
 			if(posMask5.isSubsetOf(deadClues6))
 				continue;
-			s5++;
+			//s5++;
 			if(fua6_alive6.isSubsetOf(fua6_indexes[cluePosition5])) {
-				d5++;
+				//d5++;
 				fbm5_index_type fua5_alive5(fua5_alive6, fua5_indexes[cluePosition5]); //hit
 				fbm4_index_type fua4_alive5(fua4_alive6, fua4_indexes[cluePosition5]); //hit
 				fbm3_index_type fua3_alive5(fua3_alive6, fua3_indexes[cluePosition5]); //hit
@@ -635,8 +620,7 @@ void fastClueIterator::fastIterateLevel10(const dead_clues_type &deadClues11, co
 	//expand and solve the cached partial puzzles
 	while(! passedIncompleteBM.empty()) {
 		const incomplete_puzzle_t &incompl = passedIncompleteBM.front();
-		//expandPuzzle(incompl.nPositions, incompl.setClues, incompl.deadClues); //expand to passedBM
-		expandPuzzle(nClues - incompl.setClues.popcount_128(), incompl.setClues, incompl.deadClues); //expand to passedBM
+		expandPuzzle(incompl.nPositions, incompl.setClues, incompl.deadClues); //expand to passedBM
 		passedIncompleteBM.pop();
 	}
 //	//	maxQ=71144 for lowUA1 grid
@@ -1164,14 +1148,14 @@ void fastClueIterator::iterate() {
 	fastIterateLevel(deadClues_initial, setClues_initial,
 		ua1_alive_initial, ua2_alive_initial, ua3_alive_initial,
 		ua4_alive_initial, ua5_alive_initial, ua6_alive_initial);
-	//printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
-	//s0=100*d0/s0;//d0/=1000000;
-	//s1=100*d1/s1;d1/=1000000;
-	//s2=100*d2/s2;d2/=1000000;
-	s3=100*d3/s3;d3/=1000000;
-	s4=100*d4/s4;d4/=1000000;
-	s5=100*d5/s5;d5/=1000000;
-	printf("\n%llu(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5);
+//	//printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
+//	//s0=100*d0/s0;//d0/=1000000;
+//	//s1=100*d1/s1;d1/=1000000;
+//	//s2=100*d2/s2;d2/=1000000;
+//	s3=100*d3/s3;d3/=1000000;
+//	s4=100*d4/s4;d4/=1000000;
+//	s5=100*d5/s5;d5/=1000000;
+//	printf("\n%llu(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5);
 }
 
 extern int fastScan() {
