@@ -1308,9 +1308,9 @@ void fastClueIterator::iterate() {
 //	}
 
 	//std::iter_swap(usets + 0, usets + 5);
-	reorder4();
+	//reorder4();
 	//reorder6();
-	//reorder468(); //reorder ua4 based on the cell population of ua4+ua6+ua8
+	reorder468(); //reorder ua4 based on the cell population of ua4+ua6+ua8
 
 //	uset tmp[8];
 //	tmp[0] = usets[3];
@@ -1401,6 +1401,7 @@ extern int fastScan() {
 	clock_t start, finish;
 	char buf[3000];
 	while(fgets(buf, sizeof(buf), stdin)) {
+		//const char * buf = "897264153325971864146853279674318925281597346539642781713426598458739612962185437";
 		start = clock();
 		printf("%81.81s", buf);
 		grid g;
@@ -1410,7 +1411,7 @@ extern int fastScan() {
 		finish = clock();
 		fprintf(stdout, "\ttime %2.3f seconds.\n", (double)(finish - start) / CLOCKS_PER_SEC);
 		fflush(NULL);
-		//return 0; //bug in eclipse???
+		//return 0; //bug in eclipse??? Bug 500433
 	}
 	return 0;
 }
