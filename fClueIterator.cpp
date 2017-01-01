@@ -104,7 +104,7 @@ starters stFamily[] = {
 	{44,30,27,21,21}, //13 original but u6 +2
 	{45,30,27,21,19}, //14 original but u2 +1
 	{46,30,27,21,19}, //15 original but u2 +2
-	{50,30,27,21,19}, //16 original but u2 +6
+	{44,30,27,21,17}, //16 noname
 };
 
 class fastClueIterator {
@@ -747,13 +747,13 @@ void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old, co
 		const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) {
 
 	//if(deadClues_old.popcount_128() > 1) {
-	if(false && !deadClues_old.isZero()) {
+	if(!deadClues_old.isZero()) {
 		sizedUset topUa[50];
-		int topUaActualSize = ua1_alive_old.copyAlive(ua, topUa, 12, deadClues_old); //extract
+		int topUaActualSize = ua1_alive_old.copyAlive(ua, topUa, 8, deadClues_old); //extract
 		//printf("fuaActualSize=%d", fuaActualSize);
 		//std::sort(fUa, fUa + fuaActualSize, sizedUset::isSmaller);
 		//std::partial_sort(fUa, fUa + fbm1_index_type::maxSize, fUa + fuaActualSize, sizedUset::isSmaller);
-		sizedUset bestUa = *std::min_element(topUa, topUa + topUaActualSize);
+		sizedUset bestUa = *std::max_element(topUa, topUa + topUaActualSize);  //opposite of McGuire's where it should be min_element
 		bestUa &= maskLSB[81];
 		uset u(bestUa);
 		u.positionsByBitmap();
@@ -1110,49 +1110,50 @@ void fastClueIterator::solvePuzzle(const dead_clues_type &setClues) {
 //		printf("checked %d, found %d\n", nChecked, nPuzzles);
 //	}
 }
-//void fastClueIterator::reorder4() {
-//	struct wuset {
-//		int weight;
-//		uset u;
-//		bool operator<(const wuset& other) const {return weight < other.weight;};
-//	};
-//	wuset tmp[1000];
-//	int cellPopulation[88];
-//	for(int i = 0; i < 88; i++)
-//		cellPopulation[i] = 0;
-//	//pass 1: copy & count cells population
-//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-//		tmp[i].weight = 0;
-//		tmp[i].u = usets[i];
-//		for(int j = 0; j < 4; j++) {
-//			cellPopulation[tmp[i].u.positions[j]]++;
-//		}
-//	}
-//	//pass 2: count UA weights according to the population
-//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-//		for(int j = 0; j < 4; j++) {
-//			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
-//		}
-//	}
-//	//pass 3: place the top one and correct the weights
-//	for(int start = 0; start < g.usetsBySize.distributionBySize[4]; start++) {
-//		wuset *min = std::min_element(tmp + start, tmp + g.usetsBySize.distributionBySize[4]);
-//		std::iter_swap(tmp + start, min);
-//		//erase the placed weight
-//		for(int c = 0; c < 4; c++) {
-//			for(int i = start + 1; i < g.usetsBySize.distributionBySize[4]; i++) {
-//				if(tmp[i].u.isBitSet(tmp[start].u.positions[c])) {
-//					tmp[i].weight -= cellPopulation[tmp[start].u.positions[c]];
-//				}
-//			}
-//			cellPopulation[tmp[start].u.positions[c]] = 0; //subtract once
-//		}
-//	}
-//	//pass 4: copy back
-//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-//		usets[i] = tmp[i].u;
-//	}
-//}
+
+void fastClueIterator::reorder4() {
+	struct wuset {
+		int weight;
+		uset u;
+		bool operator<(const wuset& other) const {return weight < other.weight;};
+	};
+	wuset tmp[1000];
+	int cellPopulation[88];
+	for(int i = 0; i < 88; i++)
+		cellPopulation[i] = 0;
+	//pass 1: copy & count cells population
+	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+		tmp[i].weight = 0;
+		tmp[i].u = usets[i];
+		for(int j = 0; j < 4; j++) {
+			cellPopulation[tmp[i].u.positions[j]]++;
+		}
+	}
+	//pass 2: count UA weights according to the population
+	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+		for(int j = 0; j < 4; j++) {
+			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
+		}
+	}
+	//pass 3: place the top one and correct the weights
+	for(int start = 0; start < g.usetsBySize.distributionBySize[4]; start++) {
+		wuset *min = std::min_element(tmp + start, tmp + g.usetsBySize.distributionBySize[4]);
+		std::iter_swap(tmp + start, min);
+		//erase the placed weight
+		for(int c = 0; c < 4; c++) {
+			for(int i = start + 1; i < g.usetsBySize.distributionBySize[4]; i++) {
+				if(tmp[i].u.isBitSet(tmp[start].u.positions[c])) {
+					tmp[i].weight -= cellPopulation[tmp[start].u.positions[c]];
+				}
+			}
+			cellPopulation[tmp[start].u.positions[c]] = 0; //subtract once
+		}
+	}
+	//pass 4: copy back
+	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+		usets[i] = tmp[i].u;
+	}
+}
 
 void fastClueIterator::reorder468() {
 	struct wuset {
@@ -1199,37 +1200,37 @@ void fastClueIterator::reorder468() {
 	}
 }
 
-void fastClueIterator::reorder4() {
-	struct wuset {
-		int weight;
-		uset u;
-		bool operator<(const wuset& other) const {return weight < other.weight;};
-	};
-	wuset tmp[1000];
-	int cellPopulation[88];
-	for(int i = 0; i < 88; i++)
-		cellPopulation[i] = 0;
-	//pass 1: copy & count cells population
-	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-		tmp[i].weight = 0;
-		tmp[i].u = usets[i];
-		for(int j = 0; j < 4; j++) {
-			cellPopulation[tmp[i].u.positions[j]]++;
-		}
-	}
-	//pass 2: count UA weights according to the population
-	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-		for(int j = 0; j < 4; j++) {
-			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
-		}
-	}
-	//pass 3: sort
-	std::sort(tmp, tmp + g.usetsBySize.distributionBySize[4]);
-	//pass 4: copy back
-	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
-		usets[i] = tmp[i].u;
-	}
-}
+//void fastClueIterator::reorder4() {
+//	struct wuset {
+//		int weight;
+//		uset u;
+//		bool operator<(const wuset& other) const {return weight < other.weight;};
+//	};
+//	wuset tmp[1000];
+//	int cellPopulation[88];
+//	for(int i = 0; i < 88; i++)
+//		cellPopulation[i] = 0;
+//	//pass 1: copy & count cells population
+//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+//		tmp[i].weight = 0;
+//		tmp[i].u = usets[i];
+//		for(int j = 0; j < 4; j++) {
+//			cellPopulation[tmp[i].u.positions[j]]++;
+//		}
+//	}
+//	//pass 2: count UA weights according to the population
+//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+//		for(int j = 0; j < 4; j++) {
+//			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
+//		}
+//	}
+//	//pass 3: sort
+//	std::sort(tmp, tmp + g.usetsBySize.distributionBySize[4]);
+//	//pass 4: copy back
+//	for(int i = 0; i < g.usetsBySize.distributionBySize[4]; i++) {
+//		usets[i] = tmp[i].u;
+//	}
+//}
 void fastClueIterator::reorder6() {
 	struct wuset {
 		int weight;
@@ -1269,7 +1270,7 @@ void fastClueIterator::iterate() {
 	//printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
 	g.findUA4digits();
-	g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
+	//g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
 	//printf("\t%d\n", (int)us.size());
 
 	//debug
@@ -1299,6 +1300,7 @@ void fastClueIterator::iterate() {
 	}
 	uaActualSize = min(actualInitialUa, static_cast<int>(bm1_index_type::maxSize));
 
+	//this is possibly the main problem of this algorithm - it depends on UA ordering even within the partitions of same size
 //	int uaXstarter = g.usetsBySize.distributionBySize[4];
 //	for(int i = 6; i < 18; i++) {
 //		if(i == 5 || i == 7) continue;
@@ -1308,20 +1310,9 @@ void fastClueIterator::iterate() {
 //	}
 
 	//std::iter_swap(usets + 0, usets + 5);
-	reorder4();
+	reorder4(); //reorder ua4 based on the cell population of ua4 only (29.76 sec/grid)
 	//reorder6();
-	//reorder468(); //reorder ua4 based on the cell population of ua4+ua6+ua8
-
-//	uset tmp[8];
-//	tmp[0] = usets[3];
-//	tmp[1] = usets[4];
-//	tmp[2] = usets[5];
-//	tmp[3] = usets[1];
-//	tmp[4] = usets[2];
-//	tmp[5] = usets[6];
-//	tmp[6] = usets[0];
-//	tmp[7] = usets[7];
-//	for(int i = 0; i < 8; i++) usets[i] = tmp[7 - i];
+	//reorder468(); //reorder ua4 based on the cell population of ua4+ua6+ua8 (29.90 sec/grid)
 
 	for(int i = 0; i < uaActualSize; i++) {
 		sizedUset su;
@@ -1330,7 +1321,7 @@ void fastClueIterator::iterate() {
 		ua[i] = su; //store for indexing
 	}
 
-	//compose ordinary UA
+	//compose the ordinary UA index
 	//ua1_type::bm128ToIndex(ua, uaActualSize, state[nClues].setMask, hittingMasks);
 	ua1_alive_initial = bm1_index_type(ua, uaActualSize, ua1_indexes); //build
 
