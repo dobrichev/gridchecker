@@ -513,6 +513,29 @@ public:
 		}
 		return num_inserted;
 	}
+	int getShortestAliveIndex(const sizedUset *original, __restrict const dead_clues_type &deadClues) const {
+		int min_size = 100;
+		int bestIndex = INT_MAX;
+		int to_check = 8; //how deep to go forward
+		for(int i = 0; i < getNumWords(); i++) {
+			for(int j = 0; j < 4; j++) {
+				int base = i * 256 + j * 64;
+				for(uint64_t bits = aBits[i].u64[j]; bits; bits &= (bits - 1)) {
+					int offset = __builtin_ctzll(bits);
+					sizedUset s = original[base + offset];
+					s.clearBits(deadClues);
+					s.setSize();
+					if(s.getSize() < min_size) {
+						bestIndex = base + offset;
+						min_size = s.getSize();
+					}
+					if((--to_check) == 0)
+						return bestIndex;
+				}
+			}
+		}
+		return bestIndex;
+	}
 };
 
 struct BitMask768 : public bit_masks<768> {};
