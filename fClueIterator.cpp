@@ -89,7 +89,7 @@ struct starters {
 };
 starters stFamily[] = {
 	{44,30,27,21,19}, //0 original McGuire 16s {44,30,27,21,19}
-	{46,33,28,20,19}, //1 low, test "a"
+	{44,30,27,21,10000}, //1 low, test "a"
 	{46,34,28,20,19}, //2 low, test "a"
 	{48,36,33,25,19}, //3 u4<10 && u6>=30
 	{50,40,30,27,20}, //4 yet higher
@@ -97,7 +97,7 @@ starters stFamily[] = {
 	{56,44,30,27,21}, //6 shift right (only b6b is a bit better than for 50,40,30,27,20)
 	{58,45,31,27,21}, //7
 	{52,42,38,33,30}, //8 for low u4
-	{43,29,26,20,18}, //9 original -1
+	{43,29,26,20,10000}, //9 original -1
 	{44,30,27,21,18}, //10 original but u6 down
 	{44,30,27,21,15}, //11 original McGuire 16s with lower U6
 	{44,30,27,21,20}, //12 original but u6 up
@@ -109,7 +109,7 @@ starters stFamily[] = {
 
 class fastClueIterator {
 private:
-	//void forecastIterateLevel(int currentUaIndex = 0);
+	void countExits();
 	inline void fastIterateLevel0(__restrict const dead_clues_type deadClues1, __restrict const dead_clues_type &setClues1,
 			__restrict const fbm1_index_type fua1_alive1);
 	inline void fastIterateLevel1(__restrict const dead_clues_type deadClues2, __restrict const dead_clues_type &setClues2,
@@ -144,13 +144,13 @@ private:
 			const bm1_index_type &ua1_alive_old, const bm2_index_type &ua2_alive_old, const bm3_index_type &ua3_alive_old,
 			const bm4_index_type &ua4_alive_old, const bm5_index_type &ua5_alive_old, const bm6_index_type &ua6_alive_old) __attribute__((noinline));
 	void buildComposites();
-	//void checkPuzzle(const dead_clues_type &setClues);
 	void checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc);
 	void expandPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos = 0);
 	void solvePuzzle(const dead_clues_type &setClues);
 	void reorder4();
 	void reorder6();
-	void reorder468910();
+	void reorderInitialUa();
+	void remapUa();
 	fastClueIterator();
 public:
 	static const int maxInitialUa = 2000;
@@ -220,11 +220,12 @@ public:
 	//forecastState fState[11];
 	std::set< int > topUA;
 	starters starter;
+	int cellMapper[81];
 
 	fastClueIterator(grid &g);
 	void iterate();
 };
-//void fastClueIterator::forecastIterateLevel(int currentUaIndex) {
+void fastClueIterator::countExits() {
 //	forecastState &oldState = fState[clueNumber];
 //	clueNumber--;
 //	forecastState &newState = fState[clueNumber];
@@ -246,100 +247,8 @@ public:
 //		newState.deadClues.setBit(cluePosition);
 //	}
 //	clueNumber++;
-//}
+}
 
-//void fastClueIterator::fastIterateLevel0(int currentUaIndex) {
-//	fastState &oldState = state[1];
-//	if(currentUaIndex == INT_MAX) {
-//		//iterate over all non-dead clues
-//		checkPuzzle(oldState.deadClues);
-//		goto done;
-//	}
-//	else {
-//		register __m256i setMask = oldState.fSetMask.getTopWord();
-//		uset &u = fUsets[currentUaIndex];
-//		for(int i = 0; i < u.nbits; i++) {
-//			int cluePosition = u.positions[i];
-//			if(oldState.deadClues.isBitSet(cluePosition))
-//				continue;
-//			s0++;
-//			//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
-//			if(fua1_type::isHitting(fHittingMasks[cluePosition].getTopWord(), setMask)) {
-//				d0++;
-//				//all UA are hit, check the puzzle for uniqueness
-//				//solve
-//				clueNumber = 0;
-//				clues[cluePosition] = g.digits[cluePosition];
-//				checkPuzzle(oldState.deadClues);
-//				clues[cluePosition] = 0;
-//			}
-//		}
-//	}
-//done:
-//	clueNumber = 1;
-//}
-//void fastClueIterator::fastIterateLevel1(int currentUaIndex, bm128& deadClues2) {
-//	fastState &oldState = state[2];
-//	//register bm128 deadClues1 = oldState.deadClues; //dead clues after clue 2 placement
-//	register bm128 deadClues1 = deadClues2; //dead clues after clue 2 placement
-//	if(currentUaIndex == INT_MAX) {
-//		//iterate over all non-dead clues
-//		checkPuzzle(2, deadClues1);
-//		goto done;
-//	}
-//	else {
-//		clueNumber = 1;
-//		register __m256i setMask2 = oldState.fSetMask.getTopWord(); //unhit ua1 after clue 2 placement
-//		uset &u = fUsets[currentUaIndex]; //topmost unhit ua1 after clue 2 placement
-//		for(int i = 0; i < u.nbits; i++) { //iterate clue 1
-//			int cluePosition = u.positions[i];
-//			if(deadClues1.isBitSet(cluePosition))
-//				continue;
-//			s1++;
-//			if(state[2].fSetMask2.isHittingAll(fHittingMasks2[cluePosition])) {
-//				d1++;
-//				//all ua2 are hit, check ua1
-//				//newState.fSetMask.hitOnly(oldState.fSetMask, fHittingMasks[cluePosition]);
-//				register __m256i setMask1 = fua1_type::hitWord(fHittingMasks[cluePosition].getTopWord(), setMask2);
-//				//int nextUaIndex = newState.fSetMask.firstUnhit();
-//				int nextUaIndex = fua1_type::firstUnhitWord(setMask1);
-//				clues[cluePosition] = g.digits[cluePosition];
-//
-//				//fastIterateLevel0(nextUaIndex);
-//				if(nextUaIndex == INT_MAX) {
-//					//iterate over all non-dead clues
-//					checkPuzzle(1, deadClues1);
-//					//goto done;
-//				}
-//				else {
-//					//register __m256i setMask1 = oldState.fSetMask.getTopWord();
-//					uset &u = fUsets[nextUaIndex];
-//					for(int i = 0; i < u.nbits; i++) { //iterate clue 0
-//						int clue0Position = u.positions[i];
-//						if(deadClues1.isBitSet(clue0Position))
-//							continue;
-//						s0++;
-//						//if(oldState.fSetMask.isHittingAll(fHittingMasks[cluePosition])) {
-//						if(fua1_type::isHitting(fHittingMasks[clue0Position].getTopWord(), setMask1)) {
-//							d0++;
-//							//all UA are hit, check the puzzle for uniqueness
-//							//solve
-//							clueNumber = 0;
-//							clues[clue0Position] = g.digits[clue0Position];
-//							checkPuzzle(0);
-//							clues[clue0Position] = 0;
-//						}
-//					}
-//				}
-//				clueNumber = 1;
-//				clues[cluePosition] = 0;
-//			}
-//			deadClues1.setBit(cluePosition);
-//		}
-//	}
-//done:
-//	clueNumber = 2;
-//}
 void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const dead_clues_type &setClues1, const fbm1_index_type fua1_alive1) {
 	int uaIndex0 = fua1_alive1.getMinIndex();
 	if(uaIndex0 != INT_MAX) {
@@ -1116,11 +1025,13 @@ void fastClueIterator::solvePuzzle(const dead_clues_type &setClues) {
 	//todo: check against the long list of UA
 	char clues[88];
 	for(int i = 0; i < 81; i++) {
+		int actualCell = cellMapper[i];
 		if(setClues.isBitSet(i)) {	//given
-			clues[i] = g.digits[i];
+			//clues[i] = g.digits[i];
+			clues[actualCell] = g.digits[actualCell];
 		}
 		else {
-			clues[i] = 0;
+			clues[actualCell] = 0;
 		}
 	}
 	if(solve(clues, 2) == 1) {
@@ -1182,78 +1093,223 @@ void fastClueIterator::reorder4() {
 		usets[i] = tmp[i].u;
 	}
 }
+void fastClueIterator::remapUa() {
+//	struct row {
+//		float pSet[81];
+//		float pDead[81];
+//		int targetCells[81];
+//	};
+//	struct family {	//family of UA sets of the same size
+//		//row entryRow; //the latest row from the previous family
+//		int numCells;
+//		int numSets;
+//		uset *firstSrc;	//pointer to the source
+//	};
+//	family families[20];
+//	int numFamilies = 0;
+//	int targetCell[81];
+//	for(int c = 0; c < 81; c++) {
+//		targetCell[c] = -1; //unknown
+//	}
+//	for(int sz = 0, beg = 0; sz < 20; sz++) {
+//		if(g.usetsBySize.distributionBySize[sz]) {
+//			families[numFamilies].firstSrc = usets + beg;
+//			families[numFamilies].numSets = g.usetsBySize.distributionBySize[sz];
+//			families[numFamilies].numCells = sz;
+//			numFamilies++;
+//		}
+//	}
+//	//reorder the UA sets within this family
+//	for(int f = 0; f < numFamilies; f++) {
+//		family &ff = families[f];
+//		for(int s = 0; s < ff.numSets; s++) {
+//			//weight the rest sets within this family and place the best one on this position
+//			if(f == 0 && s == 0) {
+//				//we are in the very beginning. Count cell population forward until preferred cell appears.
+//				for(int fam = f; fam < numFamilies; fam++) {
+//					for(ss....)
+//				}
+//			}
+//		}
+//	}
+}
 
-void fastClueIterator::reorder468910() {
+void fastClueIterator::reorderInitialUa() {
 	struct wuset {
 		long long weight;
 		uset u;
-		bool operator<(const wuset& other) const { //on top is the element with less size and most weight
-			if(u.nbits < other.u.nbits)
-				return true;
-			if(u.nbits > other.u.nbits)
-				return false;
-			return weight > other.weight;
-		};
+		bm128 mapped;
+//		bool operator<(const wuset& other) const { //on top is the element with less size and most weight
+//			if(u.nbits < other.u.nbits)
+//				return true;
+//			if(u.nbits > other.u.nbits)
+//				return false;
+//			return !(mapped < other.mapped);
+//		}
+		bool operator<(const wuset& other) const {return u.nbits < other.u.nbits;}
+		static bool byWeight(const wuset& p1, const wuset& p2) {return p1.weight < p2.weight;}
+	};
+	struct mapping {
+		int src;
+		int target;
+		long long population;
+		bool operator<(const mapping& other) const {return population > other.population;}
+		static bool back(const mapping& p1, const mapping& p2) {return p1.src < p2.src;}
 	};
 	int start6 = g.usetsBySize.distributionBySize[4];
 	int start8 = start6 + g.usetsBySize.distributionBySize[6];
 	int start9 = start8 + g.usetsBySize.distributionBySize[8];
 	int start10 = start9 + g.usetsBySize.distributionBySize[9];
-	int start11 = start10 + g.usetsBySize.distributionBySize[10];
-	int end = start11;
-	int popWeights[11] = {0,0,0,0,10000,0,1000,0,100,10,1}; // weights depending on joined UA size
-	//int popWeights[11] = {0,0,0,0,6,0,4,0,3,1,1}; // for{4,6,8} respective weights are 24*{1/4,1/6,1/8}
-	//int popWeights[9] = {0,0,0,0,36,0,16,0,9}; // for{4,6,8} respective weights are 24*{1/4,1/6,1/8}^2
-	//int popWeights[11] = {0,0,0,0,60,0,40,0,30,27,24}; // weights depending on joined UA size ~ 1/n * 240
-	//int popWeights[9] = {0,0,0,0,1,0,1,0,1};
+//	int start11 = start10 + g.usetsBySize.distributionBySize[10];
+//	int start12 = start11 + g.usetsBySize.distributionBySize[11];
+//	int start13 = start12 + g.usetsBySize.distributionBySize[12];
+//	int start14 = start13 + g.usetsBySize.distributionBySize[13];
+//	int start15 = start14 + g.usetsBySize.distributionBySize[14];
+	int end = start10;
+	int curvature[5] = {160000000,80000000,40000000,20000000,10000000}; //boost the weight of the top 5 ua, forming a "preferred region"
+	int popWeights[] = {0,0,0,0,1000000,0,10000,0,100,1}; // weights depending on joined UA size
 
-	wuset tmp[1000];
-	long long cellPopulation[88];
-	for(int i = 0; i < 88; i++)
-		cellPopulation[i] = 0;
+	wuset tmp[2000];
+	mapping cellPopulation[88];
+	for(int i = 0; i < 88; i++) {
+		cellPopulation[i].population = 0;
+		cellPopulation[i].src = i;
+	}
 	//pass 1: copy & count cells population
 	for(int i = 0; i < end; i++) {
-		tmp[i].weight = 0;
 		tmp[i].u = usets[i];
 		for(unsigned int j = 0; j < tmp[i].u.nbits; j++) {
-			cellPopulation[tmp[i].u.positions[j]] += popWeights[tmp[i].u.nbits];
+			cellPopulation[tmp[i].u.positions[j]].population += popWeights[tmp[i].u.nbits];
 		}
 	}
-	//pass 2: count UA weights according to the population
-	for(int i = 0; i < end; i++) {
+	//pass 2: assign ua4-6 weights according to the population
+	for(int i = 0; i < start8; i++) {
+		tmp[i].weight = 0;
 		for(unsigned int j = 0; j < tmp[i].u.nbits; j++) {
-			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
+			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]].population;
 		}
+		tmp[i].weight /= tmp[i].u.nbits * tmp[i].u.nbits; //don't allow 6s to steal boosted by 4s cells and move to top
 	}
-//	//pass 3: sort
-//	std::sort(tmp, tmp + start6); //ua4
-//	std::sort(tmp + start6, tmp + start8); //ua6
-//	//std::sort(tmp + start6, tmp + start8, wuset::reverse); //ua6 reverse
-//	std::sort(tmp + start8, tmp + start9); //ua8
-//	//std::sort(tmp + start8, tmp + start9, wuset::reverse); //ua8 reverse
-//	std::sort(tmp + start9, tmp + start10); //ua9
-//	std::sort(tmp + start10, tmp + start11); //ua10
-//	////std::sort(tmp, tmp + end); //enjoy the mess
-	//pass 3: place the top one and correct the weights
-	for(int start = 0; start < end; start++) {
-		wuset *min = std::min_element(tmp + start, tmp + end); //most connected first
-		std::iter_swap(tmp + start, min);
-//		char txt[88];
-//		tmp[start].u.toMask81(txt);
-//		printf("%81.81s\t%d\t%lld\n", txt, tmp[start].u.nbits, tmp[start].weight);
-		//erase the placed weight
-		for(unsigned int c = 0; c < tmp[start].u.nbits; c++) {
-			for(int i = start + 1; i < end; i++) {
-				if(tmp[i].u.isBitSet(tmp[start].u.positions[c])) {
-					tmp[i].weight += popWeights[tmp[start].u.nbits]; //add weight for the already placed connected cell
+//	//debug
+//	mapping xcellPopulation[88];
+//	std::partial_sort_copy(cellPopulation, cellPopulation + 81, xcellPopulation, xcellPopulation + 81);
+//	for(int i = 0; i < 81; i++) {
+//		printf("%lld\t%d\t%d\n", xcellPopulation[i].population, xcellPopulation[i].target, xcellPopulation[i].src);
+//	}
+//	//end debug
+
+	//find up to 5 top ua
+	//if(start6) { //num ua4 > 0
+		for(int start = 0; start < std::min(start8, 5); start++) {
+			wuset *min = std::max_element(tmp + start, tmp + start8, wuset::byWeight); //find most connected
+			std::iter_swap(tmp + start, min); //place it on top
+			//printf("boosting pos %d by ua with size %d\n", start, tmp[start].u.nbits);
+			for(unsigned int j = 0; j < tmp[start].u.nbits; j++) {
+				cellPopulation[tmp[start].u.positions[j]].population += curvature[start]; //boost population weight for the cells so that connected ua move to the top
+			}
+			//recalculate weights for the rest ua
+			for(int i = start + 1; i < start8; i++) {
+				tmp[i].weight = 0;
+				for(unsigned int j = 0; j < tmp[i].u.nbits; j++) {
+					tmp[i].weight += cellPopulation[tmp[i].u.positions[j]].population;
 				}
+				tmp[i].weight /= tmp[i].u.nbits * tmp[i].u.nbits; //don't allow 6s to steal boosted by 4s cells and move to top
 			}
 		}
+	//}
+
+	//now we have cellPopulation calculated on the basis of common weighted population + additional weight correction for the top ua
+	std::sort(cellPopulation, cellPopulation + 81); //order cells by weight, most frequent at bottom
+	for(int i = 0; i < 81; i++) {
+		cellPopulation[i].target = i; //at which position this bit will be mapped
+		//printf("%lld\t%d\t%d\n", cellPopulation[i].population, cellPopulation[i].target, cellPopulation[i].src);
 	}
 
-	//pass 4: copy back
+	for(int i = 0; i < 81; i++) {
+		cellMapper[i] = cellPopulation[i].src; //virtual to real coordinate system
+	}
+//	for(int i = 0; i < 81; i++) {
+//		printf("%2d=>%2d\n", i, cellMapper[i]);
+//	}
+
+	std::sort(cellPopulation, cellPopulation + 81, mapping::back); //return to the original order
 	for(int i = 0; i < end; i++) {
-		usets[i] = tmp[i].u;
+		tmp[i].mapped.clear();
+		for(unsigned int j = 0; j < tmp[i].u.nbits; j++) {
+			tmp[i].mapped.setBit(cellPopulation[tmp[i].u.positions[j]].target); //re-map each bit
+		}
+	}
+//	for(int i = 0; i < 81; i++) {
+//		printf("%lld\t%d\t%d\n", cellPopulation[i].population, cellPopulation[i].target, cellPopulation[i].src);
+//	}
+
+	//sort all selected ua by size + re-mapped bits
+	std::stable_sort(tmp, tmp + end);
+
+	//debug
+//	for(int i = 0; i < start10; i++) {
+//		char txt[88];
+//		uset uu(tmp[i].mapped);
+//		uu.positionsByBitmap();
+//		uu.toMask81(txt);
+//		printf("%81.81s\t%d\n", txt, uu.nbits);
+//	}
+
+////	//pass 3: sort
+////	std::sort(tmp, tmp + start6); //ua4
+////	std::sort(tmp + start6, tmp + start8); //ua6
+////	//std::sort(tmp + start6, tmp + start8, wuset::reverse); //ua6 reverse
+////	std::sort(tmp + start8, tmp + start9); //ua8
+////	//std::sort(tmp + start8, tmp + start9, wuset::reverse); //ua8 reverse
+////	std::sort(tmp + start9, tmp + start10); //ua9
+////	std::sort(tmp + start10, tmp + start11); //ua10
+////	////std::sort(tmp, tmp + end); //enjoy the mess
+//	//pass 3: place the top one and correct the weights
+//	for(int start = 0; start < end; start++) {
+//		wuset *min = std::min_element(tmp + start, tmp + end); //most connected first
+//		std::iter_swap(tmp + start, min);
+////		char txt[88];
+////		tmp[start].u.toMask81(txt);
+////		printf("%81.81s\t%d\t%lld\n", txt, tmp[start].u.nbits, tmp[start].weight);
+//		//erase the placed weight
+//		for(unsigned int c = 0; c < tmp[start].u.nbits; c++) {
+//			for(int i = start + 1; i < end; i++) {
+//				if(tmp[i].u.isBitSet(tmp[start].u.positions[c])) {
+//					tmp[i].weight += popWeights[tmp[start].u.nbits] * curvature[std::min(start, 3)]; //add weight for the already placed connected cell
+//				}
+//			}
+//		}
+//	}
+
+	//copy back the selected ua
+	for(int i = 0; i < end; i++) {
+		//usets[i] = tmp[i].u;
+		usets[i].bitmap128 = tmp[i].mapped.bitmap128;
+		usets[i].positionsByBitmap();
+		//debug
+//		char txt[88];
+//		usets[i].toMask81(txt);
+//		printf("%81.81s\t%d\n", txt, usets[i].nbits);
+	}
+
+	//read larger UA up to 2000 total
+	int start = end;
+	end = g.usetsBySize.distributionBySize[15] + g.usetsBySize.distributionBySize[16] + g.usetsBySize.distributionBySize[17] + g.usetsBySize.distributionBySize[18] + g.usetsBySize.distributionBySize[19];
+	if(start + end > 2000) end = 2000 - start; //usets buffer size
+	for(int i = 0; i < end; i++) {
+		tmp[i].u = usets[start + i];
+		tmp[i].mapped.clear();
+		for(unsigned int j = 0; j < tmp[i].u.nbits; j++) {
+			tmp[i].mapped.setBit(cellPopulation[tmp[i].u.positions[j]].target); //re-map each bit
+		}
+	}
+	//reorder
+	std::stable_sort(tmp, tmp + end);
+	//copy back the selected ua
+	for(int i = 0; i < end; i++) {
+		//usets[start + i] = tmp[i].u;
+		usets[start + i].bitmap128 = tmp[i].mapped.bitmap128;
+		usets[start + i].positionsByBitmap();
 	}
 }
 
@@ -1327,17 +1383,17 @@ void fastClueIterator::iterate() {
 	//printf("\t%d\n", (int)us.size());
 	//debug: add all 4-digit UA
 	g.findUA4digits();
-	//g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
+	g.findUA4boxes(); //slows down the whole process, even w/o taking into account the UA creation
 	//printf("\t%d\n", (int)us.size());
 
 	//debug
 	g.usetsBySize.setDistributions();
 	printf("\n");
-//	for(int i = 4; i < 20; i++) {
-//		if(i == 5 || i == 7) continue;
-//		printf("%d=%d\t", i, g.usetsBySize.distributionBySize[i]);
-//	}
-//	printf("\n");
+	for(int i = 4; i < 20; i++) {
+		if(i == 5 || i == 7) continue;
+		printf("%d=%d\t", i, g.usetsBySize.distributionBySize[i]);
+	}
+	printf("\n");
 
 	actualInitialUa = 0;
 	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && actualInitialUa < maxInitialUa; p++) {
@@ -1345,9 +1401,9 @@ void fastClueIterator::iterate() {
 	}
 	uaActualSize = min(actualInitialUa, static_cast<int>(bm1_index_type::maxSize));
 
-	//this is possibly the main problem of this algorithm - it depends on UA ordering even within the partitions of same size
-//	int uaXstarter = g.usetsBySize.distributionBySize[4];
-//	for(int i = 6; i < 18; i++) {
+//	//this is possibly the main problem of this algorithm - it depends on UA ordering even within the partitions of same size
+//	int uaXstarter = 0;//g.usetsBySize.distributionBySize[4];
+//	for(int i = 4; i < 18; i++) {
 //		if(i == 5 || i == 7) continue;
 //		int end = min(uaXstarter + g.usetsBySize.distributionBySize[i], uaActualSize);
 //		std::random_shuffle(usets + uaXstarter, usets + end); //randomize the ua of same size
@@ -1359,7 +1415,7 @@ void fastClueIterator::iterate() {
 	//reorder4(); //reorder ua4 based on the cell population of ua4 only (29.76 sec/grid)
 	//reorder6();
 	//reorder468(); //reorder ua4 based on the cell population of ua4+ua6+ua8 (29.90 sec/grid)
-	reorder468910();
+	reorderInitialUa(); //do a complex reordering making the UA order independent of the morph. Faster than random but slower than alphabetical so far.
 
 	for(int i = 0; i < uaActualSize; i++) {
 		sizedUset su;
@@ -1394,11 +1450,14 @@ void fastClueIterator::iterate() {
 	d0=d1=d2=d3=d4=d5=s0=s1=s2=s3=s4=s5=0;
 
 	int chosenFamily = 0;
-	if(g.usetsBySize.distributionBySize[4] <= 2) {
+	if (g.usetsBySize.distributionBySize[4] < 10 && g.usetsBySize.distributionBySize[6] >= 30) {
+		chosenFamily = 3;
+	}
+	else if(g.usetsBySize.distributionBySize[4] <= 2) {
 		chosenFamily = 9;
 	}
-	else if (g.usetsBySize.distributionBySize[4] < 10 && g.usetsBySize.distributionBySize[6] >= 30) {
-		chosenFamily = 3;
+	else if(g.usetsBySize.distributionBySize[4] <= 9) {
+		chosenFamily = 1;
 	}
 	else {
 		chosenFamily = 0;
@@ -1425,9 +1484,12 @@ void fastClueIterator::iterate() {
 //	int avgUa4size = 0;
 //	for (int i = 0; i < ua4ActualSize; i++) avgUa4size += ua4[i].getSize();
 //	avgUa4size /= ua4ActualSize;
-//	printf("ua =%d\t", uaActualSize);
-//	printf("ua2=%d\t", ua2ActualSize);
-//	printf("ua3=%d\t", ua3ActualSize);
+	printf("ua =%d\t", uaActualSize);
+	printf("ua2=%d\t", ua2ActualSize);
+	printf("ua3=%d\t", ua3ActualSize);
+	printf("ua4=%d\t", ua4ActualSize);
+	printf("ua5=%d\t", ua5ActualSize);
+	printf("ua6=%d\n", ua6ActualSize);
 //	printf("ua4=%d*%d\t", ua4ActualSize, avgUa4size);
 //	printf("ua5=%d*%d\t", ua5ActualSize, avgUa5size);
 //	printf("ua6=%d*%d\n", ua6ActualSize, avgUa6size);
@@ -1435,15 +1497,15 @@ void fastClueIterator::iterate() {
 	fastIterateLevel(deadClues_initial, setClues_initial,
 		ua1_alive_initial, ua2_alive_initial, ua3_alive_initial,
 		ua4_alive_initial, ua5_alive_initial, ua6_alive_initial);
-//	printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
-//	s0=100*d0/s0;//d0/=1000000;
-//	s1=100*d1/s1;d1/=1000000;
-//	s2=100*d2/s2;d2/=1000000;
-//	s3=100*d3/s3;d3/=1000000;
-//	s4=100*d4/s4;d4/=1000000;
-//	s5=100*d5/s5;d5/=1000000;
-//	printf("\n%llu(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\t%lluM(%llu%%)\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5);
-	printf("U6\t%lluM\t(%llu%%)\n", s5/1000000, d5*100/s5);
+	printf("\tpuz=%d\tch=%d", nPuzzles, nChecked);
+	s0=100*d0/s0;//d0/=1000000;
+	s1=100*d1/s1;d1/=1000000;
+	s2=100*d2/s2;d2/=1000000;
+	s3=100*d3/s3;d3/=1000000;
+	s4=100*d4/s4;d4/=1000000;
+	s5=100*d5/s5;d5/=1000000;
+	printf("\n%8llu(%3llu%%) %4lluM(%3llu%%) %4lluM(%3llu%%) %4lluM(%3llu%%) %4lluM(%3llu%%) %4lluM(%3llu%%)\n",d0,s0,d1,s1,d2,s2,d3,s3,d4,s4,d5,s5);
+	//printf("U6\t%lluM\t(%llu%%)\n", s5/1000000, d5*100/s5);
 }
 
 extern int fastScan() {
