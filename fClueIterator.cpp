@@ -553,7 +553,7 @@ void fastClueIterator::fastIterateLevel10(const dead_clues_type &deadClues11, co
 		const fbm4_index_type &fua4_alive11, const fbm5_index_type &fua5_alive11, const fbm6_index_type &fua6_alive11) {
 	//int uaIndex11 = ua1_alive11.getMinIndex();
 	int uaIndex11;
-	if(false && !deadClues11.isZero()) {
+	if(!deadClues11.isZero()) {
 		uaIndex11 = ua1_alive11.getShortestAliveIndex(ua, deadClues11);
 	}
 	else {
@@ -596,7 +596,7 @@ void fastClueIterator::fastIterateLevel11(const dead_clues_type &deadClues12, co
 		const bm4_index_type &ua4_alive12, const fbm5_index_type &fua5_alive12, const fbm6_index_type &fua6_alive12) {
 //	int uaIndex12 = ua1_alive12.getMinIndex();
 	int uaIndex12;
-	if(false && !deadClues12.isZero()) {
+	if(!deadClues12.isZero()) {
 		uaIndex12 = ua1_alive12.getShortestAliveIndex(ua, deadClues12);
 	}
 	else {
@@ -636,7 +636,7 @@ void fastClueIterator::fastIterateLevel12(const dead_clues_type &deadClues13, co
 		const bm1_index_type &ua1_alive13, const bm2_index_type &ua2_alive13, const bm3_index_type &ua3_alive13,
 		const bm4_index_type &ua4_alive13, const bm5_index_type &ua5_alive13, const bm6_index_type &ua6_alive13) {
 	int uaIndex13;
-	if(false && !deadClues13.isZero()) {
+	if(!deadClues13.isZero()) {
 		uaIndex13 = ua1_alive13.getShortestAliveIndex(ua, deadClues13);
 	}
 	else {
@@ -720,7 +720,7 @@ void fastClueIterator::fastIterateLevel(const dead_clues_type &deadClues_old, co
 //			printf("UA exhausted after placing clue number %d\n", clueNumber);
 //		}
 //	}
-	if(false && !deadClues_old.isZero()) {
+	if(!deadClues_old.isZero()) {
 		uaIndex_old = ua1_alive_old.getShortestAliveIndex(ua, deadClues_old);
 	}
 	else {

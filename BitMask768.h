@@ -516,7 +516,7 @@ public:
 	int getShortestAliveIndex(const sizedUset *original, __restrict const dead_clues_type &deadClues) const {
 		int min_size = 100;
 		int bestIndex = INT_MAX;
-		int to_check = 8; //how deep to go forward
+		int to_check = 12; //how deep to go forward (8)
 		for(int i = 0; i < getNumWords(); i++) {
 			for(int j = 0; j < 4; j++) {
 				int base = i * 256 + j * 64;
