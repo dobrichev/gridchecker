@@ -191,7 +191,7 @@ public:
 		}
 		return -1;
 	}
-	int getPositions(unsigned char *positions) const {
+	inline int getPositions(unsigned char *positions) const {
 //		int n = 0;
 //		//for(int i = 0; i < 81; i++)
 //		//	if(isBitSet(i))
@@ -230,11 +230,39 @@ public:
 			int offset = __builtin_ctzll(bits);
 			positions[n++] = offset;
 		}
-		for(uint64_t bits = toInt64_1(); bits; bits &= (bits - 1)) {
+		//for(uint64_t bits = toInt64_1(); bits; bits &= (bits - 1)) {
+		for(uint64_t bits = bitmap128.m128i_u64[1]; bits; bits &= (bits - 1)) {
 			int offset = __builtin_ctzll(bits);
 			positions[n++] = 64 + offset;
 		}
 		return n;
+
+//		int n = 0;
+//		uint64_t offset;
+//		for(uint64_t bits = toInt64(); bits; bits &= ~(((uint64_t)1) << offset)) { //slower
+//			offset = __builtin_ctzll(bits);
+//			positions[n++] = offset;
+//		}
+//		for(uint64_t bits = toInt64_1(); bits; bits &= ~(((uint64_t)1) << offset)) {
+//			offset = __builtin_ctzll(bits);
+//			positions[n++] = 64 + offset;
+//		}
+//		return n;
+
+//		//_bittestandreset64(bits, offset)
+//		int n = 0;
+//		uint64_t offset;
+//		for(uint64_t bits = toInt64(); bits;) {
+//			offset = __builtin_ctzll(bits);
+//			positions[n++] = offset;
+//			asm("btr %1,%0" : "+r"(bits) : "r"(offset)); //slow
+//		}
+//		for(uint64_t bits = toInt64_1(); bits;) {
+//			offset = __builtin_ctzll(bits);
+//			positions[n++] = 64 + offset;
+//			asm("btr %1,%0" : "+r"(bits) : "r"(offset));
+//		}
+//		return n;
 	}
 	inline void transposeSlice(const bm128 &src) //http://mischasan.wordpress.com/2011/07/24/what-is-sse-good-for-transposing-a-bit-matrix/
 	{

@@ -26,14 +26,16 @@ struct ratingByDisjoints {
 };
 
 struct uset : public bm128 {
-	unsigned char positions[81];
 	unsigned int nbits;
+	unsigned char positions[81];
 	//int digitMask;
 	//int numDisjoints;
 	uset(void);
 	uset(const bm128 &bm);
 	bool operator < (const uset &rhs) const;
-	void positionsByBitmap();
+	void positionsByBitmap() {
+		nbits = getPositions(positions);
+	}
 	void bitmapByPositions();
 	void bitmapByIntegerPos(const int *pos, const int size);
 	void toString(char *r) const;

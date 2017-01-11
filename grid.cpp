@@ -1319,12 +1319,12 @@ void grid::findUA4boxes() {
 	//int nOldUA = static_cast<int>(usetsBySize.size());
 	//printf("Finding UA by removing digits from 5 boxes.\n");
 	//printf("Boxes\t\tSol\tNew UA\tTotal UA\n");
-	for(unsigned int d1 = 1; d1 <= 6; d1++) { //4-boxes
-		for(unsigned int d2 = d1 + 1; d2 <= 7; d2++) {
-			for(unsigned int d3 = d2 + 1; d3 <= 8; d3++) {
-				for(unsigned int d4 = d3 + 1; d4 <= 9; d4++) {
+	for(unsigned int d1 = 0; d1 < 6; d1++) { //4-boxes
+		for(unsigned int d2 = d1 + 1; d2 < 7; d2++) {
+			for(unsigned int d3 = d2 + 1; d3 < 8; d3++) {
+				for(unsigned int d4 = d3 + 1; d4 < 9; d4++) {
 					for(unsigned int j = 0, k = 0; j < 81; j++) {
-						if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1)
+						if(boxByCellIndex[j] == d1 || boxByCellIndex[j] == d2 || boxByCellIndex[j] == d3 || boxByCellIndex[j] == d4)
 							hideThem[k++] = j;
 					}
 					unsigned long long nSol = findUaBySolving(hideThem, 36);
