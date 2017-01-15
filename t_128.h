@@ -53,7 +53,6 @@ struct bm128 {
 private:
 	inline static __m128i andnot(const __m128i l, const __m128i r) {return _mm_andnot_si128(l, r);};
 	inline static bool equals(const __m128i l, const __m128i r) {return 0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(l, r));};
-	inline __m128i operator& (const __m128i r) const {return _mm_and_si128(bitmap128.m128i_m128i, r);};
 public:
 	t_128 bitmap128;
 	bm128() {};
@@ -65,6 +64,7 @@ public:
 	inline bool operator== (const bm128& r) const {return 0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i));};
 	inline bool operator!= (const bm128& r) const {return 0xFFFF != _mm_movemask_epi8(_mm_cmpeq_epi8(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i));};
 	inline __m128i operator& (const bm128 &r) const {return _mm_and_si128(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i);};
+	//inline __m128i operator& (const __m128i r) const {return _mm_and_si128(bitmap128.m128i_m128i, r);};
 	inline void operator&= (const bm128& r) {bitmap128.m128i_m128i = _mm_and_si128(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i);};
 	inline void operator|= (const bm128& r) {bitmap128.m128i_m128i = _mm_or_si128(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i);};
 	inline void operator|= (const __m128i r) {bitmap128.m128i_m128i = _mm_or_si128(bitmap128.m128i_m128i, r);};
@@ -94,6 +94,7 @@ public:
 		return bitmap128.m128i_u64[0] < rhs.bitmap128.m128i_u64[0];
 	}
 	inline void operator= (const bm128 &rhs) {bitmap128.m128i_m128i = rhs.bitmap128.m128i_m128i;};
+	//inline void operator= (const bm128 rhs) {bitmap128.m128i_m128i = rhs.bitmap128.m128i_m128i;};
 	inline void loadUnaligned (const void *p) {bitmap128.m128i_m128i = _mm_loadu_si128((const __m128i *)p);};
 	inline void invalidate() {bitmap128.m128i_m128i = maskffff.m128i_m128i;};
 	//inline bool isInvalid() const {return equals(bitmap128.m128i_m128i, maskffff.m128i_m128i);};
@@ -299,6 +300,10 @@ public:
 //			dest[80 * srcSize128 + slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
 //		}
 //	}
+	inline static bm128 getFFFF() {
+		__m128i x = _mm_undefined_si128();
+		return _mm_cmpeq_epi8(x, x);
+	}
 };
 
 #endif // T_128_H_INCLUDED

@@ -30,8 +30,8 @@ public:
 //	}
 };
 
-//typedef bm128 dead_clues_type;
-typedef dclues dead_clues_type;
+typedef bm128 dead_clues_type;
+//typedef dclues dead_clues_type;
 
 
 //#if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
