@@ -93,7 +93,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.1837215251" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.17254552" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
-								<option id="gnu.cpp.link.option.flags.1094869741" name="Linker flags" superClass="gnu.cpp.link.option.flags" useByScannerDiscovery="false" value="-march=sandybridge -g -flto -O3 -funsafe-loop-optimizations" valueType="string"/>
+								<option id="gnu.cpp.link.option.flags.1094869741" name="Linker flags" superClass="gnu.cpp.link.option.flags" useByScannerDiscovery="false" value="-march=sandybridge -g -flto -O3 -funsafe-loop-optimizations -fuse-ld=gold -fuse-linker-plugin" valueType="string"/>
 								<option id="gnu.cpp.link.option.debugging.gprof.37495100" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" useByScannerDiscovery="false" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.debugging.prof.562693541" name="Generate prof information (-p)" superClass="gnu.cpp.link.option.debugging.prof" useByScannerDiscovery="false" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.debugging.codecov.937891771" name="Generate gcov information (-ftest-coverage -fprofile-arcs)" superClass="gnu.cpp.link.option.debugging.codecov" useByScannerDiscovery="false" value="false" valueType="boolean"/>

@@ -156,7 +156,7 @@ private:
 	void remapUa();
 	fastClueIterator();
 public:
-	static const int maxInitialUa = 2000;
+	static const int maxInitialUa = 4000;
 	bm1_index_type ua1_indexes[81];
 	bm2_index_type ua2_indexes[81];
 	bm3_index_type ua3_indexes[81];
@@ -198,7 +198,7 @@ public:
 	dead_clues_type setClues_initial;
 
 	dead_clues_type *passedFinalUA_ptr;
-	dead_clues_type passedFinalUA[100000];
+	dead_clues_type passedFinalUA[200000];
 	//incomplete_puzzle_t *passedFinalUAIncomplete_ptr;
 	//incomplete_puzzle_t passedFinalUAIncomplete[10000];
 
@@ -228,7 +228,7 @@ public:
 	std::set< int > topUA;
 	starters starter;
 	int mapIteratorToGrid[81];
-	unsigned long long deadCount;
+	//unsigned long long deadCount;
 
 	fastClueIterator(grid &g);
 	void iterate();
@@ -1007,7 +1007,12 @@ void fastClueIterator::expandPuzzle(int clueNumber, const dead_clues_type &setCl
 //	passedBM.emplace(setClues);
 //}
 void fastClueIterator::solvePuzzle(const dead_clues_type &setClues) {
-	//todo: check against the long list of UA
+	//yet another obstacle: pass trough the tunnel of the unused larger UA sets
+	for(int l = bm1_index_type::maxSize; l < actualInitialUa; l++) {
+		if(setClues.isDisjoint(usets[l]))
+			return;
+	}
+	//final test
 	char clues[88];
 	for(int i = 0; i < 81; i++) {
 		int actualCell = mapIteratorToGrid[i];
@@ -1022,7 +1027,7 @@ void fastClueIterator::solvePuzzle(const dead_clues_type &setClues) {
 	if(solve(clues, 2) == 1) {
 		ch81 puz;
 		puz.toString(clues, puz.chars);
-		printf("%81.81s\n", puz.chars);
+		printf("\n%81.81s", puz.chars);
 		nPuzzles++;
 	}
 	nChecked++;
@@ -1355,8 +1360,9 @@ void fastClueIterator::reorderInitialUa() {
 
 	//read larger UA up to 2000 total
 	int start = end;
-	end = g.usetsBySize.distributionBySize[15] + g.usetsBySize.distributionBySize[16] + g.usetsBySize.distributionBySize[17] + g.usetsBySize.distributionBySize[18] + g.usetsBySize.distributionBySize[19];
-	if(start + end > 2000) end = 2000 - start; //usets buffer size
+	//end = g.usetsBySize.distributionBySize[15] + g.usetsBySize.distributionBySize[16] + g.usetsBySize.distributionBySize[17] + g.usetsBySize.distributionBySize[18] + g.usetsBySize.distributionBySize[19];
+	//if(start + end > maxInitialUa) end = maxInitialUa - start; //usets buffer size
+	end = actualInitialUa - start;
 	for(int i = 0; i < end; i++) {
 		tmp[i].u = usets[start + i];
 		tmp[i].mapped.clear();
@@ -1457,7 +1463,7 @@ void fastClueIterator::iterate() {
 //	printf("\n");
 
 	actualInitialUa = 0;
-	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && actualInitialUa < maxInitialUa; p++) {
+	for(usetListBySize::const_iterator p = us.begin(); p != us.end() && actualInitialUa <= maxInitialUa; p++) {
 		usets[actualInitialUa++] = *p; //structure copy
 	}
 	uaActualSize = min(actualInitialUa, static_cast<int>(bm1_index_type::maxSize));
@@ -1496,7 +1502,7 @@ void fastClueIterator::iterate() {
 	deadClues_initial.clearBits(maskLSB[81]);
 	setClues_initial.clear(); //no partial givens
 
-	d0=d1=d2=d3=d4=d5=s0=s1=s2=s3=s4=s5=deadCount=0;
+	d0=d1=d2=d3=d4=d5=s0=s1=s2=s3=s4=s5/*=deadCount*/=0;
 
 	int chosenFamily = 0;
 //	if (g.usetsBySize.distributionBySize[4] < 10 && g.usetsBySize.distributionBySize[6] >= 30) {
