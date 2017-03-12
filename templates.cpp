@@ -6,9 +6,9 @@
 #include "ch81.h"
 #include "solver.h"
 #include "grid.h"
-//#include "clueIterator.h"
 #include "rowminlex.h"  //subcanon()
 #include "patminlex.h"
+//#include "BitMask768.h"
 
 #include <map>
 using namespace std;
@@ -82,7 +82,8 @@ void getGrid23Templates() {
 	char buf[2000];
 	while(fgets(buf, sizeof(buf), stdin)) {
 		ch81 sol;
-		int puzSize = sol.fromString(buf);
+		//int puzSize = sol.fromString(buf);
+		sol.fromString(buf);
 
 		//find all 1-templates
 		for(int i = 0; i < 9; i++) {
@@ -152,9 +153,13 @@ void getGrid23Templates() {
 
 struct rookeryWithTemplates : public map<bm128, puzzleSet, less<bm128>, mm_allocator<bm128>> {};
 
+//typedef bit_mask<5184> colTemplates_index_type;
+
 struct templates {
 	bm128 allTemplates[46656];
 	bm128 colTemplates[9][5184];
+//	colTemplates_index_type colTemplatesIndexes[9][81];
+//	colTemplates_index_type colTemplatesIndexAll[9];
 	void init();
 	unsigned long long nSol(const char *p);
 	templates();
@@ -199,7 +204,7 @@ void templates::template2rookery(const ch81& src, bm128& r) const {
 
 void templates::getComplementaryTemplates() const { //read k-rookeries from stdin and count complementary templates. Works well for 5-templates from 4-rookeries.
 	char buf[2000];
-	unsigned long long nTempl = 0;
+	//unsigned long long nTempl = 0;
 	unsigned long long progress = 0;
 	const unsigned long long maxSol = 10000000;
 	//ch81 p1[maxSol];
@@ -697,9 +702,27 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 			}
 			break;
 		case 5:
-			for(int c0 = 0; c0 < 5184; c0++) {
-				bm128 r0(colTemplates[r1row[0]][c0]);
-				if(!r0.isSubsetOf(r)) continue;
+		{
+//			colTemplates_index_type r0index = colTemplatesIndexAll[r1row[0]]; //all templates containing cell from the first row, all ones
+//			for(int i = 9; i < 81; i++) {
+//				if(!r.isBitSet(i)) {
+//					r0index = colTemplates_index_type(r0index, colTemplatesIndexes[r1row[0]][i]); //clear all templates having cell outside of the rookery
+//				}
+//			}
+			//reduce the templates to play with, by removing those that aren't subsets of the given rookery
+			bm128 rt[9][5184];
+			int rtsize[9] = {0,0,0,0,0,0,0,0,0};
+			for(int c = 0; c < rsize; c++) {
+				for(int i = 0; i < 5184; i++) {
+					if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+						rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+						rtsize[c]++;
+					}
+				}
+			}
+			for(int c0 = 0; c0 < rtsize[0]; c0++) {
+				bm128 r0(rt[0][c0]);
+				//if(!r0.isSubsetOf(r)) continue;
 				ch81 p1;
 				p1.clear();
 				for(int i = 0; i < 81; i++) {
@@ -709,8 +732,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 				}
 				bm128 rr0(r);
 				rr0.clearBits(r0);
-				for(int c1 = 0; c1 < 5184; c1++) {
-					bm128 r1(colTemplates[r1row[1]][c1]);
+				for(int c1 = 0; c1 < rtsize[1]; c1++) {
+					bm128 r1(rt[1][c1]);
 					if(!r1.isSubsetOf(rr0)) continue;
 					ch81 p2 = p1; //structure copy
 					for(int i = 0; i < 81; i++) {
@@ -720,8 +743,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 					}
 					bm128 rr1(rr0);
 					rr1.clearBits(r1);
-					for(int c2 = 0; c2 < 5184; c2++) {
-						bm128 r2(colTemplates[r1row[2]][c2]);
+					for(int c2 = 0; c2 < rtsize[2]; c2++) {
+						bm128 r2(rt[2][c2]);
 						if(!r2.isSubsetOf(rr1)) continue;
 						ch81 p3 = p2; //structure copy
 						for(int i = 0; i < 81; i++) {
@@ -731,8 +754,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 						}
 						bm128 rr2(rr1);
 						rr2.clearBits(r2);
-						for(int c3 = 0; c3 < 5184; c3++) {
-							bm128 r3(colTemplates[r1row[3]][c3]);
+						for(int c3 = 0; c3 < rtsize[3]; c3++) {
+							bm128 r3(rt[3][c3]);
 							if(!r3.isSubsetOf(rr2)) continue;
 							ch81 p4 = p3; //structure copy
 							for(int i = 0; i < 81; i++) {
@@ -756,6 +779,7 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 					}
 				}
 			}
+		}
 			break;
 		default:
 			break;
@@ -784,7 +808,8 @@ void templates::templates2rookeries() const { //read k-templates from stdin and 
 	char buf[2000];
 	while(fgets(buf, sizeof(buf), stdin)) {
 		ch81 puz;
-		int puzSize = puz.fromString(buf);
+		//int puzSize = puz.fromString(buf);
+		puz.fromString(buf);
 		ch81 p1 = puz; //structure copy
 		for(int i = 0; i < 81; i++) {
 			if(p1.chars[i]) {
@@ -1078,7 +1103,7 @@ unsigned long long templates::nSol(const char *p) {
 	int kTemplCount[9];
 	int validCount[9]; //how many valid templates remain for each digit
 	unsigned long long ret = 0;
-	ch81 prBuf; //print buffer for debugging/explaining
+	//ch81 prBuf; //print buffer for debugging/explaining
 #ifdef __INTEL_COMPILER
 #pragma noparallel
 #endif //__INTEL_COMPILER
@@ -1494,6 +1519,9 @@ void templates::init() {
 			}
 		}
 	}
+//	for(int i = 0; i < 9; i++) {
+//		colTemplatesIndexAll[i] = colTemplates_index_type(colTemplates[i], 5184, colTemplatesIndexes[i]); //build colTemplatesIndexes
+//	}
 }
 
 void countSolutions () {

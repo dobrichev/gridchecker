@@ -333,9 +333,9 @@ public:
  *  @tparam _Key  The maximal boolean elements to hold.
 */
 template <int maxElements> class bit_mask {
-	static const int maxWords = maxElements / 256;
+	static const int maxWords = (maxElements + 255) / 256;
 
-	bm256 aBits[maxElements / 256];
+	bm256 aBits[(maxElements + 255) / 256];
 	int actualWords;
 
     /**
