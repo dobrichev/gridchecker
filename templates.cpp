@@ -811,22 +811,22 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 		case 6:
 			{
 				//reduce the templates to play with, by removing those that aren't subsets of the given rookery
-//				bm128 rt[5][5184];
-//				int rtsize[5] = {0,0,0,0,0};
-//				for(int c = 0; c < 5; c++) {
-//					for(int i = 0; i < 5184; i++) {
-//						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
-//							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
-//							rtsize[c]++;
-//						}
-//					}
-//				}
-//				for(int c0 = 0; c0 < rtsize[0]; c0++) {
-//					bm128 r0(rt[0][c0]);
+				bm128 rt[5][5184];
+				int rtsize[5] = {0,0,0,0,0};
+				for(int c = 0; c < 5; c++) {
+					for(int i = 0; i < 5184; i++) {
+						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+							rtsize[c]++;
+						}
+					}
+				}
+				for(int c0 = 0; c0 < rtsize[0]; c0++) {
+					bm128 r0(rt[0][c0]);
 
-				for(int c0 = 0; c0 < 5184; c0++) {
-					bm128 r0(colTemplates[r1row[0]][c0]);
-					if(!r0.isSubsetOf(r)) continue;
+//				for(int c0 = 0; c0 < 5184; c0++) {
+//					bm128 r0(colTemplates[r1row[0]][c0]);
+//					if(!r0.isSubsetOf(r)) continue;
 
 					ch81 p1;
 					p1.clear();
@@ -838,20 +838,20 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 					bm128 rr0(r);
 					rr0.clearBits(r0);
 
-					int rtsize[5] = {0,0,0,0,0};
-					bm128 rt[5][5184];
-					for(int c = 1; c < 5; c++) {
-						for(int i = 0; i < 5184; i++) {
-							if(colTemplates[r1row[c]][i].isSubsetOf(rr0)) {
-								rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
-								rtsize[c]++;
+					int rrtsize[4] = {0,0,0,0};
+					bm128 rrt[4][5184];
+					for(int c = 0; c < 4; c++) {
+						for(int i = 0; i < rtsize[c + 1]; i++) {
+							if(rt[c + 1][i].isSubsetOf(rr0)) {
+								rrt[c][rrtsize[c]] = rt[c + 1][i];
+								rrtsize[c]++;
 							}
 						}
 					}
 
-					for(int c1 = 0; c1 < rtsize[1]; c1++) {
-						bm128 r1(rt[1][c1]);
-						if(!r1.isSubsetOf(rr0)) continue;
+					for(int c1 = 0; c1 < rrtsize[0]; c1++) {
+						bm128 r1(rrt[0][c1]);
+						//if(!r1.isSubsetOf(rr0)) continue;
 						ch81 p2 = p1; //structure copy
 						for(int i = 0; i < 81; i++) {
 							if(r1.isBitSet(i)) {
@@ -860,8 +860,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 						}
 						bm128 rr1(rr0);
 						rr1.clearBits(r1);
-						for(int c2 = 0; c2 < rtsize[2]; c2++) {
-							bm128 r2(rt[2][c2]);
+						for(int c2 = 0; c2 < rrtsize[1]; c2++) {
+							bm128 r2(rrt[1][c2]);
 							if(!r2.isSubsetOf(rr1)) continue;
 							ch81 p3 = p2; //structure copy
 							for(int i = 0; i < 81; i++) {
@@ -871,8 +871,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 							}
 							bm128 rr2(rr1);
 							rr2.clearBits(r2);
-							for(int c3 = 0; c3 < rtsize[3]; c3++) {
-								bm128 r3(rt[3][c3]);
+							for(int c3 = 0; c3 < rrtsize[2]; c3++) {
+								bm128 r3(rrt[2][c3]);
 								if(!r3.isSubsetOf(rr2)) continue;
 								ch81 p4 = p3; //structure copy
 								for(int i = 0; i < 81; i++) {
@@ -882,8 +882,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 								}
 								bm128 rr3(rr2);
 								rr3.clearBits(r3);
-								for(int c4 = 0; c4 < rtsize[4]; c4++) {
-									bm128 r4(rt[4][c4]);
+								for(int c4 = 0; c4 < rrtsize[3]; c4++) {
+									bm128 r4(rrt[3][c4]);
 									if(!r4.isSubsetOf(rr3)) continue;
 									ch81 p5 = p4; //structure copy
 									for(int i = 0; i < 81; i++) {
@@ -1751,32 +1751,48 @@ extern void test() {
 	puzzleSet p3;
 	lightweightUsetList r3all;
 	tpl.get3rookeries(r3all);
-	printf("Number of 3-rookeries\t%d\n", (int)r3all.size());
+	fprintf(stderr, "Number of 3-rookeries\t%d\n", (int)r3all.size());
 	unsigned long long numT3 = 0;
-	int x = 0;
+	unsigned long long numT6 = 0;
+#ifdef _OPENMP
+#pragma omp parallel
+#endif //_OPENMP
+	{
 	for(lightweightUsetList::const_iterator r3 = r3all.begin(); r3 != r3all.end(); r3++) {
-		x++;
-		if(x <= 1) continue;
-		if(x > 8) continue;
+#ifdef _OPENMP
+#pragma omp single nowait
+#endif //_OPENMP
+		{
 		puzzleSet t3;
 		tpl.rookery2templates(*r3, t3);
 		bm128 r6 = maskLSB[81];
 		r6.clearBits(*r3);
 		puzzleSet t6;
 		tpl.rookery2templates(r6, t6);
-		printf("%d\t%d\n", (int)t3.size(), (int)t6.size());
-		numT3 += t3.size();
+		ch81 txt;
+		r3->toMask81(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+		{
+			printf("%81.81s\t%d\t%d\n", txt.chars, (int)t3.size(), (int)t6.size());
+			numT3 += t3.size();
+			numT6 += t6.size();
+			fflush(NULL);
+		}
 //		ch81 txt;
 //		r3->toMask81(txt.chars);
 //		printf("%81.81s\n", txt.chars);
 //		for(puzzleSet::const_iterator p3 = t3.begin(); p3 != t3.end(); p3++) {
 //
 //		}
-		fflush(NULL);
+		}
 	}
-	printf("Number of 3-templates\t%llu\n", numT3);
+	}
+	fprintf(stderr, "Total number of 3-templates\t%llu\n", numT3);
+	fprintf(stderr, "Total number of 6-templates\t%llu\n", numT6);
 	return;
-
+/*
 	char buf[1000];
 //	int n = 0;
 	unsigned long long nProcessed = 0;
@@ -1929,4 +1945,6 @@ extern void test() {
 //		}
 //	}
 ////	r3all.saveToFile(stdout);
+
+ */
 }
