@@ -475,6 +475,7 @@ int statistics() {
 	char buf[1000];
 	map<int,int> digitDistribution; //givens per digit
 	map<int,int> boxDistribution; //givens per box
+	map<int,int> digitSumDistribution; //sum of all givens if the digit with most occurrences is 1, then 2 and so on.
 	//int templ2Distribution[181]; //2-templates count
 	//int templ2DigitCount[181]; //digits per 2-template
 	//for(int i = 0; i < 181; i++) {
@@ -576,14 +577,18 @@ int statistics() {
 			}
 		}
 		sort(digitsCount.begin(), digitsCount.end(), greater<int>());
+		int digitSum = 0;
 		for(int i = 0; i < 9; i++) {
 			digitsCountMask = digitsCountMask * 10 + digitsCount[i];
+			digitSum += ((i + 1) * digitsCount[i]);
 		}
 		digitDistribution[digitsCountMask]++;
+		digitSumDistribution[digitSum]++;
 		if(opt.verbose) {
 			puz.toString(buf);
 			fprintf(stdout, "%81.81s\t%d\t", buf, nClues);
 			fprintf(stdout, "%d\t", digitsCountMask); //number of givens per digit
+			fprintf(stdout, "%d\t", digitSum); //minimal sum of all digits
 		}
 
 		vector<int> boxCount(9, 0);
@@ -613,6 +618,10 @@ int statistics() {
 	}
 	fprintf(stdout, "givens per box\n");
 	for(map<int,int>::const_iterator dd = boxDistribution.begin(); dd != boxDistribution.end(); dd++) {
+		fprintf(stdout, "%d\t%d\n", dd->first, dd->second);
+	}
+	fprintf(stdout, "minimal sum of givens\n");
+	for(map<int,int>::const_iterator dd = digitSumDistribution.begin(); dd != digitSumDistribution.end(); dd++) {
 		fprintf(stdout, "%d\t%d\n", dd->first, dd->second);
 	}
 

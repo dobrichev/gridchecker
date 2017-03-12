@@ -18,6 +18,9 @@ struct ch81 {
 	bool operator < (const ch81 &rhs) const {
 		return (memcmp(this, &rhs, sizeof(ch81)) < 0);
 	}
+	bool operator == (const ch81 &rhs) const {
+		return (memcmp(this, &rhs, sizeof(ch81)) == 0);
+	}
 	static int toString(const void* c, char *p) {
 		int nClues = 0;
 		for(int i = 0; i < 81; i++) {

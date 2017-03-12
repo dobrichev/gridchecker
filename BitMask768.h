@@ -51,9 +51,9 @@ template <int maxElements> class bit_masks {
 //    int __builtin_ia32_ptestc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestnzc256 (v4di,v4di,ptest)
 //    int __builtin_ia32_ptestz256 (v4di,v4di,ptest)
-	static const int maxWords = maxElements / 256;
+	static const int maxWords = (maxElements + 255) / 256;
 
-	bm256 aBits[maxElements / 256];
+	bm256 aBits[maxWords];
 	int actualWords;
 
 	inline int getNumWords() const {

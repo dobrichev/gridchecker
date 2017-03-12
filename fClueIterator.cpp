@@ -1,5 +1,8 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
+//-flto -funsafe-loop-optimizations -freorder-blocks-algorithm=stc -fno-branch-probabilities -fno-guess-branch-probability -falign-functions=16 -falign-jumps=16 -falign-loops=16 -falign-labels=16
+//-march=native -g -flto -O3 -funsafe-loop-optimizations -fuse-ld=gold -fuse-linker-plugin -flto-partition=none
+
 #include <emmintrin.h>
 #include <stdio.h>
 #include <time.h>
@@ -149,14 +152,12 @@ private:
 	void buildComposites();
 	void checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc);
 	void expandPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos = 0);
-	void solvePuzzle(const dead_clues_type &setClues) __attribute__((noinline));
+	void solvePuzzle(const dead_clues_type &setClues) /*__attribute__((noinline))*/;
 	void reorder4();
-	void reorder6();
 	void reorderInitialUa();
-	void remapUa();
 	fastClueIterator();
 public:
-	static const int maxInitialUa = 4000;
+	static const int maxInitialUa = 2000;
 	bm1_index_type ua1_indexes[81];
 	bm2_index_type ua2_indexes[81];
 	bm3_index_type ua3_indexes[81];
@@ -265,12 +266,11 @@ void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const
 		u.positionsByBitmap();
 		for(unsigned int i = 0; i < u.nbits; i++) {
 			int cluePosition0 = u.positions[i];
-			const bm128 posMask0(bitSet[cluePosition0]);
 			//s0++;
 			if(fua1_alive1.isSubsetOf(fua1_indexes[cluePosition0])) {
 				//d0++;
 				dead_clues_type setClues0(setClues1);
-				setClues0 |= posMask0;
+				setClues0.setBit(cluePosition0);
 				*passedFinalUA_ptr = setClues0;
 				//if(passedFinalUA_ptr < passedFinalUA + sizeof(passedFinalUA) / sizeof(passedFinalUA[0]) - 1) passedFinalUA_ptr++;
 				passedFinalUA_ptr++;
@@ -293,42 +293,23 @@ void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const
 		u.positionsByBitmap();
 		for(unsigned int i = 0; i < u.nbits; i++) {
 			int cluePosition1 = u.positions[i];
-			const bm128 posMask1(bitSet[cluePosition1]);
+			//const bm128 posMask1(bitSet[cluePosition1]);
+			//deadClues1 |= posMask1;
+			deadClues1.setBit(cluePosition1);
 			//s1++;
 			if(fua2_alive2.isSubsetOf(fua2_indexes[cluePosition1])) {
 				//d1++;
-				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition1]); //hit
 				dead_clues_type setClues1(setClues2);
-				setClues1 |= posMask1;
+				//setClues1 |= posMask1;
+				setClues1.setBit(cluePosition1);
+				fbm1_index_type fua1_alive1(fua1_alive2, fua1_indexes[cluePosition1]); //hit
+
+				//dead_clues_type deadClues1(u);
+				//deadClues1 &= maskLSB[cluePosition1];
+				//deadClues1 |= deadClues2;
+
 				fastIterateLevel0(deadClues1, setClues1, fua1_alive1);
-//				{
-//					int uaIndex1 = fua1_alive1.getMinIndex();
-//					if(uaIndex1 != INT_MAX) {
-//						uset u(fUsets[uaIndex1].bitmap128);
-//						u.clearBits(deadClues1);
-//						u.positionsByBitmap();
-//						for(unsigned int i = 0; i < u.nbits; i++) {
-//							int cluePosition0 = u.positions[i];
-//							const bm128 posMask0(bitSet[cluePosition0]);
-//							s0++;
-//							if(fua1_alive1.isSubsetOf(fua1_indexes[cluePosition0])) {
-//								d0++;
-//								dead_clues_type setClues0(setClues1);
-//								setClues0 |= posMask0;
-//								*passedFinalUA_ptr = setClues0;
-//								//if(passedFinalUA_ptr < passedFinalUA + sizeof(passedFinalUA) / sizeof(passedFinalUA[0]) - 1) passedFinalUA_ptr++;
-//								passedFinalUA_ptr++;
-//							}
-//						}
-//					}
-//					else {
-//						//iterate over all non-dead clues
-//						//printf("Expanding 1 clue\n"); //debug
-//						checkPuzzle(1, setClues1, deadClues1);
-//					}
-//				}
 			}
-			deadClues1 |= posMask1;
 		}
 	}
 	else {
@@ -337,6 +318,7 @@ void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const
 		checkPuzzle(2, setClues2, deadClues2);
 	}
 }
+
 void fastClueIterator::fastIterateLevel2(const dead_clues_type deadClues3, const dead_clues_type &setClues3,
 		const fbm1_index_type fua1_alive3, const fbm2_index_type & fua2_alive3, const fbm3_index_type & fua3_alive3) {
 	int uaIndex3 = fua1_alive3.getMinIndex();
@@ -1083,123 +1065,7 @@ void fastClueIterator::reorder4() {
 		usets[i] = tmp[i].u;
 	}
 }
-class remap {
-void remapUa(grid &g, uset *usets, int *mapIteratorToGrid) {
-	struct row {
-		float pSet[81];
-		float pDead[81];
-		int targetCells[81];
-	};
-	struct family {	//family of UA sets of the same size
-		//row entryRow; //the latest row from the previous family
-		int numCells;
-		int numSets;
-		uset *firstSrc;	//pointer to the source
-		unsigned long long cellPopulation[81];
-		uset setsUnion;
-	};
-	family families[20];
-	int numFamilies = 0;
-	int targetCell[81];
-	int numMappedCells = 0;
-	for(int c = 0; c < 81; c++) {
-		targetCell[c] = -1; //unknown
-	}
-	for(int sz = 0, beg = 0; sz < 20; sz++) {
-		if(g.usetsBySize.distributionBySize[sz]) {
-			families[numFamilies].firstSrc = usets + beg;
-			families[numFamilies].numSets = g.usetsBySize.distributionBySize[sz];
-			families[numFamilies].numCells = sz;
-			numFamilies++;
-		}
-	}
-	//accumulate the cells populations
-	for(int f = 0; f < numFamilies; f++) {
-		family &ff = families[f];
-		ff.setsUnion.clear();
-		//calculate the cell population within this family
-		for(int s = 0; s < ff.numSets; s++) {
-			uset &u = *(ff.firstSrc + s);
-			ff.setsUnion |= u;
-			for(int c = 0; c < ff.numCells; c++) {
-				ff.cellPopulation[u.positions[c]]++;
-			}
-		}
-		ff.setsUnion.positionsByBitmap(); //cells covered by this family
-	}
-	//reorder the UA sets within this family. Simultaneously compose the cell mapping.
-	for(int f = 0; f < numFamilies; f++) {
-		family &ff = families[f];
-		if(numMappedCells == 0) {
-			//find the most populated cell. If there are 2 or more equally populated cells, then get help from the next family and so on.
-			unsigned long long topPopulation = 0;
-			int topPopulationCells[81];
-			int numTopCells = 0;
-			for(unsigned int p = 0; p < ff.setsUnion.nbits; p++) {
-				int c = ff.setsUnion.positions[p];
-				if(targetCell[c] != -1) continue; //skip already mapped ones
-				if(ff.cellPopulation[c] > topPopulation) {
-					topPopulation = ff.cellPopulation[c];
-					numTopCells = 1;
-					topPopulationCells[0] = c;
-				}
-				else if(ff.cellPopulation[c] == topPopulation) {
-					topPopulationCells[numTopCells++] = c;
-				}
-			}
-			//there are ambiguous cells, ask next families who is best
-			for(int nf = f + 1; numTopCells > 1 && nf < numFamilies; nf++) {
-				family &nff = families[nf];
-				//scale the population by factor the size of the next family so that next family contribute less.
-				for(unsigned int c = 0; c < ff.setsUnion.nbits; c++) {
-					ff.cellPopulation[c] *= nff.numSets;
-					ff.cellPopulation[c] += nff.cellPopulation[c];
-				}
-				topPopulation = 0;
-				numTopCells = 0;
-				for(unsigned int p = 0; p < ff.setsUnion.nbits; p++) {
-					int c = ff.setsUnion.positions[p];
-					if(targetCell[c] != -1) continue; //skip already mapped ones
-					if(ff.cellPopulation[c] > topPopulation) {
-						topPopulation = ff.cellPopulation[c];
-						numTopCells = 1;
-						topPopulationCells[0] = c;
-					}
-					else if(ff.cellPopulation[c] == topPopulation) {
-						topPopulationCells[numTopCells++] = c;
-					}
-				}
-			}
-			//we did our best in finding the most populated cell(s).
-			targetCell[topPopulationCells[0]] = numMappedCells;
-			mapIteratorToGrid[numMappedCells] = topPopulationCells[0];
-			numMappedCells++;
-//			for(int c = 0; c < 81; c++) {
-//				printf("%llu\t%d\n", ff.cellPopulation[c], c);
-//			}
-//			printf("Top cell=%d\n", topPopulationCells[0]);
-//			return;
-		}
-		else {
-			//place the sets that have most mapped cells at the top
-			for(int s = 0; s < ff.numSets; s++) {
-				uset &u = *(ff.firstSrc + s);
-				for(int c = 0; c < ff.numCells; c++) {
-					;
-				}
-			}
-		}
-	}
-//			//weight the rest sets within this family and place the best one on this position
-//			if(f == 0 && s == 0) {
-//				//we are in the very beginning. Count cell population forward until preferred cell appears.
-//				for(int fam = f; fam < numFamilies; fam++) {
-//					for(ss....)
-//				}
-//			}
-//		}
-}
-};
+
 void fastClueIterator::reorderInitialUa() {
 	struct wuset {
 		long long weight;
@@ -1235,7 +1101,7 @@ void fastClueIterator::reorderInitialUa() {
 	int curvature[9] = {160000000,80000000,40000000,20000000,10000000,5000000,2500000,1250000,675000}; //boost the weight of the top 5 (9?) ua, forming a "preferred region"
 	int popWeights[] = {0,0,0,0,1000000,0,10000,0,100,1}; // weights depending on joined UA size
 
-	wuset tmp[2000];
+	wuset tmp[maxInitialUa];
 	mapping cellPopulation[88];
 	for(int i = 0; i < 88; i++) {
 		cellPopulation[i].population = 0;
@@ -1358,7 +1224,7 @@ void fastClueIterator::reorderInitialUa() {
 //		printf("%81.81s\t%d\n", txt, usets[i].nbits);
 	}
 
-	//read larger UA up to 2000 total
+	//read larger UA up to maxInitialUa total
 	int start = end;
 	//end = g.usetsBySize.distributionBySize[15] + g.usetsBySize.distributionBySize[16] + g.usetsBySize.distributionBySize[17] + g.usetsBySize.distributionBySize[18] + g.usetsBySize.distributionBySize[19];
 	//if(start + end > maxInitialUa) end = maxInitialUa - start; //usets buffer size
@@ -1411,37 +1277,6 @@ void fastClueIterator::reorderInitialUa() {
 //		usets[i] = tmp[i].u;
 //	}
 //}
-void fastClueIterator::reorder6() {
-	struct wuset {
-		int weight;
-		uset u;
-		bool operator<(const wuset& other) const {return weight < other.weight;};
-	};
-	wuset tmp[1000];
-	int cellPopulation[88];
-	for(int i = 0; i < 88; i++)
-		cellPopulation[i] = 0;
-	//pass 1: copy & count cells population
-	for(int i = 0; i < g.usetsBySize.distributionBySize[6]; i++) {
-		tmp[i].weight = 0;
-		tmp[i].u = usets[g.usetsBySize.distributionBySize[4] + i];
-		for(int j = 0; j < 6; j++) {
-			cellPopulation[tmp[i].u.positions[j]]++;
-		}
-	}
-	//pass 2: count UA weights according to the population
-	for(int i = 0; i < g.usetsBySize.distributionBySize[6]; i++) {
-		for(int j = 0; j < 6; j++) {
-			tmp[i].weight += cellPopulation[tmp[i].u.positions[j]];
-		}
-	}
-	//pass 3: sort
-	std::sort(tmp, tmp + g.usetsBySize.distributionBySize[6]);
-	//pass 4: copy back
-	for(int i = 0; i < g.usetsBySize.distributionBySize[6]; i++) {
-		usets[g.usetsBySize.distributionBySize[4] + i] = tmp[i].u;
-	}
-}
 
 void fastClueIterator::iterate() {
 	//find all UA sets of size 4..12
