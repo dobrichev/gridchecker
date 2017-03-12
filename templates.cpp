@@ -164,10 +164,10 @@ struct templates {
 	unsigned long long nSol(const char *p);
 	templates();
 	void getComplementaryTemplates() const;
-	void get2templates(puzzleSet& r2all) const;
+	void get2templates(puzzleSet& t2all) const;
 	//void get2rookeries();
-	void get3templates(puzzleSet& r3all) const;
-	//void get3rookeries();
+	void get3templates(puzzleSet& t3all) const;
+	void get3rookeries(lightweightUsetList& r3all) const;
 	void rookeryPlus1(const bm128& src, lightweightUsetList& res) const;
 	void templatePlus1();
 	void templatePlus1(const ch81& src, puzzleSet& res) const;
@@ -616,170 +616,299 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 			}
 			break;
 		case 3:
-			for(int c0 = 0; c0 < 5184; c0++) {
-				bm128 r0(colTemplates[r1row[0]][c0]);
-				if(!r0.isSubsetOf(r)) continue;
-				ch81 p1;
-				p1.clear();
-				for(int i = 0; i < 81; i++) {
-					if(r0.isBitSet(i)) {
-						p1.chars[i] = 1;
-					}
-				}
-				bm128 rr0(r);
-				rr0.clearBits(r0);
-				for(int c1 = 0; c1 < 5184; c1++) {
-					bm128 r1(colTemplates[r1row[1]][c1]);
-					if(!r1.isSubsetOf(rr0)) continue;
-					ch81 p2 = p1; //structure copy
-					for(int i = 0; i < 81; i++) {
-						if(r1.isBitSet(i)) {
-							p2.chars[i] = 2;
+			{
+				bm128 rt[2][5184];
+				int rtsize[2] = {0,0};
+				for(int c = 0; c < 2; c++) {
+					for(int i = 0; i < 5184; i++) {
+						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+							rtsize[c]++;
 						}
 					}
-					bm128 rr1(rr0);
-					rr1.clearBits(r1);
-					ch81 p3 = p2; //structure copy
+				}
+				//printf("%d\t%d\n", rtsize[0], rtsize[1]);
+				for(int c0 = 0; c0 < rtsize[0]; c0++) {
+					bm128 r0(rt[0][c0]);
+					ch81 p1;
+					p1.clear();
 					for(int i = 0; i < 81; i++) {
-						if(rr1.isBitSet(i)) {
-							p3.chars[i] = 3;
+						if(r0.isBitSet(i)) {
+							p1.chars[i] = 1;
 						}
 					}
-					ch81 can;
-					patminlex pml(p3.chars, can.chars);
-					res.insert(can);
-					if(first) return;
-				}
-			}
-			break;
-		case 4:
-			for(int c0 = 0; c0 < 5184; c0++) {
-				bm128 r0(colTemplates[r1row[0]][c0]);
-				if(!r0.isSubsetOf(r)) continue;
-				ch81 p1;
-				p1.clear();
-				for(int i = 0; i < 81; i++) {
-					if(r0.isBitSet(i)) {
-						p1.chars[i] = 1;
-					}
-				}
-				bm128 rr0(r);
-				rr0.clearBits(r0);
-				for(int c1 = 0; c1 < 5184; c1++) {
-					bm128 r1(colTemplates[r1row[1]][c1]);
-					if(!r1.isSubsetOf(rr0)) continue;
-					ch81 p2 = p1; //structure copy
-					for(int i = 0; i < 81; i++) {
-						if(r1.isBitSet(i)) {
-							p2.chars[i] = 2;
+					bm128 rr0(r);
+					rr0.clearBits(r0);
+					for(int c1 = 0; c1 < rtsize[1]; c1++) {
+						bm128 r1(rt[1][c1]);
+						if(!r1.isSubsetOf(rr0)) continue;
+						ch81 p2 = p1; //structure copy
+						for(int i = 0; i < 81; i++) {
+							if(r1.isBitSet(i)) {
+								p2.chars[i] = 2;
+							}
 						}
-					}
-					bm128 rr1(rr0);
-					rr1.clearBits(r1);
-					for(int c2 = 0; c2 < 5184; c2++) {
-						bm128 r2(colTemplates[r1row[2]][c2]);
-						if(!r2.isSubsetOf(rr1)) continue;
+						bm128 rr1(rr0);
+						rr1.clearBits(r1);
 						ch81 p3 = p2; //structure copy
 						for(int i = 0; i < 81; i++) {
-							if(r2.isBitSet(i)) {
+							if(rr1.isBitSet(i)) {
 								p3.chars[i] = 3;
 							}
 						}
-						bm128 rr2(rr1);
-						rr2.clearBits(r2);
-						ch81 p4 = p3; //structure copy
-						for(int i = 0; i < 81; i++) {
-							if(rr2.isBitSet(i)) {
-								p4.chars[i] = 4;
-							}
-						}
 						ch81 can;
-						patminlex pml(p4.chars, can.chars);
+						patminlex pml(p3.chars, can.chars);
 						res.insert(can);
 						if(first) return;
 					}
 				}
 			}
 			break;
-		case 5:
-		{
-//			colTemplates_index_type r0index = colTemplatesIndexAll[r1row[0]]; //all templates containing cell from the first row, all ones
-//			for(int i = 9; i < 81; i++) {
-//				if(!r.isBitSet(i)) {
-//					r0index = colTemplates_index_type(r0index, colTemplatesIndexes[r1row[0]][i]); //clear all templates having cell outside of the rookery
-//				}
-//			}
-			//reduce the templates to play with, by removing those that aren't subsets of the given rookery
-			bm128 rt[9][5184];
-			int rtsize[9] = {0,0,0,0,0,0,0,0,0};
-			for(int c = 0; c < rsize; c++) {
-				for(int i = 0; i < 5184; i++) {
-					if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
-						rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
-						rtsize[c]++;
-					}
-				}
-			}
-			for(int c0 = 0; c0 < rtsize[0]; c0++) {
-				bm128 r0(rt[0][c0]);
-				//if(!r0.isSubsetOf(r)) continue;
-				ch81 p1;
-				p1.clear();
-				for(int i = 0; i < 81; i++) {
-					if(r0.isBitSet(i)) {
-						p1.chars[i] = 1;
-					}
-				}
-				bm128 rr0(r);
-				rr0.clearBits(r0);
-				for(int c1 = 0; c1 < rtsize[1]; c1++) {
-					bm128 r1(rt[1][c1]);
-					if(!r1.isSubsetOf(rr0)) continue;
-					ch81 p2 = p1; //structure copy
-					for(int i = 0; i < 81; i++) {
-						if(r1.isBitSet(i)) {
-							p2.chars[i] = 2;
+		case 4:
+			{
+				bm128 rt[3][5184];
+				int rtsize[3] = {0,0,0};
+				for(int c = 0; c < 3; c++) {
+					for(int i = 0; i < 5184; i++) {
+						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+							rtsize[c]++;
 						}
 					}
-					bm128 rr1(rr0);
-					rr1.clearBits(r1);
-					for(int c2 = 0; c2 < rtsize[2]; c2++) {
-						bm128 r2(rt[2][c2]);
-						if(!r2.isSubsetOf(rr1)) continue;
-						ch81 p3 = p2; //structure copy
+				}
+				for(int c0 = 0; c0 < rtsize[0]; c0++) {
+					bm128 r0(rt[0][c0]);
+					ch81 p1;
+					p1.clear();
+					for(int i = 0; i < 81; i++) {
+						if(r0.isBitSet(i)) {
+							p1.chars[i] = 1;
+						}
+					}
+					bm128 rr0(r);
+					rr0.clearBits(r0);
+					for(int c1 = 0; c1 < rtsize[1]; c1++) {
+						bm128 r1(rt[1][c1]);
+						if(!r1.isSubsetOf(rr0)) continue;
+						ch81 p2 = p1; //structure copy
 						for(int i = 0; i < 81; i++) {
-							if(r2.isBitSet(i)) {
-								p3.chars[i] = 3;
+							if(r1.isBitSet(i)) {
+								p2.chars[i] = 2;
 							}
 						}
-						bm128 rr2(rr1);
-						rr2.clearBits(r2);
-						for(int c3 = 0; c3 < rtsize[3]; c3++) {
-							bm128 r3(rt[3][c3]);
-							if(!r3.isSubsetOf(rr2)) continue;
+						bm128 rr1(rr0);
+						rr1.clearBits(r1);
+						for(int c2 = 0; c2 < rtsize[2]; c2++) {
+							bm128 r2(rt[2][c2]);
+							if(!r2.isSubsetOf(rr1)) continue;
+							ch81 p3 = p2; //structure copy
+							for(int i = 0; i < 81; i++) {
+								if(r2.isBitSet(i)) {
+									p3.chars[i] = 3;
+								}
+							}
+							bm128 rr2(rr1);
+							rr2.clearBits(r2);
 							ch81 p4 = p3; //structure copy
 							for(int i = 0; i < 81; i++) {
-								if(r3.isBitSet(i)) {
+								if(rr2.isBitSet(i)) {
 									p4.chars[i] = 4;
 								}
 							}
-							bm128 rr3(rr2);
-							rr3.clearBits(r3);
-							ch81 p5 = p4; //structure copy
-							for(int i = 0; i < 81; i++) {
-								if(rr3.isBitSet(i)) {
-									p5.chars[i] = 5;
-								}
-							}
 							ch81 can;
-							patminlex pml(p5.chars, can.chars);
+							patminlex pml(p4.chars, can.chars);
 							res.insert(can);
 							if(first) return;
 						}
 					}
 				}
 			}
-		}
+			break;
+		case 5:
+			{
+				//reduce the templates to play with, by removing those that aren't subsets of the given rookery
+				bm128 rt[4][5184];
+				int rtsize[4] = {0,0,0,0};
+				for(int c = 0; c < 4; c++) {
+					for(int i = 0; i < 5184; i++) {
+						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+							rtsize[c]++;
+						}
+					}
+				}
+				//printf("%d\t%d\t%d\t%d\n", rtsize[0], rtsize[1], rtsize[2], rtsize[3]);
+				for(int c0 = 0; c0 < 5184; c0++) {
+					bm128 r0(colTemplates[r1row[0]][c0]);
+					if(!r0.isSubsetOf(r)) continue;
+					ch81 p1;
+					p1.clear();
+					for(int i = 0; i < 81; i++) {
+						if(r0.isBitSet(i)) {
+							p1.chars[i] = 1;
+						}
+					}
+					bm128 rr0(r);
+					rr0.clearBits(r0);
+					int rtsize[4] = {0,0,0,0};
+					for(int c = 1; c < 4; c++) {
+						for(int i = 0; i < 5184; i++) {
+							if(colTemplates[r1row[c]][i].isSubsetOf(rr0)) {
+								rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+								rtsize[c]++;
+							}
+						}
+					}
+					for(int c1 = 0; c1 < rtsize[1]; c1++) {
+						bm128 r1(rt[1][c1]);
+						if(!r1.isSubsetOf(rr0)) continue;
+						ch81 p2 = p1; //structure copy
+						for(int i = 0; i < 81; i++) {
+							if(r1.isBitSet(i)) {
+								p2.chars[i] = 2;
+							}
+						}
+						bm128 rr1(rr0);
+						rr1.clearBits(r1);
+						for(int c2 = 0; c2 < rtsize[2]; c2++) {
+							bm128 r2(rt[2][c2]);
+							if(!r2.isSubsetOf(rr1)) continue;
+							ch81 p3 = p2; //structure copy
+							for(int i = 0; i < 81; i++) {
+								if(r2.isBitSet(i)) {
+									p3.chars[i] = 3;
+								}
+							}
+							bm128 rr2(rr1);
+							rr2.clearBits(r2);
+							for(int c3 = 0; c3 < rtsize[3]; c3++) {
+								bm128 r3(rt[3][c3]);
+								if(!r3.isSubsetOf(rr2)) continue;
+								ch81 p4 = p3; //structure copy
+								for(int i = 0; i < 81; i++) {
+									if(r3.isBitSet(i)) {
+										p4.chars[i] = 4;
+									}
+								}
+								bm128 rr3(rr2);
+								rr3.clearBits(r3);
+								ch81 p5 = p4; //structure copy
+								for(int i = 0; i < 81; i++) {
+									if(rr3.isBitSet(i)) {
+										p5.chars[i] = 5;
+									}
+								}
+								ch81 can;
+								patminlex pml(p5.chars, can.chars);
+								res.insert(can);
+								if(first) return;
+							}
+						}
+					}
+				}
+			}
+			break;
+		case 6:
+			{
+				//reduce the templates to play with, by removing those that aren't subsets of the given rookery
+//				bm128 rt[5][5184];
+//				int rtsize[5] = {0,0,0,0,0};
+//				for(int c = 0; c < 5; c++) {
+//					for(int i = 0; i < 5184; i++) {
+//						if(colTemplates[r1row[c]][i].isSubsetOf(r)) {
+//							rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+//							rtsize[c]++;
+//						}
+//					}
+//				}
+//				for(int c0 = 0; c0 < rtsize[0]; c0++) {
+//					bm128 r0(rt[0][c0]);
+
+				for(int c0 = 0; c0 < 5184; c0++) {
+					bm128 r0(colTemplates[r1row[0]][c0]);
+					if(!r0.isSubsetOf(r)) continue;
+
+					ch81 p1;
+					p1.clear();
+					for(int i = 0; i < 81; i++) {
+						if(r0.isBitSet(i)) {
+							p1.chars[i] = 1;
+						}
+					}
+					bm128 rr0(r);
+					rr0.clearBits(r0);
+
+					int rtsize[5] = {0,0,0,0,0};
+					bm128 rt[5][5184];
+					for(int c = 1; c < 5; c++) {
+						for(int i = 0; i < 5184; i++) {
+							if(colTemplates[r1row[c]][i].isSubsetOf(rr0)) {
+								rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+								rtsize[c]++;
+							}
+						}
+					}
+
+					for(int c1 = 0; c1 < rtsize[1]; c1++) {
+						bm128 r1(rt[1][c1]);
+						if(!r1.isSubsetOf(rr0)) continue;
+						ch81 p2 = p1; //structure copy
+						for(int i = 0; i < 81; i++) {
+							if(r1.isBitSet(i)) {
+								p2.chars[i] = 2;
+							}
+						}
+						bm128 rr1(rr0);
+						rr1.clearBits(r1);
+						for(int c2 = 0; c2 < rtsize[2]; c2++) {
+							bm128 r2(rt[2][c2]);
+							if(!r2.isSubsetOf(rr1)) continue;
+							ch81 p3 = p2; //structure copy
+							for(int i = 0; i < 81; i++) {
+								if(r2.isBitSet(i)) {
+									p3.chars[i] = 3;
+								}
+							}
+							bm128 rr2(rr1);
+							rr2.clearBits(r2);
+							for(int c3 = 0; c3 < rtsize[3]; c3++) {
+								bm128 r3(rt[3][c3]);
+								if(!r3.isSubsetOf(rr2)) continue;
+								ch81 p4 = p3; //structure copy
+								for(int i = 0; i < 81; i++) {
+									if(r3.isBitSet(i)) {
+										p4.chars[i] = 4;
+									}
+								}
+								bm128 rr3(rr2);
+								rr3.clearBits(r3);
+								for(int c4 = 0; c4 < rtsize[4]; c4++) {
+									bm128 r4(rt[4][c4]);
+									if(!r4.isSubsetOf(rr3)) continue;
+									ch81 p5 = p4; //structure copy
+									for(int i = 0; i < 81; i++) {
+										if(r4.isBitSet(i)) {
+											p5.chars[i] = 5;
+										}
+									}
+									bm128 rr4(rr3);
+									rr4.clearBits(r4);
+									ch81 p6 = p5; //structure copy
+									for(int i = 0; i < 81; i++) {
+										if(rr4.isBitSet(i)) {
+											p6.chars[i] = 6;
+										}
+									}
+									ch81 can;
+									patminlex pml(p6.chars, can.chars);
+									res.insert(can);
+									if(first) return;
+								}
+							}
+						}
+					}
+				}
+			}
 			break;
 		default:
 			break;
@@ -826,10 +955,19 @@ void templates::templates2rookeries() const { //read k-templates from stdin and 
 	}
 	//r3tall.saveToFile(stdout);
 }
-void templates::get3templates(puzzleSet& r3all) const { //3.2 seconds
-	puzzleSet r2all;
-	get2templates(r2all);
-	templatesPlus1(r2all, r3all);
+void templates::get3templates(puzzleSet& t3all) const { //3.2 seconds
+	puzzleSet t2all;
+	get2templates(t2all);
+	templatesPlus1(t2all, t3all);
+}
+void templates::get3rookeries(lightweightUsetList& r3all) const {
+	puzzleSet t3all;
+	get3templates(t3all);
+	for(puzzleSet::const_iterator p = t3all.begin(); p != t3all.end(); p++) {
+		bm128 r;
+		template2rookery(*p, r);
+		r3all.insert(r);
+	}
 }
 //void templates::get3templates(puzzleSet& r3all) { //187 seconds
 //	//puzzleSet r3all;
@@ -939,7 +1077,7 @@ void templates::get3templates(puzzleSet& r3all) const { //3.2 seconds
 //}
 
 
-void templates::get2templates(puzzleSet& r2all) const { //0.1 seconds
+void templates::get2templates(puzzleSet& t2all) const { //0.1 seconds
 	//fix template in r1c1 to first one
 	//prepare a pseudo-puzzle
 	ch81 r1p;
@@ -950,7 +1088,6 @@ void templates::get2templates(puzzleSet& r2all) const { //0.1 seconds
 		}
 	}
 	//find all compatible 2-templates
-	//int n = 0;
 	for(int r2 = 0 + 1; r2 < 9; r2++) {
 		for(int r2tn = 0; r2tn < 5184; r2tn++) {
 			if(colTemplates[0][0].isDisjoint(colTemplates[r2][r2tn])) {
@@ -963,12 +1100,10 @@ void templates::get2templates(puzzleSet& r2all) const { //0.1 seconds
 				}
 				ch81 can;
 				patminlex ml(r2p.chars, can.chars);
-				r2all.insert(can);
+				t2all.insert(can);
 			}
 		}
 	}
-	//printf("%d\n", (int)r2all.size());
-	//r2all.saveToFile(stdout);
 }
 
 //void templates::get2rookeries() {
@@ -1612,6 +1747,36 @@ void countSolutions () {
 struct uaByTemplate: public map<ch81,usetListBySize> {};
 extern void test() {
 	templates tpl;
+
+	puzzleSet p3;
+	lightweightUsetList r3all;
+	tpl.get3rookeries(r3all);
+	printf("Number of 3-rookeries\t%d\n", (int)r3all.size());
+	unsigned long long numT3 = 0;
+	int x = 0;
+	for(lightweightUsetList::const_iterator r3 = r3all.begin(); r3 != r3all.end(); r3++) {
+		x++;
+		if(x <= 1) continue;
+		if(x > 8) continue;
+		puzzleSet t3;
+		tpl.rookery2templates(*r3, t3);
+		bm128 r6 = maskLSB[81];
+		r6.clearBits(*r3);
+		puzzleSet t6;
+		tpl.rookery2templates(r6, t6);
+		printf("%d\t%d\n", (int)t3.size(), (int)t6.size());
+		numT3 += t3.size();
+//		ch81 txt;
+//		r3->toMask81(txt.chars);
+//		printf("%81.81s\n", txt.chars);
+//		for(puzzleSet::const_iterator p3 = t3.begin(); p3 != t3.end(); p3++) {
+//
+//		}
+		fflush(NULL);
+	}
+	printf("Number of 3-templates\t%llu\n", numT3);
+	return;
+
 	char buf[1000];
 //	int n = 0;
 	unsigned long long nProcessed = 0;
