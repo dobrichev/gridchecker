@@ -165,16 +165,20 @@ struct templates {
 	templates();
 	void getComplementaryTemplates() const;
 	void get2templates(puzzleSet& t2all) const;
-	//void get2rookeries();
+	void get2rookeries(lightweightUsetList& r2all) const;
 	void get3templates(puzzleSet& t3all) const;
 	void get3rookeries(lightweightUsetList& r3all) const;
+	void get4rookeries(lightweightUsetList& r4all) const;
 	void rookeryPlus1(const bm128& src, lightweightUsetList& res) const;
+	void rookeriesPlus1(lightweightUsetList& src, lightweightUsetList& res) const;
 	void templatePlus1();
 	void templatePlus1(const ch81& src, puzzleSet& res) const;
 	void templatesPlus1(const puzzleSet& src, puzzleSet& res) const;
 	void templates2rookeries() const;
 	void rookery2templates(const bm128& r, puzzleSet& res, bool first = false) const;
 	void template2rookery(const ch81& src, bm128& r) const;
+	void count6templates() const;
+	void count5templates() const;
 };
 
 templates::templates() {
@@ -288,62 +292,45 @@ void templates::templatePlus1() { //read k-templates from stdin, store k+1 templ
 	kp1t.saveToFile(fileName);
 }
 void templates::rookeryPlus1(const bm128& src, lightweightUsetList& res) const {
-	ch81 r3;
-	{
-		ch81 tmp;
-		for(int i = 0; i < 81; i++) {
-			tmp.chars[i] = src.isBitSet(i) ? 1 : 0;
+	ch81 tmp;
+	for(int i = 0; i < 81; i++) {
+		tmp.chars[i] = src.isBitSet(i) ? 1 : 0;
+	}
+	for(int col = 0; col < 9; col++) {
+		if(tmp.chars[col]) continue; //this doesn't help much
+		for(int tn = 0; tn < 5184; tn++) {
+			if(src.isDisjoint(colTemplates[col][tn])) {
+				ch81 p = tmp; //structure copy
+				for(int i = 0; i < 81; i++) {
+					if(colTemplates[col][tn].isBitSet(i)) {
+						p.chars[i] = 1;
+					}
+				}
+				ch81 can;
+				patminlex rml(p.chars, can.chars);
+				bm128 r;
+				r.clear();
+				for(int i = 0; i < 81; i++) {
+					if(can.chars[i]) {
+						r.setBit(i);
+					}
+				}
+				res.insert(r);
+			}
 		}
-		patminlex rml(tmp.chars, r3.chars);
 	}
-	puzzleSet t3;
-	puzzleSet t4;
-	rookery2templates(src, t3);
-	templatesPlus1(t3, t4);
-//	for(puzzleSet::const_iterator s = t4.begin(); s != t4.end();) {
-//		//is *s completable to a valid solution grid?
-//		if(0 == solve(s->chars, 1)) goto del;
-////		//is r3 the most minimal representation of *s
-////		for(int v = 1; v < 5; v++) { //change here for different rookery size
-////			ch81 r3test;
-////			ch81 r3testCanon;
-////			for(int i = 0; i < 81; i++) {
-////				r3test.chars[i] = (s->chars[i] == 0 || s->chars[i] == v) ? 0 : 1;
-////			}
-////			patminlex rml(r3test.chars, r3testCanon.chars);
-////			if(r3testCanon < r3) goto del;
-////		}
-//		s++;
-//		continue;
-//		del:
-//		puzzleSet::const_iterator ss = s;
-//		s++;
-//		t4.erase(ss);
-//	}
-	for(puzzleSet::const_iterator t = t4.begin(); t != t4.end(); t++) {
-		bm128 r;
-		template2rookery(*t, r);
-		res.insert(r);
-	}
-//	rookeryWithTemplates rt;
-//	for(puzzleSet::const_iterator t = t4.begin(); t != t4.end(); t++) {
-//		bm128 r;
-//		template2rookery(*t, r);
-//		rt[r].insert(*t);
-//	}
-//	ch81 r3print;
-//	r3.toString(r3print.chars);
-//	for(rookeryWithTemplates::const_iterator r = rt.begin(); r != rt.end(); r++) {
-//		ch81 tmp;
-//		r->first.toMask81(tmp.chars);
-//		printf("%81.81s\t%81.81s\n", r3print.chars, tmp.chars);
-//	}
 }
 void templates::templatesPlus1(const puzzleSet& src, puzzleSet& res) const {
 	for(puzzleSet::const_iterator s = src.begin(); s != src.end(); s++) {
 		templatePlus1(*s, res);
 	}
 }
+void templates::rookeriesPlus1(lightweightUsetList& src, lightweightUsetList& res) const {
+	for(lightweightUsetList::const_iterator r = src.begin(); r != src.end(); r++) {
+		rookeryPlus1(*r, res);
+	}
+}
+
 void templates::templatePlus1(const ch81& src, puzzleSet& res) const {
 	bm128 kp;
 	kp.clear();
@@ -352,19 +339,6 @@ void templates::templatePlus1(const ch81& src, puzzleSet& res) const {
 			kp.setBit(i);
 		}
 	}
-//	for(int tn = 0; tn < 46656; tn++) {
-//		if(kp.isDisjoint(allTemplates[tn])) {
-//			ch81 p = src; //structure copy
-//			for(int i = 0; i < 81; i++) {
-//				if(allTemplates[tn].isBitSet(i)) {
-//					p.chars[i] = 9;
-//				}
-//			}
-//			ch81 can;
-//			patminlex rml(p.chars, can.chars);
-//			res.insert(can);
-//		}
-//	}
 	for(int col = 0; col < 9; col++) {
 		if(src.chars[col]) continue; //this doesn't help much
 		for(int tn = 0; tn < 5184; tn++) {
@@ -914,23 +888,6 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 			break;
 	}
 }
-//void templates::get3rookeries() {
-//	puzzleSet r3all;
-//	puzzleSet r3tall;
-//	r3all.loadFromFile(stdin, false);
-//	for(puzzleSet::const_iterator p = r3all.begin(); p != r3all.end(); p++) {
-//		ch81 p1 = *p; //structure copy
-//		for(int i = 0; i < 81; i++) {
-//			if(p1.chars[i]) {
-//				p1.chars[i] = 1;
-//			}
-//		}
-//		ch81 pcan;
-//		subcanon(p1.chars, pcan.chars);
-//		r3tall.insert(pcan);
-//	}
-//	r3tall.saveToFile(stdout);
-//}
 
 void templates::templates2rookeries() const { //read k-templates from stdin and write (un)sorted k-rookeries to stdout
 	puzzleSet r3tall;
@@ -960,122 +917,16 @@ void templates::get3templates(puzzleSet& t3all) const { //3.2 seconds
 	get2templates(t2all);
 	templatesPlus1(t2all, t3all);
 }
-void templates::get3rookeries(lightweightUsetList& r3all) const {
-	puzzleSet t3all;
-	get3templates(t3all);
-	for(puzzleSet::const_iterator p = t3all.begin(); p != t3all.end(); p++) {
-		bm128 r;
-		template2rookery(*p, r);
-		r3all.insert(r);
-	}
+void templates::get3rookeries(lightweightUsetList& r3all) const { //3.629" templates+1 / 2.741" rookery+1
+	lightweightUsetList r2all;
+	get2rookeries(r2all);
+	rookeriesPlus1(r2all, r3all);
 }
-//void templates::get3templates(puzzleSet& r3all) { //187 seconds
-//	//puzzleSet r3all;
-//	//fix template in r1c1 to first one
-//	//prepare a pseudo=puzzle
-//	ch81 r1p;
-//	r1p.clear();
-//	for(int i = 0; i < 81; i++) {
-//		if(colTemplates[0][0].isBitSet(i)) {
-//			r1p.chars[i] = 1;
-//		}
-//	}
-//	//find all compatible 3-templates
-//	//int n = 0;
-//#ifdef _OPENMP
-//#pragma omp parallel for schedule(dynamic, 1)
-//#endif //_OPENMP
-//	for(int r2 = 0 + 1; r2 < 9 - 1; r2++) {
-//		for(int r2tn = 0; r2tn < 5184; r2tn++) {
-//			if(colTemplates[0][0].isDisjoint(colTemplates[r2][r2tn])) {
-//				//a valid 2-template found
-//				bm128 r2t = colTemplates[0][0];
-//				r2t |= colTemplates[r2][r2tn];
-//				ch81 r2p = r1p; //structure copy
-//				for(int i = 0; i < 81; i++) {
-//					if(colTemplates[r2][r2tn].isBitSet(i)) {
-//						r2p.chars[i] = 2;
-//					}
-//				}
-//				//find all compatible 3-templates
-//				for(int r3 = r2 + 1; r3 < 9; r3++) {
-//					for(int r3tn = 0; r3tn < 5184; r3tn++) {
-//						if(r2t.isDisjoint(colTemplates[r3][r3tn])) {
-//							//a valid 3-template found
-//							ch81 r3p = r2p; //structure copy
-//							for(int i = 0; i < 81; i++) {
-//								if(colTemplates[r3][r3tn].isBitSet(i)) {
-//									r3p.chars[i] = 3;
-//								}
-//							}
-//							ch81 can;
-//							patminlex ml(r3p.chars, can.chars);
-//#ifdef _OPENMP
-//#pragma omp critical
-//#endif //_OPENMP
-//							{
-//								//subcanon(r3p.chars, can.chars);
-//								r3all.insert(can);
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-//	//fprintf(stderr, "%d\n", (int)r3all.size());
-//	//r3all.saveToFile(stdout);
-//}
-
-//void templates::get3rookeries() {
-//	puzzleSet r3all;
-//	//fix template in r1c1 to first one
-//	//prepare a pseudo=puzzle
-//	ch81 r1p;
-//	r1p.clear();
-//	for(int i = 0; i < 81; i++) {
-//		if(colTemplates[0][0].isBitSet(i)) {
-//			r1p.chars[i] = 1;
-//		}
-//	}
-//	//find all compatible 2-rookeries
-//	int n = 0;
-//	for(int r2 = 0 + 1; r2 < 9 - 1; r2++) {
-//		for(int r2tn = 0; r2tn < 5184; r2tn++) {
-//			if(colTemplates[0][0].isDisjoint(colTemplates[r2][r2tn])) {
-//				//a valid 2-rookery found
-//				bm128 r2t = colTemplates[0][0];
-//				r2t |= colTemplates[r2][r2tn];
-//				ch81 r2p = r1p; //structure copy
-//				for(int i = 0; i < 81; i++) {
-//					if(colTemplates[r2][r2tn].isBitSet(i)) {
-//						r2p.chars[i] = 2;
-//					}
-//				}
-//				//find all compatible 3-rookeries
-//				for(int r3 = r2 + 1; r3 < 9; r3++) {
-//					for(int r3tn = 0; r3tn < 5184; r3tn++) {
-//						if(r2t.isDisjoint(colTemplates[r3][r3tn])) {
-//							//a valid 3-rookery found
-//							ch81 r3p = r2p; //structure copy
-//							for(int i = 0; i < 81; i++) {
-//								if(colTemplates[r3][r3tn].isBitSet(i)) {
-//									r3p.chars[i] = 3;
-//								}
-//							}
-//							ch81 can;
-//							subcanon(r3p.chars, can.chars);
-//							r3all.insert(can);
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-//	//printf("%d\n", r3all.size());
-//	r3all.saveToFile(stdout);
-//}
-
+void templates::get4rookeries(lightweightUsetList& r4all) const { //498.676 seconds
+	lightweightUsetList r3all;
+	get3rookeries(r3all);
+	rookeriesPlus1(r3all, r4all);
+}
 
 void templates::get2templates(puzzleSet& t2all) const { //0.1 seconds
 	//fix template in r1c1 to first one
@@ -1105,7 +956,107 @@ void templates::get2templates(puzzleSet& t2all) const { //0.1 seconds
 		}
 	}
 }
+void templates::get2rookeries(lightweightUsetList& r2all) const {
+	puzzleSet t2all;
+	get2templates(t2all);
+	for(puzzleSet::const_iterator p = t2all.begin(); p != t2all.end(); p++) {
+		bm128 r;
+		template2rookery(*p, r);
+		r2all.insert(r);
+	}
+}
 
+void templates::count6templates() const {
+	puzzleSet p3;
+	lightweightUsetList r3all;
+	get3rookeries(r3all);
+	fprintf(stderr, "Number of 3-rookeries\t%d\n", (int)r3all.size());
+	unsigned long long numT3 = 0;
+	unsigned long long numT6 = 0;
+#ifdef _OPENMP
+#pragma omp parallel
+#endif //_OPENMP
+	{
+	for(lightweightUsetList::const_iterator r3 = r3all.begin(); r3 != r3all.end(); r3++) {
+#ifdef _OPENMP
+#pragma omp single nowait
+#endif //_OPENMP
+		{
+		puzzleSet t3;
+		rookery2templates(*r3, t3);
+		bm128 r6 = maskLSB[81];
+		r6.clearBits(*r3);
+		puzzleSet t6;
+		rookery2templates(r6, t6);
+		ch81 txt;
+		r3->toMask81(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+		{
+			printf("%81.81s\t%d\t%d\n", txt.chars, (int)t3.size(), (int)t6.size());
+			numT3 += t3.size();
+			numT6 += t6.size();
+			fflush(NULL);
+		}
+//		ch81 txt;
+//		r3->toMask81(txt.chars);
+//		printf("%81.81s\n", txt.chars);
+//		for(puzzleSet::const_iterator p3 = t3.begin(); p3 != t3.end(); p3++) {
+//
+//		}
+		}
+	}
+	}
+	fprintf(stderr, "Total number of 3-templates\t%llu\n", numT3);
+	fprintf(stderr, "Total number of 6-templates\t%llu\n", numT6);
+}
+
+void templates::count5templates() const {
+	puzzleSet p3;
+	lightweightUsetList r4all;
+	get4rookeries(r4all);
+	fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
+	unsigned long long numT4 = 0;
+	unsigned long long numT5 = 0;
+#ifdef _OPENMP
+#pragma omp parallel
+#endif //_OPENMP
+	{
+	for(lightweightUsetList::const_iterator r4 = r4all.begin(); r4 != r4all.end(); r4++) {
+#ifdef _OPENMP
+#pragma omp single nowait
+#endif //_OPENMP
+		{
+		puzzleSet t4;
+		rookery2templates(*r4, t4);
+		bm128 r5 = maskLSB[81];
+		r5.clearBits(*r4);
+		puzzleSet t5;
+		rookery2templates(r5, t5);
+		ch81 txt;
+		r4->toMask81(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+		{
+			printf("%81.81s\t%d\t%d\n", txt.chars, (int)t4.size(), (int)t5.size());
+			numT4 += t4.size();
+			numT5 += t5.size();
+			fflush(NULL);
+		}
+//		ch81 txt;
+//		r3->toMask81(txt.chars);
+//		printf("%81.81s\n", txt.chars);
+//		for(puzzleSet::const_iterator p3 = t3.begin(); p3 != t3.end(); p3++) {
+//
+//		}
+		}
+	}
+	}
+	fprintf(stderr, "Total number of 4-templates\t%llu\n", numT4);
+	fprintf(stderr, "Total number of 5-templates\t%llu\n", numT5);
+}
 //void templates::get2rookeries() {
 //	puzzleSet r2all;
 //	//fix template in r1c1 to first one
@@ -1747,50 +1698,7 @@ void countSolutions () {
 struct uaByTemplate: public map<ch81,usetListBySize> {};
 extern void test() {
 	templates tpl;
-
-	puzzleSet p3;
-	lightweightUsetList r3all;
-	tpl.get3rookeries(r3all);
-	fprintf(stderr, "Number of 3-rookeries\t%d\n", (int)r3all.size());
-	unsigned long long numT3 = 0;
-	unsigned long long numT6 = 0;
-#ifdef _OPENMP
-#pragma omp parallel
-#endif //_OPENMP
-	{
-	for(lightweightUsetList::const_iterator r3 = r3all.begin(); r3 != r3all.end(); r3++) {
-#ifdef _OPENMP
-#pragma omp single nowait
-#endif //_OPENMP
-		{
-		puzzleSet t3;
-		tpl.rookery2templates(*r3, t3);
-		bm128 r6 = maskLSB[81];
-		r6.clearBits(*r3);
-		puzzleSet t6;
-		tpl.rookery2templates(r6, t6);
-		ch81 txt;
-		r3->toMask81(txt.chars);
-#ifdef _OPENMP
-#pragma omp critical
-#endif //_OPENMP
-		{
-			printf("%81.81s\t%d\t%d\n", txt.chars, (int)t3.size(), (int)t6.size());
-			numT3 += t3.size();
-			numT6 += t6.size();
-			fflush(NULL);
-		}
-//		ch81 txt;
-//		r3->toMask81(txt.chars);
-//		printf("%81.81s\n", txt.chars);
-//		for(puzzleSet::const_iterator p3 = t3.begin(); p3 != t3.end(); p3++) {
-//
-//		}
-		}
-	}
-	}
-	fprintf(stderr, "Total number of 3-templates\t%llu\n", numT3);
-	fprintf(stderr, "Total number of 6-templates\t%llu\n", numT6);
+	tpl.count5templates();
 	return;
 /*
 	char buf[1000];
