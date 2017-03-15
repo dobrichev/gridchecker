@@ -151,8 +151,15 @@ void getGrid23Templates() {
 	}
 }
 
-struct rookeryWithTemplates : public map<bm128, puzzleSet, less<bm128>, mm_allocator<bm128>> {};
-
+//struct rookeryWithTemplates : public map<bm128, puzzleSet, less<bm128>, mm_allocator<bm128>> {};
+struct templateWithExemplar {
+	ch81 can;
+	ch81 exemplar;
+	bool operator < (const templateWithExemplar& other) const {
+		return can < other.can;
+	}
+};
+struct exemplarSet : public set<templateWithExemplar> {};
 //typedef bit_mask<5184> colTemplates_index_type;
 
 struct templates {
@@ -176,9 +183,12 @@ struct templates {
 	void templatesPlus1(const puzzleSet& src, puzzleSet& res) const;
 	void templates2rookeries() const;
 	void rookery2templates(const bm128& r, puzzleSet& res, bool first = false) const;
+	void rookery2templates4(const bm128& r, exemplarSet& res) const;
+	void rookery2templates5(const bm128& r, exemplarSet& res) const;
 	void template2rookery(const ch81& src, bm128& r) const;
 	void count6templates() const;
 	void count5templates() const;
+	void countGrids() const;
 };
 
 templates::templates() {
@@ -888,7 +898,168 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 			break;
 	}
 }
-
+void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
+	int rsize = 0;
+	int r1row[9];
+	for (int i = 0; i < 9; i++) {
+		if (r.isBitSet(i)) {
+			r1row[rsize] = i;
+			rsize++;
+		}
+	}
+	bm128 rt[3][5184];
+	int rtsize[3] = { 0, 0, 0 };
+	for (int c = 0; c < 3; c++) {
+		for (int i = 0; i < 5184; i++) {
+			if (colTemplates[r1row[c]][i].isSubsetOf(r)) {
+				rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+				rtsize[c]++;
+			}
+		}
+	}
+	for (int c0 = 0; c0 < rtsize[0]; c0++) {
+		bm128 r0(rt[0][c0]);
+		ch81 p1;
+		p1.clear();
+		for (int i = 0; i < 81; i++) {
+			if (r0.isBitSet(i)) {
+				p1.chars[i] = 1;
+			}
+		}
+		bm128 rr0(r);
+		rr0.clearBits(r0);
+		for (int c1 = 0; c1 < rtsize[1]; c1++) {
+			bm128 r1(rt[1][c1]);
+			if (!r1.isSubsetOf(rr0))
+				continue;
+			ch81 p2 = p1; //structure copy
+			for (int i = 0; i < 81; i++) {
+				if (r1.isBitSet(i)) {
+					p2.chars[i] = 2;
+				}
+			}
+			bm128 rr1(rr0);
+			rr1.clearBits(r1);
+			for (int c2 = 0; c2 < rtsize[2]; c2++) {
+				bm128 r2(rt[2][c2]);
+				if (!r2.isSubsetOf(rr1))
+					continue;
+				ch81 p3 = p2; //structure copy
+				for (int i = 0; i < 81; i++) {
+					if (r2.isBitSet(i)) {
+						p3.chars[i] = 3;
+					}
+				}
+				bm128 rr2(rr1);
+				rr2.clearBits(r2);
+				//ch81 p4 = p3; //structure copy
+				templateWithExemplar rr;
+				rr.exemplar = p3;
+				for (int i = 0; i < 81; i++) {
+					if (rr2.isBitSet(i)) {
+						rr.exemplar.chars[i] = 4;
+					}
+				}
+				patminlex pml(rr.exemplar.chars, rr.can.chars);
+				res.insert(rr);
+			}
+		}
+	}
+}
+void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
+	int rsize = 0;
+	int r1row[9];
+	for (int i = 0; i < 9; i++) {
+		if (r.isBitSet(i)) {
+			r1row[rsize] = i;
+			rsize++;
+		}
+	}
+	//reduce the templates to play with, by removing those that aren't subsets of the given rookery
+	bm128 rt[4][5184];
+	int rtsize[4] = { 0, 0, 0, 0 };
+	for (int c = 0; c < 4; c++) {
+		for (int i = 0; i < 5184; i++) {
+			if (colTemplates[r1row[c]][i].isSubsetOf(r)) {
+				rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+				rtsize[c]++;
+			}
+		}
+	}
+	//printf("%d\t%d\t%d\t%d\n", rtsize[0], rtsize[1], rtsize[2], rtsize[3]);
+	for (int c0 = 0; c0 < 5184; c0++) {
+		bm128 r0(colTemplates[r1row[0]][c0]);
+		if (!r0.isSubsetOf(r))
+			continue;
+		ch81 p1;
+		p1.clear();
+		for (int i = 0; i < 81; i++) {
+			if (r0.isBitSet(i)) {
+				p1.chars[i] = 1;
+			}
+		}
+		bm128 rr0(r);
+		rr0.clearBits(r0);
+		int rtsize[4] = { 0, 0, 0, 0 };
+		for (int c = 1; c < 4; c++) {
+			for (int i = 0; i < 5184; i++) {
+				if (colTemplates[r1row[c]][i].isSubsetOf(rr0)) {
+					rt[c][rtsize[c]] = colTemplates[r1row[c]][i];
+					rtsize[c]++;
+				}
+			}
+		}
+		for (int c1 = 0; c1 < rtsize[1]; c1++) {
+			bm128 r1(rt[1][c1]);
+			if (!r1.isSubsetOf(rr0))
+				continue;
+			ch81 p2 = p1; //structure copy
+			for (int i = 0; i < 81; i++) {
+				if (r1.isBitSet(i)) {
+					p2.chars[i] = 2;
+				}
+			}
+			bm128 rr1(rr0);
+			rr1.clearBits(r1);
+			for (int c2 = 0; c2 < rtsize[2]; c2++) {
+				bm128 r2(rt[2][c2]);
+				if (!r2.isSubsetOf(rr1))
+					continue;
+				ch81 p3 = p2; //structure copy
+				for (int i = 0; i < 81; i++) {
+					if (r2.isBitSet(i)) {
+						p3.chars[i] = 3;
+					}
+				}
+				bm128 rr2(rr1);
+				rr2.clearBits(r2);
+				for (int c3 = 0; c3 < rtsize[3]; c3++) {
+					bm128 r3(rt[3][c3]);
+					if (!r3.isSubsetOf(rr2))
+						continue;
+					ch81 p4 = p3; //structure copy
+					for (int i = 0; i < 81; i++) {
+						if (r3.isBitSet(i)) {
+							p4.chars[i] = 4;
+						}
+					}
+					bm128 rr3(rr2);
+					rr3.clearBits(r3);
+					//ch81 p5 = p4; //structure copy
+					templateWithExemplar rr;
+					rr.exemplar = p4;
+					for (int i = 0; i < 81; i++) {
+						if (rr3.isBitSet(i)) {
+							rr.exemplar.chars[i] = 5;
+						}
+					}
+					patminlex pml(rr.exemplar.chars, rr.can.chars);
+					res.insert(rr);
+				}
+			}
+		}
+	}
+}
 void templates::templates2rookeries() const { //read k-templates from stdin and write (un)sorted k-rookeries to stdout
 	puzzleSet r3tall;
 	char buf[2000];
@@ -1056,6 +1227,105 @@ void templates::count5templates() const {
 	}
 	fprintf(stderr, "Total number of 4-templates\t%llu\n", numT4);
 	fprintf(stderr, "Total number of 5-templates\t%llu\n", numT5);
+}
+void templates::countGrids() const {
+	puzzleSet p3;
+	lightweightUsetList r4all;
+	get4rookeries(r4all);
+	//fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
+	unsigned long long numGridsTotal = 0;
+#ifdef _OPENMP
+#pragma omp parallel
+#endif //_OPENMP
+	{
+	for(lightweightUsetList::const_iterator r4 = r4all.begin(); r4 != r4all.end(); r4++) {
+#ifdef _OPENMP
+#pragma omp single nowait
+#endif //_OPENMP
+		{
+		exemplarSet t4;
+		rookery2templates4(*r4, t4);
+		bm128 r5 = maskLSB[81];
+		r5.clearBits(*r4);
+		exemplarSet t5;
+		rookery2templates5(r5, t5);
+
+		unsigned long long numGridsForRookey = 0;
+		ch81 r4txt;
+		ch81 r4can; //canonical textual representation of the rookery
+		for(int i = 0; i < 81; i++) {
+			if(r4->isBitSet(i)) {
+				r4txt.chars[i] = 1;
+			}
+			else {
+				r4txt.chars[i] = 0;
+			}
+		}
+		patminlex pml(r4txt.chars, r4can.chars);
+		int initialNumT5 = t5.size();
+		for(exemplarSet::const_iterator p5 = t5.begin(); p5 != t5.end();) {
+			//skip if any of the (4 of 5) rookery subsets has canonical representation less than the examined r4can
+			int eqmask = 0;
+			templateWithExemplar minT4FromEqualRookery;
+			for(int v = 1; v < 6; v++) {
+				ch81 r4;
+				for(int i = 0; i < 81; i++) {
+					r4.chars[i] = (p5->can.chars[i] == v || p5->can.chars[i] == 0) ? 0 : 1;
+				}
+				ch81 can;
+				patminlex pml(r4.chars, can.chars);
+				if(can < r4can) { //this grid will be examined by the smaller rookery can, now ignore it
+					//puzzleSet::const_iterator tmp = p5;
+					//p5++;
+					//t5.erase(tmp);
+					p5 = t5.erase(p5);
+					goto nextp5;
+				}
+				else if(can == r4can) {
+					//eqmask |= 1 << v;
+					templateWithExemplar tt4;
+					for(int i = 0; i < 81; i++) {
+						tt4.exemplar.chars[i] = (p5->can.chars[i] == v || p5->can.chars[i] == 0) ? 0 : p5->can.chars[i];
+					}
+					ch81 can;
+					patminlex pml(tt4.exemplar.chars, tt4.can.chars);
+					if(eqmask && tt4 < minT4FromEqualRookery) {
+						minT4FromEqualRookery = tt4; //structure copy
+					}
+					eqmask = 1;
+				}
+			}
+			//r4 elimination passed
+			if(eqmask) {
+				//todo: combine minT4FromEqualRookery with only <= t4
+				exemplarSet::const_iterator last = t4.upper_bound(minT4FromEqualRookery); //the first t4 > minT4FromEqualRookery
+				for(exemplarSet::const_iterator p4 = t4.begin(); p4 != last; p4++) {
+					numGridsForRookey++;
+				}
+			}
+			else {
+				//combine all t4 with this p5
+				numGridsForRookey += t4.size();
+			}
+			p5++;
+			nextp5:;
+		}
+		//printf("%81.81s\t%d\t%d\t%d\t%d\n", buf, (int)t4.size(), t5initialSize, (int)t5.size(), (int)(t4.size() * t5.size()));
+		numGridsTotal += numGridsForRookey;
+
+		ch81 txt;
+		r4->toMask81(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+		{
+			printf("%81.81s\t%d\t%d\t%d\t%llu\n", txt.chars, (int)t4.size(), initialNumT5, (int)t5.size(), numGridsForRookey);
+			fflush(NULL);
+		}
+		}
+	}
+	}
+	fprintf(stderr, "Total number of grids\t%llu\n", numGridsTotal);
 }
 //void templates::get2rookeries() {
 //	puzzleSet r2all;
@@ -1698,7 +1968,8 @@ void countSolutions () {
 struct uaByTemplate: public map<ch81,usetListBySize> {};
 extern void test() {
 	templates tpl;
-	tpl.count5templates();
+	//tpl.count5templates();
+	tpl.countGrids();
 	return;
 /*
 	char buf[1000];
