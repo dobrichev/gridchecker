@@ -652,8 +652,7 @@ void patminlex::map(const char* src, char* results) const {
 int patminlex::size() const {
 	return (int)theMaps.size();
 }
-
-patminlex::patminlex(const char *source, char *result) {
+patminlex::patminlex(const char *source, char *result, action requestedAction, res* res, const void* const data) {
 	candidate candidates[CAND_LIST_SIZE]; //rows 0,2,4,6,8
 	candidate candidates1[CAND_LIST_SIZE]; //rows 1,3,5,7
 	int minTopRowScores[2], minTopRowScore;
@@ -679,6 +678,14 @@ patminlex::patminlex(const char *source, char *result) {
 	result[6] = ((minTopRowScore >> 2) & 1);
 	result[7] = ((minTopRowScore >> 1) & 1);
 	result[8] = ((minTopRowScore     ) & 1);
+
+	if(requestedAction == action::findMinPatternLE) {
+		int i = std::memcmp(result, data, 9);
+		if(i > 0) {
+			*res = res::resGT;
+			return;
+		}
+	}
 
 	//step 1: determine top rows
 	int nCurCandidates;
@@ -706,6 +713,12 @@ patminlex::patminlex(const char *source, char *result) {
 		int bestTriplets0 = 7;
 		int bestTriplets1 = 7;
 		int bestTriplets2 = 7;
+		if(requestedAction == action::findMinPatternLE) {
+			char* rd = ((char*)data) + 9 * toRow;
+			bestTriplets0 = (rd[0] << 2) | (rd[1] << 1) | rd[2];
+			bestTriplets1 = (rd[3] << 2) | (rd[4] << 1) | rd[5];
+			bestTriplets2 = (rd[6] << 2) | (rd[7] << 1) | rd[8];
+		}
 		int rowInBand = toRow % 3;
 		for(int curCandidateIndex = 0; curCandidateIndex < nCurCandidates; curCandidateIndex++) {
 			const candidate &old = curCandidates[curCandidateIndex];
@@ -781,10 +794,32 @@ patminlex::patminlex(const char *source, char *result) {
 		r[7] = ((bestTriplets2 >> 1) & 1);
 		r[8] = ((bestTriplets2     ) & 1);
 	} //toRow
+	//at this point we have result populated with 0 and 1 for minlex pattern
 
-	if(nCurCandidates == 0) {
-		fprintf(stderr, "bad news: no candidates for minlex due to program errors\n");
+	if(requestedAction == action::findMinPattern) return;
+
+	if(requestedAction == action::findMinPatternLE) {
+		if(nCurCandidates == 0) {
+			*res = res::resGT;
+		}
+		else {
+			int i = std::memcmp(result, data, 81);
+			if(i > 0) {
+				fprintf(stderr, "bad news: minlex hs program errors for action::findMinPatternLE\n");
+				*res = res::resGT;
+			}
+			else if(i == 0)
+				*res = res::resEQ;
+			else {
+				*res = res::resLT;
+			}
+		}
+		return;
 	}
+
+//	if(nCurCandidates == 0) {
+//		fprintf(stderr, "bad news: no candidates for minlex due to program errors\n");
+//	}
 
 	//step 3: find the lexicographically minimal representative within the morphs,
 	// this time taking into account the real values of the input givens
@@ -849,18 +884,18 @@ patminlex::patminlex(const char *source, char *result) {
 							if(nSet == nGivens) {
 								//an isomorph of the currently best ordering
 								//at this point we have the necessary information for the transformation and can buffer it (if eventually it is one of the best ones)
-									for(int r = 0; r < 9; r++) {
-										for(int c = 0; c < 9; c++) {
-											int src = target.isTransposed ? target.mapRowsBackward[r] + 9 * toColsInStack[c] : target.mapRowsBackward[r] * 9 + toColsInStack[c]; //source cell index for target rc
-											map.cell[src] = minLex[r * 9 + c] ? r * 9 + c : 99; //map all non-givens to 99, this masking irrelevant permutations
-										}
+								for(int r = 0; r < 9; r++) {
+									for(int c = 0; c < 9; c++) {
+										int src = target.isTransposed ? target.mapRowsBackward[r] + 9 * toColsInStack[c] : target.mapRowsBackward[r] * 9 + toColsInStack[c]; //source cell index for target rc
+										map.cell[src] = minLex[r * 9 + c] ? r * 9 + c : 99; //map all non-givens to 99, this masking irrelevant permutations
 									}
-									for(int d = 0; d < 10; d++)
-										map.label[d] = 0;
-									for(int d = 0; d < 10; d++)
-										map.label[labelPerm[d]] = d;
-									map.label[0] = 0; //don't map zero to non-zero
-									theMaps.insert(map); //this will automatically ignore duplicates
+								}
+								for(int d = 0; d < 10; d++)
+									map.label[d] = 0;
+								for(int d = 0; d < 10; d++)
+									map.label[labelPerm[d]] = d;
+								map.label[0] = 0; //don't map zero to non-zero
+								theMaps.insert(map); //this will automatically ignore duplicates
 							}
 						} //col
 					} //toRow
