@@ -669,6 +669,7 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 	else
 		minTopRowScore = minTopRowScores[1];
 
+	//at this point the pattern for the top row is fixed
 	result[0] = ((minTopRowScore >> 8) & 1);
 	result[1] = ((minTopRowScore >> 7) & 1);
 	result[2] = ((minTopRowScore >> 6) & 1);
@@ -680,9 +681,14 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 	result[8] = ((minTopRowScore     ) & 1);
 
 	if(requestedAction == action::findMinPatternLE) {
+		//comparing patterns, after identifying the larger top row, we know the pattern can't be canonicalized to <= one
 		int i = std::memcmp(result, data, 9);
 		if(i > 0) {
 			*res = res::resGT;
+			return;
+		}
+		if(i < 0) {
+			*res = res::resLT;
 			return;
 		}
 	}
@@ -804,11 +810,12 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 		}
 		else {
 			int i = std::memcmp(result, data, 81);
-			if(i > 0) {
-				fprintf(stderr, "bad news: minlex hs program errors for action::findMinPatternLE\n");
-				*res = res::resGT;
-			}
-			else if(i == 0)
+//			if(i > 0) {
+//				fprintf(stderr, "bad news: minlex has program errors for action::findMinPatternLE\n");
+//				*res = res::resGT;
+//			}
+//			else
+			if(i == 0)
 				*res = res::resEQ;
 			else {
 				*res = res::resLT;

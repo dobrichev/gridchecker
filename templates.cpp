@@ -170,7 +170,7 @@ struct templates {
 	void init();
 	unsigned long long nSol(const char *p);
 	templates();
-	void getComplementaryTemplates() const;
+	//void getComplementaryTemplates() const;
 	void get2templates(puzzleSet& t2all) const;
 	void get2rookeries(lightweightUsetList& r2all) const;
 	void get3templates(puzzleSet& t3all) const;
@@ -214,57 +214,58 @@ void templates::template2rookery(const ch81& src, bm128& r) const {
 
 	for(int i = 0; i < 81; i++) {
 		if(can.chars[i]) {
-			r.setBit(i);
+			r.setBit(80 - i);
 		}
 	}
 }
 
-void templates::getComplementaryTemplates() const { //read k-rookeries from stdin and count complementary templates. Works well for 5-templates from 4-rookeries.
-	char buf[2000];
-	//unsigned long long nTempl = 0;
-	unsigned long long progress = 0;
-	const unsigned long long maxSol = 10000000;
-	//ch81 p1[maxSol];
-	ch81 *p1 = (ch81*)malloc(maxSol * sizeof(ch81));
-	while(fgets(buf, sizeof(buf), stdin)) {
-		ch81 puz;
-		int puzSize = puz.fromString(buf);
-		unsigned long long nSol;
-		ch81 solCan;
-		//fix the non-givens in the first row
-		int n = puzSize / 9; //max given label
-		for(int i = 0; i < 9; i++) {
-			if(puz.chars[i] == 0) {
-				puz.chars[i] = ++n;
-			}
-		}
-		n = puzSize / 9;
-		nSol = solve(puz.chars, maxSol, p1[0].chars);
-		if(nSol == maxSol) {
-			fprintf(stderr, "Maximum of 100000 solutions reached: %81.81s\n", buf);
-			continue;
-		}
-		puzzleSet templ;
-		for(unsigned int s = 0; s < nSol; s++) {
-			for(int i = 0; i < 81; i++) {
-				if(p1[s].chars[i] <= n) {
-					p1[s].chars[i] = 0;
-				}
-			}
-			subcanon(p1[s].chars, solCan.chars);
-			templ.insert(solCan);
-		}
-		templ.saveToFile(stdout);
-		fflush(stdout);
-		//nTempl += templ.size();
-		templ.clear();
-		if(++progress % 300 == 0) {
-			fprintf(stderr, "%llu\n", progress);
-		}
-	}
-	free(p1);
-	//printf("%llu\n", nTempl);
-}
+//void templates::getComplementaryTemplates() const { //read k-rookeries from stdin and count complementary templates. Works well for 5-templates from 4-rookeries.
+//	char buf[2000];
+//	//unsigned long long nTempl = 0;
+//	unsigned long long progress = 0;
+//	const unsigned long long maxSol = 10000000;
+//	//ch81 p1[maxSol];
+//	ch81 *p1 = (ch81*)malloc(maxSol * sizeof(ch81));
+//	while(fgets(buf, sizeof(buf), stdin)) {
+//		ch81 puz;
+//		int puzSize = puz.fromString(buf);
+//		unsigned long long nSol;
+//		ch81 solCan;
+//		//fix the non-givens in the first row
+//		int n = puzSize / 9; //max given label
+//		for(int i = 0; i < 9; i++) {
+//			if(puz.chars[i] == 0) {
+//				puz.chars[i] = ++n;
+//			}
+//		}
+//		n = puzSize / 9;
+//		nSol = solve(puz.chars, maxSol, p1[0].chars);
+//		if(nSol == maxSol) {
+//			fprintf(stderr, "Maximum of 100000 solutions reached: %81.81s\n", buf);
+//			continue;
+//		}
+//		puzzleSet templ;
+//		for(unsigned int s = 0; s < nSol; s++) {
+//			for(int i = 0; i < 81; i++) {
+//				if(p1[s].chars[i] <= n) {
+//					p1[s].chars[i] = 0;
+//				}
+//			}
+//			subcanon(p1[s].chars, solCan.chars);
+//			templ.insert(solCan);
+//		}
+//		//templ.saveToFile(stdout);
+//		fprintf(stdout, "%81.81s\t%d\n", buf, (int)templ.size());
+//		fflush(stdout);
+//		//nTempl += templ.size();
+//		templ.clear();
+//		if(++progress % 300 == 0) {
+//			fprintf(stderr, "%llu\n", progress);
+//		}
+//	}
+//	free(p1);
+//	//printf("%llu\n", nTempl);
+//}
 
 void templates::templatePlus1() { //read k-templates from stdin, store k+1 templates to files 000.txt, 001.txt, etc.
 	char buf[2000];
@@ -319,15 +320,8 @@ void templates::rookeryPlus1(const bm128& src, lightweightUsetList& res) const {
 						p.chars[i] = 1;
 					}
 				}
-				ch81 can;
-				patminlex rml(p.chars, can.chars, patminlex::action::findMinPattern);
 				bm128 r;
-				r.clear();
-				for(int i = 0; i < 81; i++) {
-					if(can.chars[i]) {
-						r.setBit(i);
-					}
-				}
+				template2rookery(p, r);
 				res.insert(r);
 			}
 		}
@@ -926,7 +920,7 @@ void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
 		p1.clear();
 		for (int i = 0; i < 81; i++) {
 			if (r0.isBitSet(i)) {
-				p1.chars[i] = 1;
+				p1.chars[80 - i] = 1;
 			}
 		}
 		bm128 rr0(r);
@@ -938,7 +932,7 @@ void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
 			ch81 p2 = p1; //structure copy
 			for (int i = 0; i < 81; i++) {
 				if (r1.isBitSet(i)) {
-					p2.chars[i] = 2;
+					p2.chars[80 - i] = 2;
 				}
 			}
 			bm128 rr1(rr0);
@@ -950,7 +944,7 @@ void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
 				ch81 p3 = p2; //structure copy
 				for (int i = 0; i < 81; i++) {
 					if (r2.isBitSet(i)) {
-						p3.chars[i] = 3;
+						p3.chars[80 - i] = 3;
 					}
 				}
 				bm128 rr2(rr1);
@@ -960,7 +954,7 @@ void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
 				rr.exemplar = p3;
 				for (int i = 0; i < 81; i++) {
 					if (rr2.isBitSet(i)) {
-						rr.exemplar.chars[i] = 4;
+						rr.exemplar.chars[80 - i] = 4;
 					}
 				}
 				patminlex pml(rr.exemplar.chars, rr.can.chars);
@@ -998,7 +992,7 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 		p1.clear();
 		for (int i = 0; i < 81; i++) {
 			if (r0.isBitSet(i)) {
-				p1.chars[i] = 5;
+				p1.chars[80 - i] = 5;
 			}
 		}
 		bm128 rr0(r);
@@ -1019,7 +1013,7 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 			ch81 p2 = p1; //structure copy
 			for (int i = 0; i < 81; i++) {
 				if (r1.isBitSet(i)) {
-					p2.chars[i] = 6;
+					p2.chars[80 - i] = 6;
 				}
 			}
 			bm128 rr1(rr0);
@@ -1031,7 +1025,7 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 				ch81 p3 = p2; //structure copy
 				for (int i = 0; i < 81; i++) {
 					if (r2.isBitSet(i)) {
-						p3.chars[i] = 7;
+						p3.chars[80 - i] = 7;
 					}
 				}
 				bm128 rr2(rr1);
@@ -1043,7 +1037,7 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 					ch81 p4 = p3; //structure copy
 					for (int i = 0; i < 81; i++) {
 						if (r3.isBitSet(i)) {
-							p4.chars[i] = 8;
+							p4.chars[80 - i] = 8;
 						}
 					}
 					bm128 rr3(rr2);
@@ -1053,7 +1047,7 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 					rr.exemplar = p4;
 					for (int i = 0; i < 81; i++) {
 						if (rr3.isBitSet(i)) {
-							rr.exemplar.chars[i] = 9;
+							rr.exemplar.chars[80 - i] = 9;
 						}
 					}
 					patminlex pml(rr.exemplar.chars, rr.can.chars);
@@ -1099,6 +1093,11 @@ void templates::get3rookeries(lightweightUsetList& r3all) const { //3.629" templ
 void templates::get4rookeries(lightweightUsetList& r4all) const { //498.676 seconds
 	lightweightUsetList r3all;
 	get3rookeries(r3all);
+
+//	bm128 u = *r3all.begin();
+//	r3all.clear();
+//	r3all.insert(u);
+
 	rookeriesPlus1(r3all, r4all);
 }
 
@@ -1235,19 +1234,31 @@ void templates::countGrids() const {
 	//ch81 r9 = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 	puzzleSet p3;
 	lightweightUsetList r4all;
-	get4rookeries(r4all);
+
+	//get4rookeries(r4all);
+	char buf[1000];
+	while(fgets(buf, sizeof(buf), stdin)) {
+		bm128 r4;
+		ch81 p4;
+		p4.fromString(buf);
+		template2rookery(p4, r4);
+		r4all.insert(r4);
+		//if(0 == memcmp(buf, ".....1111.11.1...11.111.......11.11.11...1.1.11.1..1....11.1..1.11.11...1.....111", 81)) break; //bug in eclipse ide
+	}
+
 	//fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
 	unsigned long long numGridsTotal = 0;
 #ifdef _OPENMP
 #pragma omp parallel
 #endif //_OPENMP
 	{
-		for (lightweightUsetList::const_iterator r4 = r4all.begin();
-				r4 != r4all.end(); r4++) {
+		for (lightweightUsetList::const_iterator r4 = r4all.begin(); r4 != r4all.end(); r4++) {
 #ifdef _OPENMP
 #pragma omp single nowait
 #endif //_OPENMP
 			{
+				int foundLess = 0;
+				int foundEqual = 0;
 				bool t4generated = false;
 				bm128 r5 = maskLSB[81];
 				r5.clearBits(*r4);
@@ -1255,19 +1266,17 @@ void templates::countGrids() const {
 				rookery2templates5(r5, t5);
 
 				unsigned long long numGridsForRookery = 0;
-				ch81 r4txt;
 				ch81 r4can; //canonical textual representation of the rookery
 				for (int i = 0; i < 81; i++) {
-					if (r4->isBitSet(i)) {
-						r4txt.chars[i] = 1;
+					if (r4->isBitSet(80 - i)) {
+						r4can.chars[i] = 1;
 					}
 					else {
-						r4txt.chars[i] = 0;
+						r4can.chars[i] = 0;
 					}
 				}
 				exemplarSet t4;
 				int initialNumT5 = t5.size();
-				patminlex pml(r4txt.chars, r4can.chars, patminlex::action::findMinPattern);
 				for (exemplarSet::const_iterator p5 = t5.begin(); p5 != t5.end(); p5++) {
 					//find whether any independent of t4 sub-rookery has canonical form < r4
 					bool hasEqualRookery = false;
@@ -1285,89 +1294,102 @@ void templates::countGrids() const {
 							patminlex pml(rr4of5.chars, rr4of5can.chars, patminlex::action::findMinPatternLE, &res, r4can.chars);
 						}
 						//if (rr4of5can < r4can) {
-						if(res == patminlex::res::resGT) {
+						if(res == patminlex::res::resLT) {
 							//this pair will be exported by a smaller r4. Skip it.
+							foundLess++;
 							goto nextp5;
 						}
 						if(res == patminlex::res::resEQ) {
 						//if (rr4of5can == r4can) {
-							//this pair is sufficient to be checked to a smaller subset of t4, up to the canonical representation of the rr4of5can's template.
-							patminlex pml(rr4of5.chars, rr4of5can.chars);
-							if(hasEqualRookery) {
-								if(rr4of5can < min4of5.can) {
-									min4of5.can = rr4of5can; //copy
-								}
-							}
-							else {
-								min4of5.can = rr4of5can; //copy
-								hasEqualRookery = true;
-							}
+							foundEqual++;
+//							//this pair is sufficient to be checked to a smaller subset of t4, up to the canonical representation of the rr4of5can's template.
+//							patminlex pml(rr4of5.chars, rr4of5can.chars);
+//							if(hasEqualRookery) {
+//								if(rr4of5can < min4of5.can) {
+//									min4of5.can = rr4of5can; //copy
+//								}
+//							}
+//							else {
+//								min4of5.can = rr4of5can; //copy
+//								hasEqualRookery = true;
+//							}
 						}
 					} //clear value 1..5
-					//now check against each t4
-					if(! t4generated) {
-						//at this point we need t4
-						rookery2templates4(*r4, t4);
-						t4generated = true;
-					}
-					{
-						exemplarSet::const_iterator t4end = hasEqualRookery ? t4.upper_bound(min4of5) : t4.end();
-						for (exemplarSet::const_iterator p4 = t4.begin(); p4 != t4end; p4++) {
-						//for (exemplarSet::const_iterator p4 = t4.begin(); p4 != t4.end(); p4++) {
-							ch81 res = p5->exemplar;
-							for (int c = 0; c < 81; c++) {
-								res.chars[c] += p4->exemplar.chars[c];
-							}
-							//res will be exported if the following tests are passed
-							for (int i4of9 = 1; i4of9 < 121; i4of9++) { //for each 9 choose 4, except first that depend only of p4 and latest 5 that depend only of p5
-								int v1 = choice4of9[i4of9][0] + 1;
-								int v2 = choice4of9[i4of9][1] + 1;
-								int v3 = choice4of9[i4of9][2] + 1;
-								int v4 = choice4of9[i4of9][3] + 1;
-								ch81 ss4of9 = res;
-								//ch81 rr4of9; // = r9;
-								for (int c = 0; c < 81; c++) {
-									if (res.chars[c] != v1 && res.chars[c] != v2 && res.chars[c] != v3 && res.chars[c] != v4) {
-										ss4of9.chars[c] = 0;
-									}
-								}
-								ch81 rr4of9can;
-								{
-									patminlex pml(ss4of9.chars, rr4of9can.chars, patminlex::action::findMinPattern);
-								}
-								if (rr4of9can < r4can) {
-									//this pair will be exported by a smaller r4. Skip it.
-									goto nextp4;
-								}
-								if (rr4of9can == r4can) {
-									ch81 ss4of9can;
-									patminlex pml(ss4of9.chars, ss4of9can.chars); //maybe it is worth to search only for existence of canonical representation smaller than p4->can
-									if (ss4of9can < p4->can) {
-										//the essentially same union p4+p5 was exported on earlier iteration of p4. Skip it.
-										goto nextp4;
-									}
-								}
-							} //each 4 of 9
-							//all subsets of p5 are >= p4. Export the (p4+p5) grid.
-							numGridsForRookery++;
-							nextp4: ;
-						} //for p4
-					}
+//					//now check against each t4
+//					if(! t4generated) {
+//						//at this point we need t4
+//						rookery2templates4(*r4, t4);
+//						t4generated = true;
+//					}
+//					{
+//						exemplarSet::const_iterator t4end = hasEqualRookery ? t4.upper_bound(min4of5) : t4.end();
+//						for (exemplarSet::const_iterator p4 = t4.begin(); p4 != t4end; p4++) {
+//						//for (exemplarSet::const_iterator p4 = t4.begin(); p4 != t4.end(); p4++) {
+//							ch81 res = p5->exemplar;
+//							for (int c = 0; c < 81; c++) {
+//								res.chars[c] += p4->exemplar.chars[c];
+//							}
+//							//res will be exported if the following tests are passed
+//							for (int i4of9 = 1; i4of9 < 121; i4of9++) { //for each 9 choose 4, except first that depend only of p4 and latest 5 that depend only of p5
+//							//for (int i4of9 = 1; i4of9 < 126; i4of9++) { //for each 9 choose 4, except first that depend only of p4
+//								int v1 = choice4of9[i4of9][0] + 1;
+//								int v2 = choice4of9[i4of9][1] + 1;
+//								int v3 = choice4of9[i4of9][2] + 1;
+//								int v4 = choice4of9[i4of9][3] + 1;
+//								ch81 ss4of9 = res;
+////								for (int c = 0; c < 81; c++) {
+////									if (ss4of9.chars[c] != v1 && ss4of9.chars[c] != v2 && ss4of9.chars[c] != v3 && ss4of9.chars[c] != v4) {
+////										ss4of9.chars[c] = 0;
+////									}
+////								}
+//								for (int c = 0; c < 81; c++) {
+//									if (ss4of9.chars[c] == v1) continue;
+//									if (ss4of9.chars[c] == v2) continue;
+//									if (ss4of9.chars[c] == v3) continue;
+//									if (ss4of9.chars[c] == v4) continue;
+//									ss4of9.chars[c] = 0;
+//								}
+//								ch81 rr4of9can;
+//								patminlex::res pr;
+//								{
+//									//patminlex pml(ss4of9.chars, rr4of9can.chars, patminlex::action::findMinPattern);
+//									patminlex pml(ss4of9.chars, rr4of9can.chars, patminlex::action::findMinPatternLE, &pr, r4can.chars);
+//								}
+//								//if (rr4of9can < r4can) {
+//								if(pr == patminlex::res::resLT) {
+//									//this pair will be exported by a smaller r4. Skip it.
+//									goto nextp4;
+//								}
+//								//if (rr4of9can == r4can) {
+//								if(pr == patminlex::res::resEQ) {
+//									ch81 ss4of9can;
+//									patminlex pml(ss4of9.chars, ss4of9can.chars); //maybe it is worth to search only for existence of canonical representation smaller than p4->can
+//									if (ss4of9can < p4->can) {
+//										//the essentially same union p4+p5 was exported on earlier iteration of p4. Skip it.
+//										goto nextp4;
+//									}
+//								}
+//							} //each 4 of 9
+//							//all subsets of p5 are >= p4. Export the (p4+p5) grid.
+//							numGridsForRookery++;
+//							nextp4: ;
+//						} //for p4
+//					}
 					nextp5: ;
 				} //for p5
-				ch81 txt;
-				r4->toMask81(txt.chars);
+				//nextr4:
+				for(int i = 0; i < 81; i++) {
+					r4can.chars[i] = r4can.chars[i] ? r4can.chars[i] + '0' : '.';
+				}
 #ifdef _OPENMP
 #pragma omp critical
 #endif //_OPENMP
 				{
 					numGridsTotal += numGridsForRookery;
 					//r4, t4, t5, t5*t4, reduced t4*t5
-					printf("%81.81s\t%d\t%d\t%llu\t%llu\n", txt.chars,
-							(int) t4.size(), initialNumT5,
-							(unsigned long long) (initialNumT5 * t4.size()),
-							numGridsForRookery);
-					fflush(NULL);
+					//printf("%81.81s\t%d\t%d\t%llu\t%llu\n", r4can.chars, (int) t4.size(), initialNumT5, (unsigned long long) (initialNumT5 * t4.size()), numGridsForRookery);
+					printf("%81.81s\t%d\t%d\t%d\t%d\n", r4can.chars, initialNumT5, foundLess, foundEqual, initialNumT5 - foundLess - foundEqual);
+					//fflush(NULL);
 				} //omp critical
 			} //omp single nowait
 		} //for r4
