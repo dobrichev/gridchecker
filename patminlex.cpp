@@ -752,6 +752,10 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 				if(bt0.bestResult > bestTriplets0)
 					continue;
 				if(bt0.bestResult < bestTriplets0) {
+					if(requestedAction == action::findMinPatternLE) {
+						*res = res::resLT;
+						return;
+					}
 					nNextCandidates = 0;
 					bestTriplets0 = bt0.bestResult;
 					bestTriplets1 = 7;
@@ -761,6 +765,10 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 				if(bt1.bestResult > bestTriplets1)
 					continue;
 				if(bt1.bestResult < bestTriplets1) {
+					if(requestedAction == action::findMinPatternLE) {
+						*res = res::resLT;
+						return;
+					}
 					nNextCandidates = 0;
 					bestTriplets1 = bt1.bestResult;
 					bestTriplets2 = 7;
@@ -769,6 +777,10 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 				if(bt2.bestResult > bestTriplets2)
 					continue;
 				if(bt2.bestResult < bestTriplets2) {
+					if(requestedAction == action::findMinPatternLE) {
+						*res = res::resLT;
+						return;
+					}
 					nNextCandidates = 0;
 					bestTriplets2 = bt2.bestResult;
 				}
@@ -810,11 +822,6 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 		}
 		else {
 			int i = std::memcmp(result, data, 81);
-//			if(i > 0) {
-//				fprintf(stderr, "bad news: minlex has program errors for action::findMinPatternLE\n");
-//				*res = res::resGT;
-//			}
-//			else
 			if(i == 0)
 				*res = res::resEQ;
 			else {

@@ -1244,6 +1244,7 @@ void templates::countGrids() const {
 		template2rookery(p4, r4);
 		r4all.insert(r4);
 		//if(0 == memcmp(buf, ".....1111.11.1...11.111.......11.11.11...1.1.11.1..1....11.1..1.11.11...1.....111", 81)) break; //bug in eclipse ide
+		//break;
 	}
 
 	//fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
@@ -1258,6 +1259,7 @@ void templates::countGrids() const {
 #endif //_OPENMP
 			{
 				int foundLess = 0;
+				int foundGrearter = 0;
 				int foundEqual = 0;
 				bool t4generated = false;
 				bm128 r5 = maskLSB[81];
@@ -1293,27 +1295,85 @@ void templates::countGrids() const {
 						{
 							patminlex pml(rr4of5.chars, rr4of5can.chars, patminlex::action::findMinPatternLE, &res, r4can.chars);
 						}
-						//if (rr4of5can < r4can) {
-						if(res == patminlex::res::resLT) {
-							//this pair will be exported by a smaller r4. Skip it.
-							foundLess++;
+
+						if(res == patminlex::res::resGT) {
+							//this pair will be exported later by a larger r4. Skip it.
+
+//							//but firstly debug it
+//							ch81 txt;
+//							for(int i = 0; i < 81; i++) {
+//								if(r4can.chars[i])
+//									txt.chars[i] = '0' + r4can.chars[i];
+//								else
+//									txt.chars[i] = '.';
+//							}
+//							printf("\n%81.81s\trookery 4\n", txt.chars);
+//							for(int i = 0; i < 81; i++) {
+//								if(rr4of5.chars[i])
+//									txt.chars[i] = '0' + rr4of5.chars[i];
+//								else
+//									txt.chars[i] = '.';
+//							}
+//							printf("%81.81s\tt 4 of 5\n", txt.chars);
+//							{
+//								patminlex pml(rr4of5.chars, rr4of5can.chars);
+//							}
+//							for(int i = 0; i < 81; i++) {
+//								if(rr4of5can.chars[i])
+//									txt.chars[i] = '0' + rr4of5can.chars[i];
+//								else
+//									txt.chars[i] = '.';
+//							}
+//							printf("%81.81s\tt 4 of 5 can\n", txt.chars);
+//							ch81 rrrr;
+//							for(int i = 0; i < 81; i++) {
+//								if(rr4of5.chars[i])
+//									rrrr.chars[i] = 1;
+//								else
+//									rrrr.chars[i] = 0;
+//							}
+//							{
+//								patminlex pml(rrrr.chars, rr4of5can.chars);
+//							}
+//							for(int i = 0; i < 81; i++) {
+//								if(rr4of5can.chars[i])
+//									txt.chars[i] = '0' + rr4of5can.chars[i];
+//								else
+//									txt.chars[i] = '.';
+//							}
+//							printf("%81.81s\tr 4 of 5 can\n", txt.chars);
+//
+//							// end debug
+
+							foundGrearter++;
 							goto nextp5;
 						}
 						if(res == patminlex::res::resEQ) {
-						//if (rr4of5can == r4can) {
+							//this pair has to be checked at p4 level
 							foundEqual++;
-//							//this pair is sufficient to be checked to a smaller subset of t4, up to the canonical representation of the rr4of5can's template.
-//							patminlex pml(rr4of5.chars, rr4of5can.chars);
-//							if(hasEqualRookery) {
-//								if(rr4of5can < min4of5.can) {
-//									min4of5.can = rr4of5can; //copy
-//								}
-//							}
-//							else {
-//								min4of5.can = rr4of5can; //copy
-//								hasEqualRookery = true;
-//							}
+							goto nextp5;
 						}
+//						//if (rr4of5can < r4can) {
+//						if(res == patminlex::res::resLT) {
+//							//this pair will be exported by a smaller r4. Skip it.
+//							foundLess++;
+//							goto nextp5;
+//						}
+//						if(res == patminlex::res::resEQ) {
+//						//if (rr4of5can == r4can) {
+//							foundEqual++;
+////							//this pair is sufficient to be checked to a smaller subset of t4, up to the canonical representation of the rr4of5can's template.
+////							patminlex pml(rr4of5.chars, rr4of5can.chars);
+////							if(hasEqualRookery) {
+////								if(rr4of5can < min4of5.can) {
+////									min4of5.can = rr4of5can; //copy
+////								}
+////							}
+////							else {
+////								min4of5.can = rr4of5can; //copy
+////								hasEqualRookery = true;
+////							}
+//						}
 					} //clear value 1..5
 //					//now check against each t4
 //					if(! t4generated) {
@@ -1387,8 +1447,9 @@ void templates::countGrids() const {
 				{
 					numGridsTotal += numGridsForRookery;
 					//r4, t4, t5, t5*t4, reduced t4*t5
-					//printf("%81.81s\t%d\t%d\t%llu\t%llu\n", r4can.chars, (int) t4.size(), initialNumT5, (unsigned long long) (initialNumT5 * t4.size()), numGridsForRookery);
-					printf("%81.81s\t%d\t%d\t%d\t%d\n", r4can.chars, initialNumT5, foundLess, foundEqual, initialNumT5 - foundLess - foundEqual);
+					//printf("%81.81s\t%d\t%d\t%llu\t%llu\n", r4can.chars, (int) t4.size(), initialNumT5, (unsigned long long) (initialNumT5 * t4.size()), numGridsForRookery); //attempts 1..8
+					//printf("%81.81s\t%d\t%d\t%d\t%d\n", r4can.chars, initialNumT5, foundLess, foundEqual, initialNumT5 - foundLess - foundEqual); //attempt9
+					printf("%81.81s\t%d\t%d\t%d\t%d\n", r4can.chars, initialNumT5, foundGrearter, foundEqual, initialNumT5 - foundGrearter - foundEqual); //attempt10
 					//fflush(NULL);
 				} //omp critical
 			} //omp single nowait

@@ -56,7 +56,7 @@ public:
 	enum action {
 		findMinLex, //return minlex in result, default
 		findMinPattern, //return minlex pattern in result
-		findMinPatternLE, //return minlex pattern in result only if it is less or equal to data, return resLT or resEQ or resGT in res.
+		findMinPatternLE, //return resLT or resEQ or resGT in res.
 	};
 	enum res {
 		resLT,
