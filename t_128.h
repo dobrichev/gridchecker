@@ -21,11 +21,11 @@
 #endif
 
 #ifdef   _MSC_VER
-	#define _popcnt64(a) __popcnt64(a)
-	#define _popcnt32(a) __popcnt32(a)
+	#define x_popcnt64(a) __popcnt64(a)
+	#define x_popcnt32(a) __popcnt32(a)
 #else
-	#define _popcnt64(a) __builtin_popcountll(a)
-	#define _popcnt32(a) __builtin_popcount(a)
+	#define x_popcnt64(a) __builtin_popcountll(a)
+	#define x_popcnt32(a) __builtin_popcount(a)
 #endif
 
 typedef union t_128 {
@@ -71,7 +71,8 @@ public:
 	inline void operator^= (const bm128& r) {bitmap128.m128i_m128i = _mm_xor_si128(bitmap128.m128i_m128i, r.bitmap128.m128i_m128i);};
 	inline void operator-= (const bm128& r) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, maskLSB[81].m128i_m128i);}; //81-complementary
 	inline void operator<<= (const int bits) {bitmap128.m128i_m128i = _mm_slli_epi16(bitmap128.m128i_m128i, bits);};
-	inline bool isDisjoint(const bm128& r) const {return equals(andnot(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), bitmap128.m128i_m128i);};
+	inline bool isDisjoint(const bm128& r) const {return 0 != _mm_testz_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i);}
+	//inline bool isDisjoint(const bm128& r) const {return equals(andnot(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), bitmap128.m128i_m128i);};
 	//inline bool slow isDisjoint(const bm128& r) const {return equals(_mm_and_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), _mm_setzero_si128());};
 	inline int mask8() const {return _mm_movemask_epi8(bitmap128.m128i_m128i);}
 	inline uint64_t toInt64() const {return _mm_cvtsi128_si64(bitmap128.m128i_m128i);}
@@ -111,7 +112,7 @@ public:
 	void toMask81(const char c, char* r) const {for(int i = 0; i < 81; i++) r[i] = isBitSet(i) ? c : '.';}
 	void toMask128(char* r) const {for(int i = 0; i < 128; i++) r[i] = isBitSet(i) ? '1' : '.';}
 	inline int popcount_128() const {
-		return (int)(_popcnt64(this->toInt64()) + _popcnt64(this->toInt64_1()));
+		return (int)(x_popcnt64(this->toInt64()) + x_popcnt64(this->toInt64_1()));
 //		//http://dalkescientific.blogspot.com/2008/06/molecular-fingerprints.html
 //		//see also http://bmagic.sourceforge.net/bmsse2opt.html
 //		const __m128i msk55 = _mm_set1_epi32(0x55555555);
