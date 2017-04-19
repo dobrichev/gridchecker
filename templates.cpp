@@ -189,6 +189,7 @@ struct templates {
 	void count6templates() const;
 	void count5templates() const;
 	void countGrids() const;
+	void generateGrids() const;
 };
 
 templates::templates() {
@@ -1457,6 +1458,151 @@ void templates::countGrids() const {
 	} //omp parallel
 	fprintf(stderr, "Total number of grids\t%llu\n", numGridsTotal);
 }
+
+void templates::generateGrids() const {
+	unsigned long long numGrids = 0;
+	for(int ti0 = 0; ti0 < 1; ti0++) {
+		bm128 t0 = colTemplates[0][ti0];
+		//extract the compatible to t0 templates for columns 1..8. "Compatible" == disjoint and with >= index
+		int colTemplates0[8][2396]; //reduced cache of templates compatible indexes, for the inner iterations
+		int ctSizes0[8] = {0,0,0,0,0,0,0,0}; //2097,2097,2097,2396,2396,2097,2396,2396
+		for(int ti1 = ti0; ti1 < 5184; ti1++) {
+			for(int col = 0; col < 8; col++) {
+				if(t0.isDisjoint(colTemplates[1 + col][ti1])) {
+					colTemplates0[col][ctSizes0[col]] = ti1;
+					ctSizes0[col]++;
+				}
+			}
+		}
+		//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", ctSizes0[0], ctSizes0[1], ctSizes0[2], ctSizes0[3], ctSizes0[4], ctSizes0[5], ctSizes0[6], ctSizes0[7]);
+		//iterate column 1 compatible templates
+		for(int i1 = 0; i1 < ctSizes0[0]; i1++) { //index within cache
+			int ti1 = colTemplates0[0][i1]; //global index
+			bm128 t1 = colTemplates[1][ti1]; //the template bitmap
+			//extract the compatible to t1 templates for columns 2..8.
+			int colTemplates1[7][2396]; //reduced cache for columns 2..8
+			int ctSizes1[7] = {0,0,0,0,0,0,0};
+			for(int col = 0; col < 7; col++) {
+				for(int i = 0; i < ctSizes0[1 + col]; i++) {
+					int ti = colTemplates0[1 + col][i];
+					//if(ti < ti1) continue; //once a+b is done, skip doing b+a
+					if(t1.isDisjoint(colTemplates[2 + col][ti])) {
+						colTemplates1[col][ctSizes1[col]] = ti;
+						ctSizes1[col]++;
+					}
+				}
+			}
+			//iterate column 2 compatible templates
+			for(int i2 = 0; i2 < ctSizes1[0]; i2++) { //index within cache
+				int ti2 = colTemplates1[0][i2]; //global index
+				bm128 t2 = colTemplates[2][ti2]; //the template bitmap
+				//extract the compatible to t2 templates for columns 3..8.
+				int colTemplates2[6][2396]; //todo: find the max and (statically) reduce size to it
+				int ctSizes2[6] = {0,0,0,0,0,0};
+				for(int col = 0; col < 6; col++) {
+					for(int i = 0; i < ctSizes1[1 + col]; i++) {
+						int ti = colTemplates1[1 + col][i];
+						//if(ti < ti2) continue; //once a+b is done, skip doing b+a
+						if(t2.isDisjoint(colTemplates[3 + col][ti])) {
+							colTemplates2[col][ctSizes2[col]] = ti;
+							ctSizes2[col]++;
+						}
+					}
+				}
+				//iterate column 3 compatible templates
+				for(int i3 = 0; i3 < ctSizes2[0]; i3++) { //index within cache
+					int ti3 = colTemplates2[0][i3]; //global index
+					bm128 t3 = colTemplates[3][ti3]; //the template bitmap
+					//extract the compatible to t3 templates for columns 4..8.
+					int colTemplates3[5][2396]; //todo: find the max and (statically) reduce size to it
+					int ctSizes3[5] = {0,0,0,0,0};
+					for(int col = 0; col < 5; col++) {
+						for(int i = 0; i < ctSizes2[1 + col]; i++) {
+							int ti = colTemplates2[1 + col][i];
+							//if(ti < ti3) continue; //once a+b is done, skip doing b+a
+							if(t3.isDisjoint(colTemplates[4 + col][ti])) {
+								colTemplates3[col][ctSizes3[col]] = ti;
+								ctSizes3[col]++;
+							}
+						}
+					}
+					//iterate column 4 compatible templates
+					for(int i4 = 0; i4 < ctSizes3[0]; i4++) { //index within cache
+						int ti4 = colTemplates3[0][i4]; //global index
+						bm128 t4 = colTemplates[4][ti4]; //the template bitmap
+						//extract the compatible to t4 templates for columns 5..8.
+						int colTemplates4[4][2396]; //todo: find the max and (statically) reduce size to it
+						int ctSizes4[4] = {0,0,0,0};
+						for(int col = 0; col < 4; col++) {
+							for(int i = 0; i < ctSizes3[1 + col]; i++) {
+								int ti = colTemplates3[1 + col][i];
+								//if(ti < ti4) continue; //once a+b is done, skip doing b+a
+								if(t4.isDisjoint(colTemplates[5 + col][ti])) {
+									colTemplates4[col][ctSizes4[col]] = ti;
+									ctSizes4[col]++;
+								}
+							}
+						}
+						//iterate column 5 compatible templates
+						for(int i5 = 0; i5 < ctSizes4[0]; i5++) { //index within cache
+							int ti5 = colTemplates4[0][i5]; //global index
+							bm128 t5 = colTemplates[5][ti5]; //the template bitmap
+							//extract the compatible to t5 templates for columns 6..8.
+							int colTemplates5[3][2396]; //todo: find the max and (statically) reduce size to it
+							int ctSizes5[3] = {0,0,0};
+							for(int col = 0; col < 3; col++) {
+								for(int i = 0; i < ctSizes4[1 + col]; i++) {
+									int ti = colTemplates4[1 + col][i];
+									//if(ti < ti5) continue; //once a+b is done, skip doing b+a
+									if(t5.isDisjoint(colTemplates[6 + col][ti])) {
+										colTemplates5[col][ctSizes5[col]] = ti;
+										ctSizes5[col]++;
+									}
+								}
+							}
+							//iterate column 6 compatible templates
+							for(int i6 = 0; i6 < ctSizes5[0]; i6++) { //index within cache
+								int ti6 = colTemplates5[0][i6]; //global index
+								bm128 t6 = colTemplates[6][ti6]; //the template bitmap
+								//extract the compatible to t6 templates for columns 7..8.
+								int colTemplates6[2][2396]; //todo: find the max and (statically) reduce size to it
+								int ctSizes6[2] = {0,0};
+								for(int col = 0; col < 2; col++) {
+									for(int i = 0; i < ctSizes5[1 + col]; i++) {
+										int ti = colTemplates5[1 + col][i];
+										//if(ti < ti6) continue; //once a+b is done, skip doing b+a
+										if(t6.isDisjoint(colTemplates[7 + col][ti])) {
+											colTemplates6[col][ctSizes6[col]] = ti;
+											ctSizes6[col]++;
+										}
+									}
+								}
+								//iterate column 7 compatible templates
+								for(int i7 = 0; i7 < ctSizes6[0]; i7++) { //index within cache
+									int ti7 = colTemplates6[0][i7]; //global index
+									bm128 t7 = colTemplates[7][ti7]; //the template bitmap
+									//iterate column 8 compatible templates, there should be 0 or 1
+									for(int i8 = 0; i8 < ctSizes6[1]; i8++) {
+										int ti8 = colTemplates6[1][i8];
+										//if(ti8 < ti7) continue; //once a+b is done, skip doing b+a
+										if(t7.isDisjoint(colTemplates[8][ti8])) {
+											//we have a grid for exporting
+											bm128 t8 = colTemplates[8][ti8]; //the template bitmap
+
+											numGrids++;
+											//printf(".");
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			printf("%d\t%llu\n", i1, numGrids);
+		}
+	}
+}
 //void templates::get2rookeries() {
 //	puzzleSet r2all;
 //	//fix template in r1c1 to first one
@@ -2099,7 +2245,8 @@ struct uaByTemplate: public map<ch81,usetListBySize> {};
 extern void test() {
 	templates tpl;
 	//tpl.count5templates();
-	tpl.countGrids();
+	//tpl.countGrids();
+	tpl.generateGrids();
 	return;
 /*
 	char buf[1000];
