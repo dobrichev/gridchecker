@@ -21,11 +21,11 @@
 #endif
 
 #ifdef   _MSC_VER
-	#define _popcnt64(a) __popcnt64(a)
-	#define _popcnt32(a) __popcnt32(a)
+	#define x_popcnt64(a) __popcnt64(a)
+	#define x_popcnt32(a) __popcnt32(a)
 #else
-	#define _popcnt64(a) __builtin_popcountll(a)
-	#define _popcnt32(a) __builtin_popcount(a)
+	#define x_popcnt64(a) __builtin_popcountll(a)
+	#define x_popcnt32(a) __builtin_popcount(a)
 #endif
 
 typedef union t_128 {
@@ -111,7 +111,7 @@ public:
 	void toMask81(const char c, char* r) const {for(int i = 0; i < 81; i++) r[i] = isBitSet(i) ? c : '.';}
 	void toMask128(char* r) const {for(int i = 0; i < 128; i++) r[i] = isBitSet(i) ? '1' : '.';}
 	inline int popcount_128() const {
-		return (int)(_popcnt64(this->toInt64()) + _popcnt64(this->toInt64_1()));
+		return (int)(x_popcnt64(this->toInt64()) + x_popcnt64(this->toInt64_1()));
 //		//http://dalkescientific.blogspot.com/2008/06/molecular-fingerprints.html
 //		//see also http://bmagic.sourceforge.net/bmsse2opt.html
 //		const __m128i msk55 = _mm_set1_epi32(0x55555555);

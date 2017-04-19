@@ -684,11 +684,11 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 		//comparing patterns, after identifying the larger top row, we know the pattern can't be canonicalized to <= one
 		int i = std::memcmp(result, data, 9);
 		if(i > 0) {
-			*res = res::resGT;
+			*res = patminlex::res::resGT;
 			return;
 		}
 		if(i < 0) {
-			*res = res::resLT;
+			*res = patminlex::res::resLT;
 			return;
 		}
 	}
@@ -753,7 +753,7 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 					continue;
 				if(bt0.bestResult < bestTriplets0) {
 					if(requestedAction == action::findMinPatternLE) {
-						*res = res::resLT;
+						*res = patminlex::res::resLT;
 						return;
 					}
 					nNextCandidates = 0;
@@ -766,7 +766,7 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 					continue;
 				if(bt1.bestResult < bestTriplets1) {
 					if(requestedAction == action::findMinPatternLE) {
-						*res = res::resLT;
+						*res = patminlex::res::resLT;
 						return;
 					}
 					nNextCandidates = 0;
@@ -778,7 +778,7 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 					continue;
 				if(bt2.bestResult < bestTriplets2) {
 					if(requestedAction == action::findMinPatternLE) {
-						*res = res::resLT;
+						*res = patminlex::res::resLT;
 						return;
 					}
 					nNextCandidates = 0;
@@ -818,14 +818,14 @@ patminlex::patminlex(const char *source, char *result, action requestedAction, r
 
 	if(requestedAction == action::findMinPatternLE) {
 		if(nCurCandidates == 0) {
-			*res = res::resGT;
+			*res = patminlex::res::resGT;
 		}
 		else {
 			int i = std::memcmp(result, data, 81);
 			if(i == 0)
-				*res = res::resEQ;
+				*res = patminlex::res::resEQ;
 			else {
-				*res = res::resLT;
+				*res = patminlex::res::resLT;
 			}
 		}
 		return;
