@@ -27,6 +27,7 @@ extern int processUA();
 extern int groupBySolution(const bool noPuz, const bool verbose);
 extern int doSimilarPuzzles();
 extern int processPatterns();
+extern int processTemplate();
 
 struct scanOptions;
 struct solveOptions;
@@ -34,6 +35,7 @@ struct nhbOptions;
 struct uaOptions;
 struct similarOptions;
 struct patternOptions;
+struct templateOptions;
 
 class options {
 	AnyOption anyopt;
@@ -45,6 +47,7 @@ public:
 	uaOptions *uaOpt;
 	similarOptions *similarOpt;
 	patternOptions *patternOpt;
+	templateOptions *templateOpt;
 	bool verbose;
 	options();
 	bool read(int argc, char* argv[]);
@@ -500,10 +503,10 @@ struct scanOptions {
 		const char* v = opt.getValue("numclues");
 		if(v) {
 			nClues = atoi(v);
-			if(nClues < 1 || nClues > 40) {
-				cout << "Error: Number of clues must be between 1 and 40!" << endl;
-				return -1;
-			}
+//			if(nClues < 1 || nClues > 40) {
+//				cout << "Error: Number of clues must be between 1 and 40!" << endl;
+//				return -1;
+//			}
 		}
 		batchMode |= opt.getFlag("batch");
 		gridFileName = opt.getValue("gridlist");
@@ -621,6 +624,23 @@ struct patternOptions {
 		patcanon = opt.getFlag("patcanon");
 
 		return processPatterns();
+	}
+};
+
+struct templateOptions {
+	bool get2templates;
+	bool get2rookeries;
+	bool get999911110;
+	templateOptions() { //set defaults for all template options
+		get2templates = false;
+		get2rookeries = false;
+		get999911110 = false;
+	}
+	int go() { //collect all options and do the job
+		get2templates = opt.getFlag("get2templates");
+		get2rookeries = opt.getFlag("get2rookeries");
+		get999911110 = opt.getFlag("get999911110");
+		return processTemplate();
 	}
 };
 

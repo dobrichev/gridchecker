@@ -227,6 +227,15 @@ options::options() {
 	anyopt.addUsage("   --pg depth,er,ER,ep,EP,ed,ED,maxPasses,noSingles  Re-labels stdin to stdout, related to Patterns Game");
 	anyopt.addUsage("   --pg s<pattern> < grids.txt > puzzles.txt          Scans grids for puzzles having the given pattern");
 	anyopt.setOption("pg");
+
+	anyopt.addUsage(" --template              Template/rookery related commands");
+	anyopt.setCommandFlag("template");
+	anyopt.addUsage("   --get2templates           Prints identity for all 181 2-tepmplate classes (not impl.)");
+	anyopt.setFlag("get2templates");
+	anyopt.addUsage("   --get2rookeries           Prints identity for all 170 2-rookery classes (not impl.)");
+	anyopt.setFlag("get2rookeries");
+	anyopt.addUsage("   --get999911110           Prints identity for all 170 2-rookery classes");
+	anyopt.setFlag("get999911110");
 	anyopt.addUsage("");
 
 	//by default all  options  will be checked on the command line and from option/resource file
@@ -314,6 +323,11 @@ int options::execCommand() {
 	if(anyopt.getFlag("pattern")) {
 		patternOptions so;
 		patternOpt = &so;
+		return so.go();
+	}
+	if(anyopt.getFlag("template")) {
+		templateOptions so;
+		templateOpt = &so;
 		return so.go();
 	}
 	cout << "Error: No command specified." << endl;

@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include <stdio.h>
+#include "options.h"
 #include "tables.h"
 #include "t_128.h"
 #include "ch81.h"
@@ -11,6 +12,7 @@
 //#include "BitMask768.h"
 
 #include <map>
+#include <algorithm>
 using namespace std;
 
 //struct int3to8 {
@@ -190,6 +192,9 @@ struct templates {
 	void count5templates() const;
 	void countGrids() const;
 	void generateGrids() const;
+	void generateXX110() const;
+	int getIndexes(const ch81& src, unsigned short* res) const;
+	void get999911110() const; //from 5-templates get those completable by 4 clues and print the puzzles
 };
 
 templates::templates() {
@@ -200,6 +205,36 @@ templates::templates() {
 	//templatePlus1();
 	//getComplementaryTemplates();
 	//templates2rookeries();
+}
+
+int templates::getIndexes(const ch81& src, unsigned short* res) const {
+	int numFound = 0;
+	bm128 t[10];
+	for(int i = 0; i < 10; i++) t[i].clear();
+	for(int c = 0; c < 81; c++) {
+		t[(int)src.chars[c]].setBit(c);
+	}
+	for(int d = 1; d < 10; d++) {
+		if(t[d].popcount_128() != 9) continue;
+		int col = -1;
+		for(int c = 0; c < 9; c++) {
+			if(t[d].isBitSet(c)) {
+				col = c;
+				break;
+			}
+		}
+		if(col != -1) {
+			for(int i = 0; i < 5184; i++) {
+				if(t[d].isSubsetOf(colTemplates[col][i])) {
+					res[numFound] = col * 5184 + i;
+					numFound++;
+					break;
+				}
+			}
+		}
+	}
+	std::sort(&res[0], &res[numFound]);
+	return numFound;
 }
 
 void templates::template2rookery(const ch81& src, bm128& r) const {
@@ -1231,6 +1266,26 @@ void templates::count5templates() const {
 	fprintf(stderr, "Total number of 4-templates\t%llu\n", numT4);
 	fprintf(stderr, "Total number of 5-templates\t%llu\n", numT5);
 }
+
+void templates::get999911110() const {
+	puzzleSet p3;
+	lightweightUsetList r4all;
+	get4rookeries(r4all);
+	fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
+	for(lightweightUsetList::const_iterator r4 = r4all.begin(); r4 != r4all.end(); r4++) {
+		bm128 r5 = maskLSB[81];
+		r5.clearBits(*r4);
+		puzzleSet t5;
+		rookery2templates(r5, t5);
+		for(puzzleSet::const_iterator t = t5.begin(); t != t5.end(); t++) {
+			ch81 txt;
+			t->toString(txt.chars);
+			printf("%81.81s\n", txt.chars);
+		}
+		//fflush(NULL);
+	}
+}
+
 void templates::countGrids() const {
 	//ch81 r9 = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 	puzzleSet p3;
@@ -1457,6 +1512,171 @@ void templates::countGrids() const {
 		} //for r4
 	} //omp parallel
 	fprintf(stderr, "Total number of grids\t%llu\n", numGridsTotal);
+}
+
+void templates::generateXX110() const { //this way it doesn't work!
+	puzzleSet t2all; //all 2-templates in canonical form
+	puzzleSet t2entwined; //2-templates in canonical form that resolvable by puzzle with 999999910 distribution
+	get2templates(t2all);
+	typedef map <unsigned short, set <unsigned short> > tIndexes;
+	tIndexes t2Indexes;
+	for(puzzleSet::const_iterator t2 = t2all.begin(); t2 != t2all.end(); t2++) {
+		ch81 sol;
+		ch81 puz;
+		solve(t2->chars, 1, sol.chars);
+		for(int i = 0; i < 81; i++) {
+			if(sol.chars[i] <= 2) {
+				if(sol.chars[i] == 1 && i < 9) {
+					puz.chars[i] = 1; //leave a single given from the 2-template
+				}
+				else {
+					puz.chars[i] = 0;
+				}
+			}
+			else {
+				puz.chars[i] = sol.chars[i];
+			}
+		}
+		if(1 == solve(puz.chars, 2)) {
+			t2entwined.insert(*t2); //105 2-templates
+			t2->toString(puz.chars);
+			unsigned short indexes[10];
+			int n = getIndexes(*t2, indexes);
+			t2Indexes[indexes[0]].insert(indexes[1]);
+			t2Indexes[indexes[1]].insert(indexes[0]);
+			//printf("%81.81s\t%d\t%d\t%d\n", puz.chars, n, indexes[0], indexes[1]);
+		}
+	}
+	printf("all t2=%d\tfep=%d\tdistinct=%d\n", (int)t2all.size(), (int)t2entwined.size(), (int)t2Indexes.size());
+//	for(tIndexes::const_iterator ii = t2Indexes.begin(); ii != t2Indexes.end(); ii++) {
+//		printf("%d\t%d\n", ii->first, (int)ii->second.size());
+//	}
+	std::vector<std::vector<bool>> isFEP(46656, std::vector<bool>(46656,false));
+	for(int i = 0; i < 264072960; i++) {
+		//store fe pairs (a,b)
+		unsigned long a, b;
+		fscanf(stdin, "%lu\t%lu", &a, &b);
+		isFEP[a][b] = true;
+		isFEP[b][a] = true;
+	}
+	puzzleSet t3entwined;
+	for(tIndexes::const_iterator a2 = t2Indexes.begin(); a2 != t2Indexes.end(); a2++) {
+		for(int i = 0; i < 46656; i++) {
+			if(isFEP[a2->first][i]) {
+				for(set <unsigned short>::const_iterator b2 = a2->second.begin(); b2 != a2->second.end(); b2++) {
+					if(isFEP[*b2][i]) {
+						//(a2->first, *b2, i) is a fully entwined triplet
+						bm128 tt1(allTemplates[a2->first]);
+						bm128 tt2(allTemplates[*b2]);
+						bm128 tt3(allTemplates[i]);
+						ch81 ttt;
+						ttt.clear();
+						for(int c = 0; c < 81; c++) {
+							bm128 mask = bitSet[c];
+							if(mask.isSubsetOf(tt1)) ttt.chars[c] = 1;
+							else if (mask.isSubsetOf(tt2)) ttt.chars[c] = 2;
+							else if (mask.isSubsetOf(tt3)) ttt.chars[c] = 3;
+						}
+						ch81 can;
+						patminlex rml(ttt.chars, can.chars);
+						if(t3entwined.insert(can).second) {
+
+							//debug
+							tt1 |= tt2;
+							tt1 |= tt3;
+							ch81 sol;
+							if(tt1.popcount_128() != 27) printf("@");
+							if(solve(can.chars, 1, sol.chars) != 1) printf("!");
+							ch81 inverse(sol);
+							for(int c = 0; c < 81; c++) {
+								if(can.chars[c]) inverse.chars[c] = 0;
+							}
+							int n;
+							char ss[40][81];
+							if((n = solve(inverse.chars, 40, ss[0])) != 6) {
+								can.toString(ttt.chars);
+								printf("\n%81.81s\n", ttt.chars);
+								inverse.toString(ttt.chars);
+								printf("%81.81s\t%d\n", ttt.chars, n);
+								for(int s = 0; s < n; s++) {
+									ch81::toString(ss[s], ttt.chars);
+									printf("%81.81s\t(%d)\n", ttt.chars, s);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	printf("\nt3=%d\n", (int)t3entwined.size());
+//	printf("map size=%d\n", (int)fepMap.size());
+	//at this point we have a canonicalized list t2entwined of all fully entwined pairs, i.e. solvable by a single clue.
+	//adding a third template, if it assembles (1,3) and (2,3) canonicalized 2-templates from t2entwined, then it is solvable by 2 clues
+	//bool fep[46656][46656];
+//	for(int i = 0; i < 46656 - 1; i++) {
+//		ch81 p1;
+//		for(int c = 0; c < 81; c++) {
+//			p1.chars[c] = allTemplates[i].isBitSet(c) ? 1 : 0;
+//		}
+//		for(int j = i + 1; j < 46656; j++) {
+//			//fep[i][j] = false;
+//			if(allTemplates[i].isDisjoint(allTemplates[j])) {
+//				ch81 p2 = p1;
+//				ch81 can;
+//				for(int c = 0; c < 81; c++) {
+//					if(allTemplates[j].isBitSet(c)) p2.chars[c] = 2;
+//				}
+//				patminlex rml(p2.chars, can.chars);
+//				if(t2entwined.find(can) != t2entwined.end()) {
+//					//fep[i][j] = true;
+//					printf("%d\t%d\n", i, j);
+//				}
+//			}
+//		}
+//	}
+
+//	for(puzzleSet::const_iterator t2 = t2entwined.begin(); t2 != t2all.end(); t2++) {
+//		ch81 puzA;
+//		ch81 puzB;
+//		bm128 bmA;
+//		bm128 bmB;
+//		bmA.clear();
+//		bmB.clear();
+//		for(int i = 0; i < 81; i++) {
+//			switch(t2->chars[i]) {
+//				case 1:
+//					puzA.chars[i] = 1;
+//					bmA.setBit(i);
+//					puzB.chars[i] = 0;
+//					break;
+//				case 2:
+//					puzA.chars[i] = 0;
+//					puzB.chars[i] = 2;
+//					bmB.setBit(i);
+//					break;
+//				default:
+//					puzA.chars[i] = 0;
+//					puzB.chars[i] = 0;
+//			}
+//		}
+
+//		for(int col = 0; col < 9; col++) {
+//			for(int tn = 0; tn < 5184; tn++) {
+//				if(bmA.isDisjoint(colTemplates[col][tn])) {
+//					ch81 p = src; //structure copy
+//					for(int i = 0; i < 81; i++) {
+//						if(colTemplates[col][tn].isBitSet(i)) {
+//							p.chars[i] = 9;
+//						}
+//					}
+//					ch81 can;
+//					patminlex rml(p.chars, can.chars);
+//					res.insert(can);
+//				}
+//			}
+//		}
+//	}
 }
 
 void templates::generateGrids() const {
@@ -2156,6 +2376,18 @@ void templates::init() {
 //	}
 }
 
+//do the job defined in global structure "opt"
+extern int processTemplate() {
+	templates t;
+	if(opt.templateOpt->get999911110)
+		t.get999911110();
+	else {
+		fprintf(stderr, "Unknown/missing template sub-command,\n");
+		return -1;
+	}
+	return 0;
+}
+
 void countSolutions () {
 	templates x;
 	char buf[1000];
@@ -2244,9 +2476,10 @@ void countSolutions () {
 struct uaByTemplate: public map<ch81,usetListBySize> {};
 extern void test() {
 	templates tpl;
-	//tpl.count5templates();
+	tpl.count5templates();
 	//tpl.countGrids();
-	tpl.generateGrids();
+	//tpl.generateGrids();
+	//tpl.generateXX110();
 	return;
 /*
 	char buf[1000];
