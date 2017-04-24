@@ -132,7 +132,7 @@ int minimizer::init(const char * const givens) {
 		}
 		ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
 		ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
-		hittingMasks[80].pages[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+		hittingMasks[80].pages[slice / 16].bitmap128.m128i_u16[slice % 16] = ss.bitmap128.m128i_u16[0];
 	}
 	//populate setMask with ones except the possible end when insufficient number of UA has been collected
 	for(int i = 0; i < numUsetPages; i++) {
@@ -202,7 +202,7 @@ int minimizer::initFast(const minimizer & parent, int stateIndex) {
 		}
 		ss = _mm_slli_epi64(ss.bitmap128.m128i_m128i, 7); // move bit 0 to bit 7
 		ss.bitmap128.m128i_u16[0] = _mm_movemask_epi8(ss.bitmap128.m128i_m128i);
-		hittingMasks[80].pages[slice / 8].bitmap128.m128i_u16[slice % 8] = ss.bitmap128.m128i_u16[0];
+		hittingMasks[80].pages[slice / 16].bitmap128.m128i_u16[slice % 16] = ss.bitmap128.m128i_u16[0];
 	}
 	//populate setMask with ones except the possible end when insufficient number of UA has been collected
 	for(int i = 0; i < numUsetPages; i++) {
