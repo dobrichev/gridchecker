@@ -2654,7 +2654,8 @@ int scanPuzzleset(const bool invert) {
 			//opt.uaOpt->nAttempts = 3000;
 			//opt.uaOpt->nCells = 54;
 			opt.scanOpt->progressSeconds = 100000;
-			g.findUArandom(completion.chars);
+			//g.findUArandom(completion.chars);
+			g.findUA12();
 			//nSol = 0;
 		}
 		else {
@@ -2663,14 +2664,14 @@ int scanPuzzleset(const bool invert) {
 		}
 		//now g has valid UA list
 		clueIterator ci(g);
-		ci.iterateFixedCells(completion.chars);
+		ci.iterateFixedCells(completion.chars, opt.scanOpt->nClues, opt.scanOpt->nClues);
 		//puzzles found are in ci.minimizedPuzzles
 		ch81 pp;
 		puz.toString(pp.chars);
 		//printf("%81.81s\t%llu\t%d\n", pp.chars, nSol, (int)g.usetsBySize.size());
 		//printf("%81.81s\t%llu\n", pp.chars, nSol);
 		//printf("%81.81s\t%d\t%d\n", pp.chars, ci.nClues - puzSize, ci.minimizedPuzzles.size());
-		printf("%81.81s\t%d\n", pp.chars, ci.nClues - puzSize);
+		//printf("%81.81s\t%d\t%d\n", pp.chars, ci.nClues - puzSize, (int)ci.minimizedPuzzles.size());
 		for(puzTextSet::const_iterator p = ci.minimizedPuzzles.begin(); p != ci.minimizedPuzzles.end(); p++) {
 			printf("%81.81s\n", p->chars);
 		}
