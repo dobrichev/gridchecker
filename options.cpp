@@ -8,6 +8,14 @@ options opt = options();
 options::options() {
 	//Yes, I know it is a bad practice to run such code in the constructor... TODO
 
+	scanOpt = NULL;
+	solveOpt = NULL;
+	nhbOpt = NULL;
+	uaOpt = NULL;
+	similarOpt = NULL;
+	patternOpt = NULL;
+	verbose = false;
+
 	//SET PREFERENCES
 	//opt->noPOSIX(); //do not check for POSIX style character options
 	//anyopt.setVerbose(); // print warnings about unknown options
