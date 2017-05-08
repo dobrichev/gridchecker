@@ -631,15 +631,21 @@ struct templateOptions {
 	bool get2templates;
 	bool get2rookeries;
 	bool get999911110;
+	bool r4tot4;
+	bool r4tot5;
 	templateOptions() { //set defaults for all template options
 		get2templates = false;
 		get2rookeries = false;
 		get999911110 = false;
+		r4tot4 = false;
+		r4tot5 = false;
 	}
 	int go() { //collect all options and do the job
 		get2templates = opt.getFlag("get2templates");
 		get2rookeries = opt.getFlag("get2rookeries");
 		get999911110 = opt.getFlag("get999911110");
+		r4tot4 = opt.getFlag("r4tot4");
+		r4tot5 = opt.getFlag("r4tot5");
 		return processTemplate();
 	}
 };

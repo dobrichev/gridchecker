@@ -185,8 +185,8 @@ struct templates {
 	void templatesPlus1(const puzzleSet& src, puzzleSet& res) const;
 	//void templates2rookeries() const; //uses subcanon instead of patcanon
 	void rookery2templates(const bm128& r, puzzleSet& res, bool first = false) const;
-	void rookery2templates4(const bm128& r, exemplarSet& res) const;
-	void rookery2templates5(const bm128& r, exemplarSet& res) const;
+	int rookery2templates4(const bm128& r, exemplarSet& res) const;
+	int rookery2templates5(const bm128& r, exemplarSet& res) const;
 	void template2rookery(const ch81& src, bm128& r) const;
 	void count6templates() const;
 	void count5templates() const;
@@ -931,7 +931,8 @@ void templates::rookery2templates(const bm128& r, puzzleSet& res, bool first) co
 			break;
 	}
 }
-void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
+int templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
+	int count = 0;
 	int rsize = 0;
 	int r1row[9];
 	for (int i = 0; i < 9; i++) {
@@ -995,11 +996,14 @@ void templates::rookery2templates4(const bm128& r, exemplarSet& res) const {
 				}
 				patminlex pml(rr.exemplar.chars, rr.can.chars);
 				res.insert(rr);
+				count++;
 			}
 		}
 	}
+	return count;
 }
-void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
+int templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
+	int count = 0;
 	int rsize = 0;
 	int r1row[9];
 	for (int i = 0; i < 9; i++) {
@@ -1088,10 +1092,12 @@ void templates::rookery2templates5(const bm128& r, exemplarSet& res) const {
 					}
 					patminlex pml(rr.exemplar.chars, rr.can.chars);
 					res.insert(rr);
+					count++;
 				}
 			}
 		}
 	}
+	return count;
 }
 //void templates::templates2rookeries() const { //read k-templates from stdin and write (un)sorted k-rookeries to stdout
 //	puzzleSet r3tall;
@@ -2381,6 +2387,46 @@ extern int processTemplate() {
 	templates t;
 	if(opt.templateOpt->get999911110)
 		t.get999911110();
+	else if(opt.templateOpt->r4tot4 || opt.templateOpt->r4tot5) {
+		char buf[1000];
+		while(fgets(buf, sizeof(buf), stdin)) {
+			ch81 puz;
+			puz.fromString(buf);
+			exemplarSet ex;
+			bm128 r;
+			t.template2rookery(puz, r);
+			int cnt;
+			if(opt.templateOpt->r4tot4) {
+				cnt = t.rookery2templates4(r, ex) * 24; //scale the count by 4! for relabeling
+			}
+			else {
+				bm128 rr = maskLSB[81];
+				rr.clearBits(r);
+				cnt = t.rookery2templates5(rr, ex) * 120; //scale the count by 5! for relabeling
+			}
+			ch81 can;
+			ch81 fixed;
+			if(opt.verbose) {
+				//list all exemplars w/o counters
+				for(exemplarSet::const_iterator e = ex.begin(); e != ex.end(); e++) {
+					e->can.toString(can.chars);
+					e->exemplar.toString(fixed.chars);
+					printf("%81.81s\t%81.81s\n", can.chars, fixed.chars);
+				}
+			}
+			else {
+				//list only one exemplar and counters
+				if(cnt) {
+					ex.begin()->can.toString(can.chars);
+					ex.begin()->exemplar.toString(fixed.chars);
+					printf("%81.81s\t%d\t%d\t%81.81s\t%81.81s\n", buf, cnt, (int)ex.size(), can.chars, fixed.chars);
+				}
+				else {
+					printf("%81.81s\t%d\t%d\t%81.81s", buf, cnt, (int)ex.size());
+				}
+			}
+		}
+	}
 	else {
 		fprintf(stderr, "Unknown/missing template sub-command,\n");
 		return -1;

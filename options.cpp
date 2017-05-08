@@ -241,8 +241,12 @@ options::options() {
 	anyopt.setFlag("get2templates");
 	anyopt.addUsage("   --get2rookeries           Prints identity for all 170 2-rookery classes (not impl.)");
 	anyopt.setFlag("get2rookeries");
-	anyopt.addUsage("   --get999911110           Prints identity for all 170 2-rookery classes");
+	anyopt.addUsage("   --get999911110            Prints identity for all 170 2-rookery classes");
 	anyopt.setFlag("get999911110");
+	anyopt.addUsage("   --r4tot4                  Prints all 4-templates for a given list of 4-rookeries");
+	anyopt.setFlag("r4tot4");
+	anyopt.addUsage("   --r4tot5                  Prints all 5-templates for a given list of 4-rookeries");
+	anyopt.setFlag("r4tot5");
 	anyopt.addUsage("");
 
 	//by default all  options  will be checked on the command line and from option/resource file
