@@ -198,7 +198,7 @@ options::options() {
 	//anyopt.setOption("mspuzzles");
 	anyopt.addUsage("   --removeredundant     Removes redundant clues");
 	anyopt.setFlag("removeredundant");
-	anyopt.addUsage("   --invert <grid | .>   Inverts clues of puzzle, . uses any completion");
+	anyopt.addUsage("   --invert <grid|.|a|d> Inverts clues of puzzle using given/any/all/different completions");
 	anyopt.setOption("invert");
 	anyopt.addUsage("   --plus1               Apply {+1} to puzzles");
 	anyopt.setFlag("plus1");

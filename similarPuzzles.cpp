@@ -4,6 +4,7 @@
 #include "clusterize.h"
 #include "options.h"
 #include "minimizer.h"
+#include "patminlex.h"
 
 extern const unsigned int Bitmap2Digit[];
 
@@ -1171,27 +1172,87 @@ extern int doSimilarPuzzles () {
 	else if(m1pFName) { //--similar --minus1plus x
 		while(hunt40(m1pFName)); //loop until closure
 	}
-	else if(opt.similarOpt->invert) { //--similar --invert <grid | .> < x.txt > y.txt
+	//else if(opt.similarOpt->invert) { //--similar --invert <grid | .> < x.txt > y.txt //update 8 May 2017
+	else if(opt.similarOpt->invert) { //--similar --invert <grid | . | a | d> < x.txt > y.txt
+		const int maxSol = 1000000;
 		char buf[1000];
-		ch81 gr[1000];
-		int fixedGrid = opt.similarOpt->invert[1]; //grid is given
-		if(fixedGrid) {
+		//int fixedGrid = opt.similarOpt->invert[1]; //grid is given
+		int invertmode = 0;
+		if(opt.similarOpt->invert[0] == '.') {
+			//output any of the completions
+			invertmode = 1;
+		}
+		else if(opt.similarOpt->invert[0] == 'a') {
+			//output all completions
+			invertmode = 2;
+		}
+		else if(opt.similarOpt->invert[0] == 'd') {
+			//output essentially different completions
+			invertmode = 3;
+		}
+		else if(opt.similarOpt->invert[0] >= '1' && opt.similarOpt->invert[0] <= '9') {
+			//validate provided completion and output the inverse subgrid
+			invertmode = 4;
+		}
+		if(invertmode == 0) {
+			fprintf(stderr, "incorrect invert option\n");
+			return 1;
+		}
+		//ch81 gr[maxSol];
+		ch81 *gr = new ch81[maxSol];
+		if(invertmode == 4) {
 			gr[0].fromString(opt.similarOpt->invert);
 		}
 		while(fgets(buf, sizeof(buf), stdin)) {
 			ch81 puz, ppuz;
 			puz.fromString(buf);
             int nSol;
-			if(fixedGrid == 0) { //invert to any of puzzle solutions
-                //nSol = (int)solve(puz.chars, 1000, gr[0].chars); // max 1000 solutions //29.7.2016 Why 1000?
-                nSol = (int)solve(puz.chars, 1, gr[0].chars); // first solution
-				if(nSol == 0) {
-					//unsolvable puzzle
-					printf("incorrect puzzle\n");
-					return 1;
-				}
-			}
+            //prepare solutions in array gr
+            switch(invertmode) {
+            	case 1: //any completion
+                    nSol = (int)solve(puz.chars, 1, gr[0].chars); // first solution
+    				if(nSol == 0) {
+    					//unsolvable puzzle
+    					printf("incorrect puzzle: %81.81s\n", buf);
+    					delete [] gr;
+    					return 1;
+    				}
+            		break;
+            	case 2: //all completions
+            	case 3: //essentially different completions
+                    nSol = (int)solve(puz.chars, maxSol, gr[0].chars); // all solutions
+    				if(nSol == maxSol) {
+    					//weak puzzle
+    					printf("The maximum of %d solutions reached: %81.81s\n", maxSol, buf);
+    					delete [] gr;
+    					return 1;
+    				}
+    				if(nSol == 0) {
+    					//unsolvable puzzle
+    					printf("The puzzle has no valid completions: %81.81s\n", buf);
+    					delete [] gr;
+    					return 1;
+    				}
+//    				if(invertmode == 3) { //ED solutions
+//    					//filter out isomorphs
+//    					puzzleSet can;
+//    					for(int n = 0; n < nSol; n++) {
+//    						rowminlex(gr[n].chars, ppuz.chars); //slow
+//    						std::pair<puzzleSet::iterator, bool> res = can.insert(ppuz);
+//    						if(!res.second) {
+//    							//duplicate, mark it by resetting the first value to 0
+//    							gr[n].chars[0] = 0;
+//    						}
+//    					}
+//    				}
+            		break;
+            	default:
+            		//do nothing when grid is given
+            		break;
+            }
+			puzzleSet can;
             for(int n = 0; n < nSol; n++) { //print all solutions
+            	//if(gr[n].chars[0] == 0) continue; //skip solutions marked as duplicate
                 for(int i = 0; i < 81; i++) {
                     if(puz.chars[i]) {
                         ppuz.chars[i] = 0; //clear the given
@@ -1200,10 +1261,21 @@ extern int doSimilarPuzzles () {
                         ppuz.chars[i] = gr[n].chars[i]; //set the non-given from the solution grid
                     }
                 }
+				if(invertmode == 3) { //ED solutions
+					//filter out isomorphs
+					ch81 c;
+					//subcanon(ppuz.chars, c.chars);
+					patminlex pml(ppuz.chars, c.chars);
+					std::pair<puzzleSet::iterator, bool> res = can.insert(c);
+					if(!res.second) { //already printed?
+						continue;
+					}
+				}
                 ppuz.toString(buf);
                 fprintf(stdout, "%81.81s\n", buf);
             }
 		}
+		delete [] gr;
 	}
 	else if(opt.similarOpt->removeredundant) { //--similar --removeredundant < x.txt > y.txt
 		char buf[1000];
