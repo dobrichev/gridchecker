@@ -2118,13 +2118,15 @@ int processUA() {
 			memcpy(puz, buf, 81);
 			unsigned long long nSol;
 			//nSol = solve(puz, maxSol, sol); //this is when we are searching for multi-valency UA
-			nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
+			//nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
 			if(opt.uaOpt->minuasize) {
+				nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
 				if(nSol < maxSol) {
 					findUaBySolutions(sol, (int)nSol);
 				}
 			}
 			else {
+				nSol = solve(puz, maxSol, sol); //this is when we are searching for multi-valency UA
 				if(opt.verbose)
 					printf("%d\t%llu\t#pattern,nClues,nSolutions\n", nClues, nSol);
 				if(nSol == maxSol) {
