@@ -7,6 +7,8 @@
 #include "solver.h"
 #include "ch81.h"
 
+//#define USET_PAGES (8)
+//#define USET_PAGES (16)
 #define USET_PAGES (32)
 //#define USET_PAGES (64)
 //#define USET_PAGES (128)

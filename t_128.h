@@ -102,6 +102,7 @@ public:
 	inline bool isInvalid() const {return 1 == _mm_test_all_ones(bitmap128.m128i_m128i);};
 	inline static bool isZero(const __m128i &r) {return equals(r, _mm_setzero_si128());};
 	inline bool isZero() const {return equals(bitmap128.m128i_m128i, _mm_setzero_si128());};
+	//inline bool isZero() const {return _mm_testz_si128(bitmap128.m128i_m128i, bitmap128.m128i_m128i);}; //slower on Ivy bridge
 	inline static bm128* allocate(const int size) {return (bm128*)_mm_malloc(size * sizeof(bm128), 16);};
 	inline static void deallocate(void *ptr) {_mm_free(ptr);};
 	int toPseudoPuzzle(const char* digits, char* r) const {int n = 0; for(int i = 0; i < 81; i++) r[i] = isBitSet(i) ? n++, 0 : digits[i]; return n;}
@@ -191,6 +192,13 @@ public:
 			int octetLSB = octetValue & -octetValue; //the rightmost bit set within the value
 			return (octetIndex * 8) + (toPos[octetLSB] - 1); //convert to zero based index within the fields
 		}
+
+//		if(isZero()) return -1; //on Ivy bridge all variations of the code below are slower than the code above
+//		register uint64_t x = toInt64();
+//		if(x)
+//			return __builtin_ctzll(x);
+//		return 64 + __builtin_ctzll(toInt64_1());
+
 		return -1;
 	}
 	inline int getPositions(unsigned char *positions) const {
