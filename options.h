@@ -249,6 +249,7 @@ struct similarOptions {
 	const char* invert;
 	bool minimals;
 	bool minus1;
+	bool minus8;
 	bool subcanon;
 	bool twins;
 	bool removeredundant;
@@ -269,6 +270,7 @@ struct similarOptions {
 		invert = NULL;
 		minimals = false;
 		minus1 = false;
+		minus8 = false;
 		subcanon = false;
 		twins = false;
 		removeredundant = false;
@@ -291,6 +293,7 @@ struct similarOptions {
 		invert = opt.getValue("invert");
 		minimals = opt.getFlag("minimals");
 		minus1 = opt.getFlag("minus1");
+		minus8 = opt.getFlag("minus8");
 		subcanon = opt.getFlag("subcanon");
 		twins = opt.getFlag("twins");
 		removeredundant = opt.getFlag("removeredundant");
@@ -305,7 +308,7 @@ struct similarOptions {
 		if(v) {
 			depth = atoi(v);
 			if(depth <= 0) {
-				cout << "Error: Relabelling depth must be a positive integer!" << endl;
+				cout << "Error: Relabeling depth must be a positive integer!" << endl;
 				return -1;
 			}
 		}
