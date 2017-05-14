@@ -725,6 +725,44 @@ void doMinus8() {
 	}
 }
 
+void doMinus7() { //similar to minus8 but adding 2 clues at a time
+	char buf[2000];
+	while(fgets(buf, sizeof(buf), stdin)) {
+		ch81 puz;
+		puz.fromString(buf);
+		int givensPerDigit[10] = {0,0,0,0,0,0,0,0,0,0};
+		int givensCells[10][9];
+		for(int i = 0; i < 81; i++) {
+			int d = puz.chars[i];
+			if(d == 0) continue;
+			givensCells[d][givensPerDigit[d]] = i;
+			givensPerDigit[d]++;
+		}
+		for(int d = 1; d <= 9; d++) {
+			if(givensPerDigit[d] != 9) continue;
+			ch81 test = puz; //structure copy
+			//clear all occurrences of d
+			for(int i = 0; i < 9; i++) {
+				test.chars[givensCells[d][i]] = 0;
+			}
+			//set two cells as givens and test for uniqueness
+			for(int i = 0; i < 9 - 1; i++) {
+				test.chars[givensCells[d][i]] = d; //set the first given
+				for(int j = i + 1; j < 9; j++) {
+					test.chars[givensCells[d][j]] = d; //set the second given
+					if(1 == solve(test.chars, 2)) {
+						ch81 txt;
+						test.toString(txt.chars);
+						printf("%81.81s\n", txt.chars);
+					}
+					test.chars[givensCells[d][j]] = 0; //back second to non-given
+				}
+				test.chars[givensCells[d][i]] = 0; //back first to non-given
+			}
+		}
+	}
+}
+
 void doMinusPlusMinimalUnique(int minusDepth, puzzleSet &puzzles) {
 	puzzleSet minused;
 	puzzleSet *src = &puzzles;
@@ -1330,6 +1368,10 @@ extern int doSimilarPuzzles () {
 	else if(opt.similarOpt->minus8) { //--similar --minus8 < 999911110.txt > 999111110.txt
 		//for digits with 9 givens from stdin check whether after removal of 8 of them the puzzle still has unique solution
 		doMinus8();
+	}
+	else if(opt.similarOpt->minus7) { //--similar --minus8 < 999911110.txt > 999111110.txt
+		//for digits with 9 givens from stdin check whether after removal of 7 of them the puzzle still has unique solution
+		doMinus7();
 	}
 	else if(opt.similarOpt->twins) { //--similar --twins [--subcanon] [--minimals]
 		puzzleSet puzzles;

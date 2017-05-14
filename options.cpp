@@ -185,6 +185,8 @@ options::options() {
 	anyopt.setOption("minusandup");
 	anyopt.addUsage("   --minus8              Try to reduce any 9-clue digit to 1-clue");
 	anyopt.setFlag("minus8");
+	anyopt.addUsage("   --minus7              Try to reduce any 9-clue digit to 2-clues");
+	anyopt.setFlag("minus7");
 	anyopt.addUsage("   --twins               Check puzzleset from stdin for unknown twins");
 	anyopt.setFlag("twins");
 	anyopt.addUsage("     --subcanon              Canonicalize input puzzles");

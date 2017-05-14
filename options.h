@@ -250,6 +250,7 @@ struct similarOptions {
 	bool minimals;
 	bool minus1;
 	bool minus8;
+	bool minus7;
 	bool subcanon;
 	bool twins;
 	bool removeredundant;
@@ -271,6 +272,7 @@ struct similarOptions {
 		minimals = false;
 		minus1 = false;
 		minus8 = false;
+		minus7 = false;
 		subcanon = false;
 		twins = false;
 		removeredundant = false;
@@ -294,6 +296,7 @@ struct similarOptions {
 		minimals = opt.getFlag("minimals");
 		minus1 = opt.getFlag("minus1");
 		minus8 = opt.getFlag("minus8");
+		minus7 = opt.getFlag("minus7");
 		subcanon = opt.getFlag("subcanon");
 		twins = opt.getFlag("twins");
 		removeredundant = opt.getFlag("removeredundant");
