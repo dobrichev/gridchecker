@@ -9,6 +9,8 @@
 #include "t_128.h"
 #include <immintrin.h>
 
+#define NO_AVX 1
+
 class dclues : public bm128 {
 public:
 //	inline void setBit(const int theBit) {
@@ -66,11 +68,17 @@ template <int maxElements> class bit_masks {
 //			aBits[i].clear();
 //	}
 	inline void setAll() {
+#ifdef NO_AVX
+#else
 		__m256i all1 = _mm256_set1_epi64x(-1);
+#endif
 		for(int i = 0; i < maxWords; i++) {
+#ifdef NO_AVX
+			aBits[i].b128[0] = maskffff.m128i_m128i;
+			aBits[i].b128[1] = maskffff.m128i_m128i;
+#else
 			aBits[i].b256 = all1;
-			//aBits[i].b128[0] = maskffff.m128i_m128i;
-			//aBits[i].b128[1] = maskffff.m128i_m128i;
+#endif
 		}
 	}
 	void initSetMask(int numSets) {
@@ -88,9 +96,12 @@ template <int maxElements> class bit_masks {
 //		}
 		for(int i = maxWords - 1; j > 0 ; i--, j -= 256) {
 			if(j >= 256) {
+#ifdef NO_AVX
+				aBits[i].b128[0] = _mm_setzero_si128();
+				aBits[i].b128[1] = _mm_setzero_si128();
+#else
 				aBits[i].b256 = _mm256_setzero_si256();
-				//aBits[i].b128[0] = _mm_setzero_si128();
-				//aBits[i].b128[1] = _mm_setzero_si128();
+#endif
 			}
 			else {
 				if(j >= 128) {
@@ -150,8 +161,13 @@ public:
 //		}
 		//for(int i = 0; i < maxWords; i++) {
 		for(int i = 0; i < getNumWords(); i++) {
+#ifdef NO_AVX
+			static_cast <bm128> (aBits[i].b128[0]).clearBits(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
+			static_cast <bm128> (aBits[i].b128[1]).clearBits(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
+#else
 			//aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
 			aBits[i].b256 = _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(hittingMask.aBits[i].b256), _mm256_castsi256_pd(s.aBits[i].b256)));
+#endif
 		}
 //		for(int i = 0; i < getNumWords(); i++) {
 //			aBits[i].b128[0] = _mm_andnot_si128(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
@@ -185,8 +201,15 @@ public:
 //		return true;
 		//for(int i = 0; i < maxWords; i++) {
 		for(int i = 0; i < getNumWords(); i++) {
+#ifdef NO_AVX
+			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[0], aBits[i].b128[0]))
+				return false;
+			if(0 == _mm_testc_si128(hittingMask.aBits[i].b128[1], aBits[i].b128[1]))
+				return false;
+#else
 			if(0 == _mm256_testc_si256(hittingMask.aBits[i].b256, aBits[i].b256))
 				return false;
+#endif                    
 		}
 		return true;
 //		for(int i = 0; i < maxElements / 256; i++) {
@@ -358,7 +381,12 @@ public:
      */
 	inline bit_mask(const bit_mask &source_mask, const bit_mask &clear_mask) : actualWords(source_mask.actualWords) {
 		for(int i = 0; i < getNumWords(); i++) {
+#ifdef NO_AVX
+			aBits[i].b128[0] = _mm_andnot_si128(clear_mask.aBits[i].b128[0],source_mask.aBits[i].b128[0]);
+			aBits[i].b128[1] = _mm_andnot_si128(clear_mask.aBits[i].b128[1],source_mask.aBits[i].b128[1]);
+#else
 			aBits[i].b256 = _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(clear_mask.aBits[i].b256), _mm256_castsi256_pd(source_mask.aBits[i].b256)));
+#endif                    
 		}
 	}
     /**
@@ -403,7 +431,11 @@ public:
 		//populate all valid bits for this instance with 1, and all beyond the actual size with 0
 		//actualWords = (nUsets + 255) / 256;
 		//if(actualWords > maxWords) actualWords = maxWords;
+#ifdef NO_AVX
+		__m256i all1 = {-1,-1,-1,-1};
+#else
 		__m256i all1 = _mm256_set1_epi64x(-1);
+#endif                    
 		for(int i = 0; i < maxWords; i++) {
 			if(i < actualWords - 1) {
 				aBits[i].b256 = all1;
@@ -431,7 +463,12 @@ public:
 				aBits[i].b256 = tr.b256;
 			}
 			else {
+#ifdef NO_AVX
+				aBits[i].b128[0] = _mm_setzero_si128();
+				aBits[i].b128[1] = _mm_setzero_si128();
+#else
 				aBits[i].b256 = _mm256_setzero_si256();
+#endif                    
 			}
 		}
 	}
@@ -483,10 +520,13 @@ public:
      */
 	inline bool isSubsetOf(const bit_mask & clear_mask) const {
 		for(int i = 0; i < getNumWords(); i++) {
+#ifdef NO_AVX
+			if(!bm128(aBits[i].b128[0]).isSubsetOf(clear_mask.aBits[i].b128[0])) return false;
+			if(!bm128(aBits[i].b128[1]).isSubsetOf(clear_mask.aBits[i].b128[1])) return false;
+#else
 			if(0 == _mm256_testc_si256(clear_mask.aBits[i].b256, aBits[i].b256))
 				return false;
-//			if(!bm128(aBits[i].b128[0]).isSubsetOf(clear_mask.aBits[i].b128[0])) return false;
-//			if(!bm128(aBits[i].b128[1]).isSubsetOf(clear_mask.aBits[i].b128[1])) return false;
+#endif                    
 		}
 		return true;
 	}

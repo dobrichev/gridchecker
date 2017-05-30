@@ -1193,7 +1193,7 @@ void grid::findUArandom(const char *puz, int nCells, int nAttempts) {
 	if(nCells == -1) nCells = opt.uaOpt->nCells; //54;
 	if(nAttempts == -1) nAttempts = opt.uaOpt->nAttempts; //10000;
 	unsigned char hideThem[81];
-	int nOldUA;
+	int nOldUA = 0;
 	if(opt.verbose) {
 		nOldUA = static_cast<int>(usetsBySize.size());
 		fprintf(stderr, "Finding UA by %d times randomly removing values from %d cells...", nAttempts, nCells);
@@ -1327,7 +1327,8 @@ void grid::findUA4boxes() {
 						if(boxByCellIndex[j] == d1 || boxByCellIndex[j] == d2 || boxByCellIndex[j] == d3 || boxByCellIndex[j] == d4)
 							hideThem[k++] = j;
 					}
-					unsigned long long nSol = findUaBySolving(hideThem, 36);
+					//unsigned long long nSol = 
+                                        findUaBySolving(hideThem, 36);
 					//int nUA = static_cast<int>(usetsBySize.size());
 					//printf("(%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, nSol, nUA - nOldUA, nUA);
 					//nOldUA = nUA;
@@ -1350,7 +1351,8 @@ void grid::findUA5boxes() {
 							if(boxByCellIndex[j] == d1 - 1 || boxByCellIndex[j] == d2 - 1 || boxByCellIndex[j] == d3 - 1 || boxByCellIndex[j] == d4 - 1 || boxByCellIndex[j] == d5 - 1)
 								hideThem[k++] = j;
 						}
-						unsigned long long nSol = findUaBySolving(hideThem, 45);
+						//unsigned long long nSol = 
+                                                findUaBySolving(hideThem, 45);
 						//int nUA = static_cast<int>(usetsBySize.size());
 						//printf("(%d,%d,%d,%d,%d)\t%llu\t%d\t%d\n", d1, d2, d3, d4, d5, nSol, nUA - nOldUA, nUA);
 						//nOldUA = nUA;
@@ -1453,7 +1455,8 @@ again:
 	}
 	//now select one of the possible cliques
 	//criterion is minimal combinations
-	unsigned long long combinations, minComb;
+	unsigned long long combinations;
+        unsigned long long minComb = 0;
 	int minIndex = -1;
 	if(opt.verbose) {
 		printf("\nMCN=%i, Maximal Cliques found=%i.\n", mcn, (int)maximalCliques.size());

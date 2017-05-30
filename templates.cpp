@@ -1314,10 +1314,10 @@ void templates::countGrids() const {
 #pragma omp single nowait
 #endif //_OPENMP
 			{
-				int foundLess = 0;
+				//int foundLess = 0;
 				int foundGrearter = 0;
 				int foundEqual = 0;
-				bool t4generated = false;
+				//bool t4generated = false;
 				bm128 r5 = maskLSB[81];
 				r5.clearBits(*r4);
 				exemplarSet t5;
@@ -1337,8 +1337,8 @@ void templates::countGrids() const {
 				int initialNumT5 = t5.size();
 				for (exemplarSet::const_iterator p5 = t5.begin(); p5 != t5.end(); p5++) {
 					//find whether any independent of t4 sub-rookery has canonical form < r4
-					bool hasEqualRookery = false;
-					templateWithExemplar min4of5;
+					//bool hasEqualRookery = false;
+					//templateWithExemplar min4of5;
 					for (int v = 1; v < 6; v++) { //for each 5 choose 4, not depending of p4
 						ch81 rr4of5 = p5->can;
 						for (int c = 0; c < 81; c++) {
@@ -1541,7 +1541,7 @@ void templates::generateXX110() const { //this way it doesn't work!
 			t2entwined.insert(*t2); //105 2-templates
 			t2->toString(puz.chars);
 			unsigned short indexes[10];
-			int n = getIndexes(*t2, indexes);
+			//int n = getIndexes(*t2, indexes);
 			t2Indexes[indexes[0]].insert(indexes[1]);
 			t2Indexes[indexes[1]].insert(indexes[0]);
 			//printf("%81.81s\t%d\t%d\t%d\n", puz.chars, n, indexes[0], indexes[1]);
@@ -1807,7 +1807,7 @@ void templates::generateGrids() const {
 										//if(ti8 < ti7) continue; //once a+b is done, skip doing b+a
 										if(t7.isDisjoint(colTemplates[8][ti8])) {
 											//we have a grid for exporting
-											bm128 t8 = colTemplates[8][ti8]; //the template bitmap
+											//bm128 t8 = colTemplates[8][ti8]; //the template bitmap
 
 											numGrids++;
 											//printf(".");

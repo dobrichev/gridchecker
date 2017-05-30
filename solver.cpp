@@ -839,7 +839,7 @@ struct pmWeights {
 static void attempt(game &g)
 {
 	game gg;
-	cellIndex chosenCell;
+	cellIndex chosenCell = 0;
 	int ci, nGuesses, chosenValue, cp, bc;
 restart:
 	checkForLastOccurenceInGroup(g); //the first algorithm performs internal repeating

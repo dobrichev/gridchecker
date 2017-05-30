@@ -1181,7 +1181,7 @@ extern int doSimilarPuzzles () {
 		while(fgets(buf, sizeof(buf), stdin)) {
 			ch81 puz, ppuz;
 			puz.fromString(buf);
-            int nSol;
+            int nSol = 0;
 			if(fixedGrid == 0) { //invert to any of puzzle solutions
                 //nSol = (int)solve(puz.chars, 1000, gr[0].chars); // max 1000 solutions //29.7.2016 Why 1000?
                 nSol = (int)solve(puz.chars, 1, gr[0].chars); // first solution
