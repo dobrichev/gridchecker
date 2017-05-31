@@ -6,7 +6,14 @@
 options opt = options();
 
 options::options() {
-	//Yes, I know it is a bad practice to run such code in the constructor... TODO
+	scanOpt = NULL;
+	solveOpt = NULL;
+	nhbOpt = NULL;
+	uaOpt = NULL;
+	similarOpt = NULL;
+	patternOpt = NULL;
+	templateOpt = NULL;
+	verbose = false;
 
 	//SET PREFERENCES
 	//opt->noPOSIX(); //do not check for POSIX style character options
@@ -176,6 +183,10 @@ options::options() {
 	//anyopt.setOption("mspuzzles");
 	anyopt.addUsage("   --minusandup <xy>     Apply {-x} then {+1..y} to puzzleset from stdin and ouput unique minimals");
 	anyopt.setOption("minusandup");
+	anyopt.addUsage("   --minus8              Try to reduce any 9-clue digit to 1-clue");
+	anyopt.setFlag("minus8");
+	anyopt.addUsage("   --minus7              Try to reduce any 9-clue digit to 2-clues");
+	anyopt.setFlag("minus7");
 	anyopt.addUsage("   --twins               Check puzzleset from stdin for unknown twins");
 	anyopt.setFlag("twins");
 	anyopt.addUsage("     --subcanon              Canonicalize input puzzles");
@@ -191,7 +202,7 @@ options::options() {
 	//anyopt.setOption("mspuzzles");
 	anyopt.addUsage("   --removeredundant     Removes redundant clues");
 	anyopt.setFlag("removeredundant");
-	anyopt.addUsage("   --invert <grid | .>   Inverts clues of puzzle, . uses any completion");
+	anyopt.addUsage("   --invert <grid|.|a|d> Inverts clues of puzzle using given/any/all/different completions");
 	anyopt.setOption("invert");
 	anyopt.addUsage("   --plus1               Apply {+1} to puzzles");
 	anyopt.setFlag("plus1");
@@ -234,8 +245,12 @@ options::options() {
 	anyopt.setFlag("get2templates");
 	anyopt.addUsage("   --get2rookeries           Prints identity for all 170 2-rookery classes (not impl.)");
 	anyopt.setFlag("get2rookeries");
-	anyopt.addUsage("   --get999911110           Prints identity for all 170 2-rookery classes");
+	anyopt.addUsage("   --get999911110            Prints identity for all 170 2-rookery classes");
 	anyopt.setFlag("get999911110");
+	anyopt.addUsage("   --r4tot4                  Prints all 4-templates for a given list of 4-rookeries");
+	anyopt.setFlag("r4tot4");
+	anyopt.addUsage("   --r4tot5                  Prints all 5-templates for a given list of 4-rookeries");
+	anyopt.setFlag("r4tot5");
 	anyopt.addUsage("");
 
 	//by default all  options  will be checked on the command line and from option/resource file

@@ -2295,55 +2295,57 @@ int allBandCompletions() {
 		g.findUAbyPuzzle(completion);
 		//now g has valid UA list
 		//printf("%d\t%llu\t%d\t", band + 1, nSol, (int)g.usetsBySize.size());
-		for(usetListBySize::const_iterator x = g.usetsBySize.begin(); x != g.usetsBySize.end(); x++) {
-			char u[88];
-			x->toMask81(u);
-			printf("%81.81s\t%d\n", u, band + 1);
-		}
-//		for(int numClues = 2; numClues < 8; numClues++) {
-//			clueIterator ci(g);
-//			ci.iterateBand(numClues);
-//			if(numClues - 2) {
-//				//generate {+1} from the previous pass
-//				for(intset::const_iterator old = res[numClues - 3].begin(); old != res[numClues - 3].end(); old++) {
-//					int mask = *old;
-//					for(int i = 0; i < 27; i++) {
-//						if(Digit2Bitmap[i + 1] & mask) continue;
-//						res[numClues - 2].insert(mask | Digit2Bitmap[i + 1]);
-//					}
-//				}
-//			}
-//
-//			for(puzTextSet::const_iterator p = ci.minimizedPuzzles.begin(); p != ci.minimizedPuzzles.end(); p++) {
-//				int mask = 0;
-//				int numActualClues = 0;
-//				for(int i = 0; i < 27; i++) {
-//					if(p->chars[i] != '0') {
-//						mask |= Digit2Bitmap[i + 1];
-//						numActualClues++;
-//					}
-//				}
-//				if(numActualClues == numClues) {
-//					res[numClues - 2].insert(mask);
-//				}
-////				char outbuf[32];
-////				for(int i = 0; i < 27; i++) {
-////					outbuf[i] = p->chars[i] != '0' ? '1' : '.';
-////				}
-////				printf("%d\t%d\t%27.27s\n", band + 1, numClues, outbuf);
-//				//printf("%d\t%d\t%d\n", band + 1, numClues, mask);
-//			}
-//			//printf("%d\t%d\t%d\n", band + 1, numClues, (int)ci.minimizedPuzzles.size());
-//			//printf("%d\t%d\t%d\n", band + 1, numClues, (int)res[band][numClues - 2].size());
-//
-//			//write results
-//			printf("#%d\t%d\t%d\n", band + 1, numClues, (int)res[numClues - 2].size()); //header
-//			for(intset::const_iterator old = res[numClues - 2].begin(); old != res[numClues - 2].end(); old++) {
-//				int mask = *old;
-//				printf("%d\n", mask);
-//			}
+//		for(usetListBySize::const_iterator x = g.usetsBySize.begin(); x != g.usetsBySize.end(); x++) {
+//			char u[88];
+//			x->toMask81(u);
+//			printf("%81.81s\t%d\n", u, band + 1);
 //		}
-//		//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", band + 1, (int)res[0].size(), (int)res[1].size(), (int)res[2].size(), (int)res[3].size(), (int)res[4].size(), (int)res[5].size());
+		for(int numClues = 2; numClues < 8; numClues++) {
+			clueIterator ci(g);
+			ci.iterateBand(numClues);
+			if(numClues - 2) {
+				//generate {+1} from the previous pass
+				for(intset::const_iterator old = res[numClues - 3].begin(); old != res[numClues - 3].end(); old++) {
+					int mask = *old;
+					for(int i = 0; i < 27; i++) {
+						if(Digit2Bitmap[i + 1] & mask) continue;
+						res[numClues - 2].insert(mask | Digit2Bitmap[i + 1]);
+					}
+				}
+			}
+
+			for(puzTextSet::const_iterator p = ci.minimizedPuzzles.begin(); p != ci.minimizedPuzzles.end(); p++) {
+				int mask = 0;
+				int numActualClues = 0;
+				for(int i = 0; i < 27; i++) {
+					if(p->chars[i] != '0') {
+						mask |= Digit2Bitmap[i + 1];
+						numActualClues++;
+					}
+				}
+				if(numActualClues == numClues) {
+					res[numClues - 2].insert(mask);
+				}
+//				char outbuf[32];
+//				for(int i = 0; i < 27; i++) {
+//					outbuf[i] = p->chars[i] != '0' ? '1' : '.';
+//				}
+//				printf("%d\t%d\t%27.27s\n", band + 1, numClues, outbuf);
+				//printf("%d\t%d\t%d\n", band + 1, numClues, mask);
+			}
+			//printf("%d\t%d\t%d\n", band + 1, numClues, (int)ci.minimizedPuzzles.size());
+			//printf("%d\t%d\t%d\n", band + 1, numClues, (int)res[band][numClues - 2].size());
+
+			//write results
+			printf("#%d\t%d\t%d\n", band + 1, numClues, (int)res[numClues - 2].size()); //header
+			if(opt.verbose) {
+				for(intset::const_iterator old = res[numClues - 2].begin(); old != res[numClues - 2].end(); old++) {
+					int mask = *old;
+					printf("%d\n", mask);
+				}
+			}
+		}
+		//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", band + 1, (int)res[0].size(), (int)res[1].size(), (int)res[2].size(), (int)res[3].size(), (int)res[4].size(), (int)res[5].size());
 	}
 	return 0;
 }
@@ -2666,8 +2668,8 @@ int scanPuzzleset(const bool invert) {
 		clueIterator ci(g);
 		ci.iterateFixedCells(completion.chars, opt.scanOpt->nClues, opt.scanOpt->nClues);
 		//puzzles found are in ci.minimizedPuzzles
-		ch81 pp;
-		puz.toString(pp.chars);
+		//ch81 pp;
+		//puz.toString(pp.chars);
 		//printf("%81.81s\t%llu\t%d\n", pp.chars, nSol, (int)g.usetsBySize.size());
 		//printf("%81.81s\t%llu\n", pp.chars, nSol);
 		//printf("%81.81s\t%d\t%d\n", pp.chars, ci.nClues - puzSize, ci.minimizedPuzzles.size());

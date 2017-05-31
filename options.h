@@ -249,6 +249,8 @@ struct similarOptions {
 	const char* invert;
 	bool minimals;
 	bool minus1;
+	bool minus8;
+	bool minus7;
 	bool subcanon;
 	bool twins;
 	bool removeredundant;
@@ -269,6 +271,8 @@ struct similarOptions {
 		invert = NULL;
 		minimals = false;
 		minus1 = false;
+		minus8 = false;
+		minus7 = false;
 		subcanon = false;
 		twins = false;
 		removeredundant = false;
@@ -291,6 +295,8 @@ struct similarOptions {
 		invert = opt.getValue("invert");
 		minimals = opt.getFlag("minimals");
 		minus1 = opt.getFlag("minus1");
+		minus8 = opt.getFlag("minus8");
+		minus7 = opt.getFlag("minus7");
 		subcanon = opt.getFlag("subcanon");
 		twins = opt.getFlag("twins");
 		removeredundant = opt.getFlag("removeredundant");
@@ -305,7 +311,7 @@ struct similarOptions {
 		if(v) {
 			depth = atoi(v);
 			if(depth <= 0) {
-				cout << "Error: Relabelling depth must be a positive integer!" << endl;
+				cout << "Error: Relabeling depth must be a positive integer!" << endl;
 				return -1;
 			}
 		}
@@ -631,15 +637,21 @@ struct templateOptions {
 	bool get2templates;
 	bool get2rookeries;
 	bool get999911110;
+	bool r4tot4;
+	bool r4tot5;
 	templateOptions() { //set defaults for all template options
 		get2templates = false;
 		get2rookeries = false;
 		get999911110 = false;
+		r4tot4 = false;
+		r4tot5 = false;
 	}
 	int go() { //collect all options and do the job
 		get2templates = opt.getFlag("get2templates");
 		get2rookeries = opt.getFlag("get2rookeries");
 		get999911110 = opt.getFlag("get999911110");
+		r4tot4 = opt.getFlag("r4tot4");
+		r4tot5 = opt.getFlag("r4tot5");
 		return processTemplate();
 	}
 };
