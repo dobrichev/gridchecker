@@ -1278,7 +1278,7 @@ extern int doSimilarPuzzles () {
 		while(fgets(buf, sizeof(buf), stdin)) {
 			ch81 puz, ppuz;
 			puz.fromString(buf);
-            int nSol = 0;
+            int nSol;
             //prepare solutions in array gr
             switch(invertmode) {
             	case 1: //any completion
