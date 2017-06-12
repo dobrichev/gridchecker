@@ -9,7 +9,7 @@
 #include "t_128.h"
 #include <immintrin.h>
 
-#define NO_AVX 1
+//#define NO_AVX 1
 
 class dclues : public bm128 {
 public:
@@ -162,8 +162,14 @@ public:
 		//for(int i = 0; i < maxWords; i++) {
 		for(int i = 0; i < getNumWords(); i++) {
 #ifdef NO_AVX
-			static_cast <bm128> (aBits[i].b128[0]).clearBits(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
-			static_cast <bm128> (aBits[i].b128[1]).clearBits(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
+                    bm128 tmp(hittingMask.aBits[i].b128[0]);
+                    tmp.clearBits(s.aBits[i].b128[0]);
+                    aBits[i].b128[0] = tmp.bitmap128.m128i_m128i;
+                    tmp = hittingMask.aBits[i].b128[1];
+                    tmp.clearBits(s.aBits[i].b128[1]);
+                    aBits[i].b128[1] = tmp.bitmap128.m128i_m128i;
+			//static_cast <bm128 *> (&aBits[i].b128[0])->clearBits(hittingMask.aBits[i].b128[0], s.aBits[i].b128[0]);
+			//static_cast <bm128 *> (&aBits[i].b128[1])->clearBits(hittingMask.aBits[i].b128[1], s.aBits[i].b128[1]);
 #else
 			//aBits[i].b256d = _mm256_andnot_pd(hittingMask.aBits[i].b256d, s.aBits[i].b256d);
 			aBits[i].b256 = _mm256_castpd_si256(_mm256_andnot_pd(_mm256_castsi256_pd(hittingMask.aBits[i].b256), _mm256_castsi256_pd(s.aBits[i].b256)));

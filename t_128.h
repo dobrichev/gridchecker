@@ -310,7 +310,8 @@ public:
 //		}
 //	}
 	inline static bm128 getFFFF() {
-		__m128i x = _mm_undefined_si128();
+		//__m128i x = _mm_undefined_si128();
+		__m128i x = x;
 		return _mm_cmpeq_epi8(x, x);
 	}
 };
