@@ -245,7 +245,7 @@ options::options() {
 	anyopt.setFlag("get2templates");
 	anyopt.addUsage("   --get2rookeries           Prints identity for all 170 2-rookery classes (not impl.)");
 	anyopt.setFlag("get2rookeries");
-	anyopt.addUsage("   --get999911110            Prints identity for all 170 2-rookery classes");
+	anyopt.addUsage("   --get999911110            Prints all ED puzzles having 999911110 symbols distribution");
 	anyopt.setFlag("get999911110");
 	anyopt.addUsage("   --r4tot4                  Prints all 4-templates for a given list of 4-rookeries");
 	anyopt.setFlag("r4tot4");
