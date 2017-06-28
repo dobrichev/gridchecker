@@ -1275,66 +1275,68 @@ void templates::count5templates() const {
 }
 
 void templates::get999911110() const {
-    bm128* r4 = new bm128[2648604];
-        int n = 0;
-    {
-	lightweightUsetList r4all;
-	get4rookeries(r4all); //generate all 4-rookeries
-	fprintf(stderr, "Number of 4-rookeries\t%d\n", (int)r4all.size());
-	for(lightweightUsetList::const_iterator r4i = r4all.begin(); r4i != r4all.end(); r4i++) {
-            r4[n++] = *r4i;
-        }
-    }
+	bm128* r4 = new bm128[2648604];
+	int n = 0;
+	{
+		lightweightUsetList r4all;
+		get4rookeries(r4all); //generate all 4-rookeries
+		fprintf(stderr, "Number of 4-rookeries\t%d\n", (int) r4all.size());
+		for (lightweightUsetList::const_iterator r4i = r4all.begin(); r4i != r4all.end(); r4i++) {
+			r4[n++] = *r4i;
+		}
+	}
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif //_OPENMP
-	for(int i = 0; i < n; i++) { //all ED 4-rookeries
+	for (int i = 0; i < n; i++) { //all ED 4-rookeries
 		puzzleSet t4;
 		rookery2templates(r4[i], t4, true); //get first 4-template for this rookery
-                if(t4.begin() == t4.end()) continue;
-                if(i % 1000 == 0) {
+		if (t4.begin() == t4.end()) continue;
+		if (i % 1000 == 0) {
 #ifdef _OPENMP
 #pragma omp critical
 #endif //_OPENMP
-                    {
-                        fprintf(stderr, "."); //debug
-                    }
-                }
-                ch81 p(*(t4.begin())); //an initial 999900000 4-template with 1..4 symbols
-                int floatCells[9 * 5]; //the empty cells' indexes
-                for(int i = 0, n = 0; i < 81; i++) {
-                    if(p.chars[i]) continue;
-                    floatCells[n++] = i;
-                }
-                for(int i5 = 0; i5 < 9 * 5 - 3; i5++) {
-                    p.chars[floatCells[i5]] = 5;
-                    for(int i6 = i5 + 1; i6 < 9 * 5 - 2; i6++) {
-                        p.chars[floatCells[i6]] = 6;
-                        if(0 == solve(p.chars, 1)) continue;
-                        for(int i7 = i6 + 1; i7 < 9 * 5 - 1; i7++) {
-                            p.chars[floatCells[i7]] = 7;
-                            if(0 == solve(p.chars, 1)) continue;
-                            for(int i8 = i7 + 1; i8 < 9 * 5 - 0; i8++) {
-                                p.chars[floatCells[i8]] = 8;
-                                if(1 == solve(p.chars, 2)) {
-                                    ch81 txt;
-                                    p.toString(txt.chars);
+			{
+				fprintf(stderr, "."); //debug
+			}
+		}
+		ch81 p(*(t4.begin())); //an initial 999900000 4-template with 1..4 symbols
+		int floatCells[9 * 5]; //the empty cells' indexes
+		for (int i = 0, n = 0; i < 81; i++) {
+			if (p.chars[i]) continue;
+			floatCells[n++] = i;
+		}
+		for (int i5 = 0; i5 < 9 * 5 - 3; i5++) {
+			p.chars[floatCells[i5]] = 5;
+			for (int i6 = i5 + 1; i6 < 9 * 5 - 2; i6++) {
+				p.chars[floatCells[i6]] = 6;
+				if (1 == solve(p.chars, 1)) {
+					for (int i7 = i6 + 1; i7 < 9 * 5 - 1; i7++) {
+						p.chars[floatCells[i7]] = 7;
+						if (1 == solve(p.chars, 1)) {
+							for (int i8 = i7 + 1; i8 < 9 * 5 - 0; i8++) {
+								p.chars[floatCells[i8]] = 8;
+								if (1 == solve(p.chars, 2)) {
+									ch81 txt;
+									p.toString(txt.chars);
 #ifdef _OPENMP
 #pragma omp critical
 #endif //_OPENMP
-                                    {
-                                        printf("%81.81s\n", txt.chars);
-                                        fflush(NULL);
-                                    }
-                                }
-                                p.chars[floatCells[i8]] = 0;
-                            }
-                            p.chars[floatCells[i7]] = 0;
-                        }
-                        p.chars[floatCells[i6]] = 0;
-                    }
-                    p.chars[floatCells[i5]] = 0;
-                }
+									{
+										printf("%81.81s\n", txt.chars);
+										fflush(NULL);
+									}
+								}
+								p.chars[floatCells[i8]] = 0;
+							}
+						}
+						p.chars[floatCells[i7]] = 0;
+					}
+				}
+				p.chars[floatCells[i6]] = 0;
+			}
+			p.chars[floatCells[i5]] = 0;
+		}
 	}
 }
 
