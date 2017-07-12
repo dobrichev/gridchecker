@@ -183,10 +183,14 @@ options::options() {
 	//anyopt.setOption("mspuzzles");
 	anyopt.addUsage("   --minusandup <xy>     Apply {-x} then {+1..y} to puzzleset from stdin and ouput unique minimals");
 	anyopt.setOption("minusandup");
-	anyopt.addUsage("   --minus8              Try to reduce any 9-clue digit to 1-clue");
-	anyopt.setFlag("minus8");
-	anyopt.addUsage("   --minus7              Try to reduce any 9-clue digit to 2-clues");
-	anyopt.setFlag("minus7");
+	anyopt.addUsage("   --9minus8              Try to reduce any 9-clue digit to 1-clue");
+	anyopt.setFlag("9minus8");
+	anyopt.addUsage("   --9minus7              Try to reduce any 9-clue digit to 2-clues");
+	anyopt.setFlag("9minus7");
+	anyopt.addUsage("   --9minus6              Try to reduce any 9-clue digit to 3-clues");
+	anyopt.setFlag("9minus6");
+	anyopt.addUsage("   --9minus5              Try to reduce any 9-clue digit to 4-clues");
+	anyopt.setFlag("9minus5");
 	anyopt.addUsage("   --twins               Check puzzleset from stdin for unknown twins");
 	anyopt.setFlag("twins");
 	anyopt.addUsage("     --subcanon              Canonicalize input puzzles");

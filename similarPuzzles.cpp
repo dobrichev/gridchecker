@@ -691,7 +691,7 @@ void doMinus1(FILE * pFile, FILE * msFile) {
 	}
 }
 
-void doMinus8() {
+void do9Minus8() {
 	char buf[2000];
 	while(fgets(buf, sizeof(buf), stdin)) {
 		ch81 puz;
@@ -725,7 +725,7 @@ void doMinus8() {
 	}
 }
 
-void doMinus7() { //similar to minus8 but adding 2 clues at a time
+void do9Minus7() { //similar to minus8 but adding 2 clues at a time
 	char buf[2000];
 	while(fgets(buf, sizeof(buf), stdin)) {
 		ch81 puz;
@@ -754,6 +754,94 @@ void doMinus7() { //similar to minus8 but adding 2 clues at a time
 						ch81 txt;
 						test.toString(txt.chars);
 						printf("%81.81s\n", txt.chars);
+					}
+					test.chars[givensCells[d][j]] = 0; //back second to non-given
+				}
+				test.chars[givensCells[d][i]] = 0; //back first to non-given
+			}
+		}
+	}
+}
+
+void do9Minus6() { //similar to minus7 but adding 3 clues at a time
+	char buf[2000];
+	while(fgets(buf, sizeof(buf), stdin)) {
+		ch81 puz;
+		puz.fromString(buf);
+		int givensPerDigit[10] = {0,0,0,0,0,0,0,0,0,0};
+		int givensCells[10][9];
+		for(int i = 0; i < 81; i++) {
+			int d = puz.chars[i];
+			if(d == 0) continue;
+			givensCells[d][givensPerDigit[d]] = i;
+			givensPerDigit[d]++;
+		}
+		for(int d = 1; d <= 9; d++) {
+			if(givensPerDigit[d] != 9) continue;
+			ch81 test = puz; //structure copy
+			//clear all occurrences of d
+			for(int i = 0; i < 9; i++) {
+				test.chars[givensCells[d][i]] = 0;
+			}
+			//set three cells as givens and test for uniqueness
+			for(int i = 0; i < 9 - 2; i++) {
+				test.chars[givensCells[d][i]] = d; //set the first given
+				for(int j = i + 1; j < 9 - 1; j++) {
+					test.chars[givensCells[d][j]] = d; //set the second given
+					for(int k = j + 1; k < 9; k++) {
+						test.chars[givensCells[d][k]] = d; //set the third given
+						if(1 == solve(test.chars, 2)) {
+							ch81 txt;
+							test.toString(txt.chars);
+							printf("%81.81s\n", txt.chars);
+						}
+						test.chars[givensCells[d][k]] = 0; //back third to non-given
+					}
+					test.chars[givensCells[d][j]] = 0; //back second to non-given
+				}
+				test.chars[givensCells[d][i]] = 0; //back first to non-given
+			}
+		}
+	}
+}
+
+void do9Minus5() { //similar to minus6 but adding 4 clues at a time
+	char buf[2000];
+	while(fgets(buf, sizeof(buf), stdin)) {
+		ch81 puz;
+		puz.fromString(buf);
+		int givensPerDigit[10] = {0,0,0,0,0,0,0,0,0,0};
+		int givensCells[10][9];
+		for(int i = 0; i < 81; i++) {
+			int d = puz.chars[i];
+			if(d == 0) continue;
+			givensCells[d][givensPerDigit[d]] = i;
+			givensPerDigit[d]++;
+		}
+		for(int d = 1; d <= 9; d++) {
+			if(givensPerDigit[d] != 9) continue;
+			ch81 test = puz; //structure copy
+			//clear all occurrences of d
+			for(int i = 0; i < 9; i++) {
+				test.chars[givensCells[d][i]] = 0;
+			}
+			//set three cells as givens and test for uniqueness
+			for(int i = 0; i < 9 - 3; i++) {
+				test.chars[givensCells[d][i]] = d; //set the first given
+				for(int j = i + 1; j < 9 - 2; j++) {
+					test.chars[givensCells[d][j]] = d; //set the second given
+					for(int k = j + 1; k < 9 - 1; k++) {
+						test.chars[givensCells[d][k]] = d; //set the third given
+						for(int l = k + 1; l < 9; l++) {
+							test.chars[givensCells[d][l]] = d; //set the fourth given
+							if(1 == solve(test.chars, 2)) {
+								ch81 txt;
+								test.toString(txt.chars);
+								printf("%81.81s\n", txt.chars);
+							}
+							test.chars[givensCells[d][l]] = 0; //back fourth to non-given
+						}
+						test.chars[givensCells[d][k]] = 0; //back third to non-given
 					}
 					test.chars[givensCells[d][j]] = 0; //back second to non-given
 				}
@@ -1365,13 +1453,21 @@ extern int doSimilarPuzzles () {
 		msfile = stdout;
 		doMinus1(pfile, msfile);
 	}
-	else if(opt.similarOpt->minus8) { //--similar --minus8 < 999911110.txt > 999111110.txt
+	else if(opt.similarOpt->minus8) { //--similar --9minus8 < 999911110.txt > 999111110.txt
 		//for digits with 9 givens from stdin check whether after removal of 8 of them the puzzle still has unique solution
-		doMinus8();
+		do9Minus8();
 	}
-	else if(opt.similarOpt->minus7) { //--similar --minus8 < 999911110.txt > 999111110.txt
+	else if(opt.similarOpt->minus7) { //--similar --9minus7 < 999911110.txt > 999211110.txt
 		//for digits with 9 givens from stdin check whether after removal of 7 of them the puzzle still has unique solution
-		doMinus7();
+		do9Minus7();
+	}
+	else if(opt.similarOpt->minus6) { //--similar --9minus6 < 999911110.txt > 999311110.txt
+		//for digits with 9 givens from stdin check whether after removal of 6 of them the puzzle still has unique solution
+		do9Minus6();
+	}
+	else if(opt.similarOpt->minus5) { //--similar --9minus5 < 999911110.txt > 999411110.txt
+		//for digits with 9 givens from stdin check whether after removal of 5 of them the puzzle still has unique solution
+		do9Minus5();
 	}
 	else if(opt.similarOpt->twins) { //--similar --twins [--subcanon] [--minimals]
 		puzzleSet puzzles;
