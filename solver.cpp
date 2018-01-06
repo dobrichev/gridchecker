@@ -2015,11 +2015,13 @@ static int solvePattern(solverRelab &rd, const game &g, const int maxDiff, const
 		//no more recursive calls will be done
 		//rest of the clues must be the same as in the template
 		//populate rest of the clues from the template
+		bool requiresDoubleCheck = false;
 		for(int i = nextClueNumber; i < rd.patternSize; i++) {
 			if(gg.cellPossibilities[rd.patternPositions[i]] == 0) { //solved cell
 				if(rd.minimals)
 					return 0; //redundant if the same value, or no solution if different value
-				//TODO: solve from scratch to see whether the solved clue matches the given
+				//must be solved from scratch to see whether the solved clue matches the given
+				requiresDoubleCheck = true;
 			}
 			setDigit(gg, rd.patternPositions[i], Digit2Bitmap[(unsigned int)rd.in[rd.patternPositions[i]]]);
 			if((gg.mode & MODE_STOP_PROCESSING) && gg.nSolutions == 0)
@@ -2033,6 +2035,11 @@ static int solvePattern(solverRelab &rd, const game &g, const int maxDiff, const
 		if(rd.unique && gg.nSolutions > 1) //???
 			return 0; //multiple solutions
 		nextClueNumber = rd.patternSize;
+		if(requiresDoubleCheck) {
+			//the puzzle isn't minimal but we don't know if the redundant (solved) values match the givens
+			if(0 == solve(rd.digits, 1))
+				return 0;
+		}
 	}
 	if(nextClueNumber == rd.patternSize) { //no more clues
 		if(rd.unique) { //check for uniqueness

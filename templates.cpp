@@ -196,6 +196,7 @@ struct templates {
 	int getIndexes(const ch81& src, unsigned short* res) const;
         void getAll5templates() const;
 	void get999911110() const;
+	void get9999xxxxx() const;
 };
 
 templates::templates() {
@@ -1340,6 +1341,120 @@ void templates::get999911110() const {
 	}
 }
 
+void templates::get9999xxxxx() const {
+	bm128* r4 = new bm128[2648604];
+	int n = 0;
+	//int maxNumSol = 0;
+	{
+		lightweightUsetList r4all;
+		//get4rookeries(r4all); //generate all 4-rookeries
+		char buf[1000];
+		while(fgets(buf, sizeof(buf), stdin)) {
+			bm128 r4;
+			ch81 p4;
+			p4.fromString(buf);
+			template2rookery(p4, r4);
+			r4all.insert(r4);
+		}
+		fprintf(stderr, "Number of 4-rookeries\t%d\n", (int) r4all.size());
+		for (lightweightUsetList::const_iterator r4i = r4all.begin(); r4i != r4all.end(); r4i++) {
+			r4[n++] = *r4i;
+		}
+	}
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic, 1)
+#endif //_OPENMP
+	for (int i = 0; i < n; i++) { //all ED 4-rookeries
+		puzzleSet t4;
+		rookery2templates(r4[i], t4, true); //get first 4-template for this rookery
+		if (t4.begin() == t4.end()) continue;
+		if (i % 10 == 0) {
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+			{
+				fprintf(stderr, "r4=%d\n", i); //debug
+			}
+		}
+		ch81 p(*(t4.begin())); //an initial 999900000 4-template with 1..4 symbols
+		int floatCells[9 * 5]; //the empty cells' indexes
+		for (int i = 0, n = 0; i < 81; i++) {
+			if (p.chars[i]) continue;
+			floatCells[n++] = i;
+		}
+		for (int i5 = 0; i5 < 9 * 5 - 3; i5++) {
+			p.chars[floatCells[i5]] = 5;
+			for (int i6 = i5 + 1; i6 < 9 * 5 - 2; i6++) {
+				p.chars[floatCells[i6]] = 6;
+				if (1 == solve(p.chars, 1)) {
+					for (int i7 = i6 + 1; i7 < 9 * 5 - 1; i7++) {
+						p.chars[floatCells[i7]] = 7;
+						if (1 == solve(p.chars, 1)) {
+							for (int i8 = i7 + 1; i8 < 9 * 5 - 0; i8++) {
+								p.chars[floatCells[i8]] = 8;
+								//int i8numSol = solve(p.chars, ULONG_MAX);//maxSol=21448
+								int i8numSol = solve(p.chars, 2);
+								if (i8numSol) {
+									//test for 11110
+									if (1 == i8numSol) {
+										ch81 txt;
+										p.toString(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+										{
+											printf("%81.81s\t11110\n", txt.chars);
+											fflush(NULL);
+										}
+									}
+									//test for 11111
+									for (int i9 = i8 + 1; i9 < 9 * 5 - 0; i9++) {
+										p.chars[floatCells[i9]] = 9;
+										int i9numSol = solve(p.chars, 2);
+										if (i9numSol) {
+											if (1 == i9numSol) {
+												ch81 txt;
+												p.toString(txt.chars);
+#ifdef _OPENMP
+#pragma omp critical
+#endif //_OPENMP
+												{
+													printf("%81.81s\t11111\n", txt.chars);
+													fflush(NULL);
+												}
+											}
+//											//test for 21111
+//											for (int i5a = 5 * (i5 / 5 + 1); i5a < 9 * 5 - 0; i5a++) {
+//												p.chars[floatCells[i5a]] = 5;
+//												int i9numSol = solve(p.chars, 2);
+//												p.chars[floatCells[i5a]] = 0;
+//											}
+										}
+										p.chars[floatCells[i9]] = 0;
+									}
+//									if(i8numSol > maxNumSol) {
+//#ifdef _OPENMP
+//#pragma omp critical
+//#endif //_OPENMP
+//										{
+//											maxNumSol = i8numSol;
+//											fprintf(stderr, "r4=%d\tmaxSol=%d\n", i, maxNumSol);
+//										}
+//									}
+								}
+								p.chars[floatCells[i8]] = 0;
+							}
+						} //next i8
+						p.chars[floatCells[i7]] = 0;
+					}
+				}
+				p.chars[floatCells[i6]] = 0;
+			}
+			p.chars[floatCells[i5]] = 0;
+		}
+	}
+}
+
 void templates::getAll5templates() const {
 	lightweightUsetList r4all;
 	get4rookeries(r4all);
@@ -2453,6 +2568,7 @@ extern int processTemplate() {
 	templates t;
 	if(opt.templateOpt->get999911110)
 		t.get999911110();
+		//t.get9999xxxxx(); //test
 	else if(opt.templateOpt->r4tot4 || opt.templateOpt->r4tot5) {
 		char buf[1000];
 		while(fgets(buf, sizeof(buf), stdin)) {
