@@ -10,6 +10,7 @@
 	//assume every compiler but MS is C99 compliant and has inttypes
 	#include <inttypes.h>
 #else
+	#include <intrin.h>
    //typedef signed __int8     int8_t;
    //typedef signed __int16    int16_t;
    //typedef signed __int32    int32_t;
@@ -23,6 +24,12 @@
 #ifdef   _MSC_VER
 	#define x_popcnt64(a) __popcnt64(a)
 	#define x_popcnt32(a) __popcnt32(a)
+	static inline int __builtin_ctzll(unsigned long long input_num) {
+		unsigned long index;
+		_BitScanForward64(&index, input_num);
+		return index;
+	}
+	#define __restrict
 #else
 	#define x_popcnt64(a) __builtin_popcountll(a)
 	#define x_popcnt32(a) __builtin_popcount(a)
@@ -310,8 +317,8 @@ public:
 //		}
 //	}
 	inline static bm128 getFFFF() {
-		//__m128i x = _mm_undefined_si128();
-		__m128i x = x;
+		__m128i x = _mm_undefined_si128();
+		//__m128i x = x;
 		return _mm_cmpeq_epi8(x, x);
 	}
 };
