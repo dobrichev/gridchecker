@@ -24,8 +24,10 @@
 *.lib
 
 # Executables
-*.exe
+# *.exe
 *.out
 *.app
 /Debug/
 /Release/
+/doc/
+/gridchecker.doxyfile
