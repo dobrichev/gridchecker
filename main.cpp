@@ -4,7 +4,7 @@
 #include <time.h>
 #include "options.h"
 
-const char *versionString = "GridChecker v1.24";
+const char *versionString = "GridChecker (Patterns Game clone) v1.32 (2018-05-18)";
 
 //#define DIRTY_TEST	//in this mode function "test" is run w/o processing the command line parameters
 

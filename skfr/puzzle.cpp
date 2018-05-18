@@ -39,7 +39,7 @@ const char *orig[]={"row ","column ","box "," "};
 const char *lc="ABCDEFGHI";
 const char *orig1="RCB ";
 
-#include "puzzle_globals.cpp"
+#include "puzzle_globals.h"
 
 
 PUZZLE::PUZZLE() {
