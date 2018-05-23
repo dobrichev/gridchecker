@@ -836,18 +836,47 @@ struct puzzleRecord {
 		return(memcmp(this, &other, 16) == 0);
 	}
 };
-//struct inputFilter {
-//	//void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
-//	unsigned int minus;
-//	unsigned int minED;
-//	unsigned int maxED;
-//	unsigned int minEP;
-//	unsigned int maxEP;
-//	unsigned int minER;
-//	unsigned int maxER;
-//	inputFilter(unsigned int n, unsigned int minED_, unsigned int maxED_, unsigned int minEP_, unsigned int maxEP_, unsigned int minER_, unsigned int maxER_) :
-//		minus(n), minED(minED_), maxED(maxED_), minEP(minEP_), maxEP(maxEP_), minER(minER_), maxER(maxER_) {}
-//};
+struct inputFilter {
+	//void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
+	unsigned int minus;
+	unsigned int minED;
+	unsigned int maxED;
+	unsigned int minEP;
+	unsigned int maxEP;
+	unsigned int minER;
+	unsigned int maxER;
+	bool noSingles;
+	inputFilter(unsigned int n, unsigned int minED_, unsigned int maxED_, unsigned int minEP_, unsigned int maxEP_, unsigned int minER_, unsigned int maxER_, unsigned int noSingles_) :
+		minus(n & 7), minED((minED_ & 0xFF) << 24), maxED((maxED_ & 0xFF) << 24), minEP((minEP_ & 0xFF) << 16), maxEP((maxEP_ & 0xFF) << 16), minER((minER_ & 0xFF) << 8), maxER((maxER_ & 0xFF) << 8), noSingles(noSingles_) {}
+	bool matches(const puzzleRecord& rec) const {
+		if(noSingles) {
+			if(((rec.rateFast & 0xFF) < minus) //not relabeled to this depth unconditionally
+				&& ((rec.rateFinal & 0xFF) < minus) //not relabeled to this depth ignoring puzzles solved by singles
+				&& ((rec.rateFast & 0xFF000000) >= minED)
+				&& ((rec.rateFast & 0xFF000000) <= maxED)
+				&& ((rec.rateFast & 0xFF0000) >= minEP)
+				&& ((rec.rateFast & 0xFF0000) <= maxEP)
+				&& ((rec.rateFast & 0xFF00) >= minER)
+				&& ((rec.rateFast & 0xFF00) <= maxER))
+			{
+				return true;
+			}
+		}
+		else {
+			if(((rec.rateFast & 0xFF) < minus) //not relabeled to this depth
+				&& ((rec.rateFast & 0xFF000000) >= minED)
+				&& ((rec.rateFast & 0xFF000000) <= maxED)
+				&& ((rec.rateFast & 0xFF0000) >= minEP)
+				&& ((rec.rateFast & 0xFF0000) <= maxEP)
+				&& ((rec.rateFast & 0xFF00) >= minER)
+				&& ((rec.rateFast & 0xFF00) <= maxER))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+};
 #if 1
 class pgGotchi {
 	//for 16+4+4 there is 3550103402/83=42772330 puzzles capacity
@@ -1023,59 +1052,33 @@ public:
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
-		static const size_t max_batch_size[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
-		//convert filter
-		minED &= 0xFF; minED <<= 24;
-		maxED &= 0xFF; maxED <<= 24;
-		minEP &= 0xFF; minEP <<= 16;
-		maxEP &= 0xFF; maxEP <<= 16;
-		minER &= 0xFF; minER <<= 8;
-		maxER &= 0xFF; maxER <<= 8;
+		static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
+		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles);
 		pgContainer::size_type new_size = theList.size();
 		pgContainer::size_type old_size;
+		pgContainer::size_type resCount;
+		const pgContainer::size_type max_batch_size = max_batch_sizes[n];
 		if(maxPasses == 0) maxPasses = 1;
 		do {
 			//get puzzles passing filter and not relabeled up to n (if any)
 			old_size = new_size;
 			std::vector<puzzleRecord*> src;
-			//relabel
+			resCount = 0;
 			for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
-				if(noSingles) {
-					if(((h->rateFast & 0xFF) < n) //not relabeled to this depth unconditionally
-						&& ((h->rateFinal & 0xFF) < n) //not relabeled to this depth ignoring puzzles solved by singles
-						&& ((h->rateFast & 0xFF000000) >= minED)
-						&& ((h->rateFast & 0xFF000000) <= maxED)
-						&& ((h->rateFast & 0xFF0000) >= minEP)
-						&& ((h->rateFast & 0xFF0000) <= maxEP)
-						&& ((h->rateFast & 0xFF00) >= minER)
-						&& ((h->rateFast & 0xFF00) <= maxER))
-					{
-						puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-						src.push_back(hh);
-					}
+				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
+				if(iFilter.matches(*hh)) {
+					src.push_back(hh);
+					resCount++;
+					if(resCount >= max_batch_size) break; //limit to some reasonable batch size
 				}
-				else {
-					if(((h->rateFast & 0xFF) < n) //not relabeled to this depth
-						&& ((h->rateFast & 0xFF000000) >= minED)
-						&& ((h->rateFast & 0xFF000000) <= maxED)
-						&& ((h->rateFast & 0xFF0000) >= minEP)
-						&& ((h->rateFast & 0xFF0000) <= maxEP)
-						&& ((h->rateFast & 0xFF00) >= minER)
-						&& ((h->rateFast & 0xFF00) <= maxER))
-					{
-						puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-						src.push_back(hh);
-					}
-				}
-				if(src.size() >= max_batch_size[n]) break; //limit to some reasonable batch size
 			}
 			if(opt.verbose) {
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, (int)src.size());
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, (int)resCount);
 			}
+			//relabel
 			puzzleSet allFound;
 			size_t percentage = 0;
 			size_t resNum = 0;
-			size_t resCount = src.size();
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif
