@@ -1,5 +1,8 @@
 #pragma once
 
+#include <atomic>
+extern volatile std::atomic_bool gExiting;
+
 struct morph {
 	int transpose; //0..1
 	int stackPerm;	//0..5

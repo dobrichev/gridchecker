@@ -825,21 +825,33 @@ int enumerate(const char* pattern, const char* fixclues) {
 
 	return err;
 }
+struct puzzleRecord {
+	unsigned char key[16];
+	unsigned int rateFast;
+	unsigned int rateFinal;
+	bool operator< (const puzzleRecord & other) const {
+		return(memcmp(this, &other, 16) < 0);
+	}
+	bool operator== (const puzzleRecord & other) const {
+		return(memcmp(this, &other, 16) == 0);
+	}
+};
+//struct inputFilter {
+//	//void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
+//	unsigned int minus;
+//	unsigned int minED;
+//	unsigned int maxED;
+//	unsigned int minEP;
+//	unsigned int maxEP;
+//	unsigned int minER;
+//	unsigned int maxER;
+//	inputFilter(unsigned int n, unsigned int minED_, unsigned int maxED_, unsigned int minEP_, unsigned int maxEP_, unsigned int minER_, unsigned int maxER_) :
+//		minus(n), minED(minED_), maxED(maxED_), minEP(minEP_), maxEP(maxEP_), minER(minER_), maxER(maxER_) {}
+//};
 #if 1
 class pgGotchi {
 	//for 16+4+4 there is 3550103402/83=42772330 puzzles capacity
 public:
-	struct comprPuz {
-		unsigned char key[16];
-		unsigned int rateFast;
-		unsigned int rateFinal;
-		const bool operator< (const comprPuz & other) const {
-			return(memcmp(this, &other, 16) < 0);
-		}
-		const bool operator== (const comprPuz & other) const {
-			return(memcmp(this, &other, 16) == 0);
-		}
-	};
 	struct uncomprPuz {
 		ch81 p;
 		int rateFastED;
@@ -877,14 +889,14 @@ public:
 			return ret;
 		}
 	};
-	class pgContainer : public set<comprPuz> {};
+	class pgContainer : public set<puzzleRecord> {};
 	pgContainer theList;
 	int size; //max 33
 	pat ppp;
 private:
 	fskfr fastRater;
 	int map[34]; //compressed to real position
-	void compress(const uncomprPuz &u, comprPuz &c) const {
+	void compress(const uncomprPuz &u, puzzleRecord &c) const {
 		for(int i = 0; i < 16; i++)
 			c.key[i] = 0;
 		if(0 == (size & 1)) { //half-byte
@@ -896,7 +908,7 @@ private:
 		c.rateFast = (((((u.rateFastED << 8) | u.rateFastEP) << 8) | u.rateFastER) << 8) | u.specTransformedUpTo;
 		c.rateFinal = (((((u.rateFinalED << 8) | u.rateFinalEP) << 8) | u.rateFinalER) << 8) | u.transformedUpTo;
 	}
-	void uncompress(uncomprPuz &u, const comprPuz &c) const {
+	void uncompress(uncomprPuz &u, const puzzleRecord &c) const {
 		u.p.clear();
 		u.p.chars[map[0]] = 1;
 		if(0 == (size & 1)) { //half-byte
@@ -938,7 +950,7 @@ public:
 	void fastRateAll() {
 		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
 			if((h->rateFast & 0xFF00) == 0) { //ER was not set
-				comprPuz* hh = const_cast<comprPuz*>(&(*h));
+				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				uncomprPuz u;
 				uncompress(u, *hh);
 				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
@@ -948,7 +960,7 @@ public:
 	}
 	void add(const char* p, const int allowUpdates = 0, const int checkRedundancy = 0) { // 
 		uncomprPuz u;
-		comprPuz c;
+		puzzleRecord c;
 		u.fromString(p);
 		//test for pattern validity
 		for(int i = 0; i < size; i++) {
@@ -966,7 +978,7 @@ public:
 					if(((unsigned char *)(&c.rateFast))[i] < ((unsigned char *)(&h->rateFast))[i])
 						((unsigned char *)(&c.rateFast))[i] = ((unsigned char *)(&h->rateFast))[i];
 				}
-				comprPuz* hh = const_cast<comprPuz*>(&(*h));
+				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				*hh = c;
 				if((c.rateFast & 0xFF00) == 0) { //calculate ER
 					fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
@@ -1004,13 +1016,14 @@ public:
 			pgContainer::iterator hhh = theList.insert(h, c);
 			//rate the puzzle
 			if((c.rateFast & 0xFF00) == 0) { //calculate ER
-				comprPuz* hh = const_cast<comprPuz*>(&(*hhh));
+				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*hhh));
 				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
 			}
 			} //critical
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
+		static const size_t max_batch_size[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
 		//convert filter
 		minED &= 0xFF; minED <<= 24;
 		maxED &= 0xFF; maxED <<= 24;
@@ -1024,33 +1037,54 @@ public:
 		do {
 			//get puzzles passing filter and not relabeled up to n (if any)
 			old_size = new_size;
-			std::vector<comprPuz*> src;
+			std::vector<puzzleRecord*> src;
 			//relabel
 			for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
-				if(((h->rateFast & 0xFF) < n) //not relabeled to this depth
-					&& ((h->rateFast & 0xFF000000) >= minED)
-					&& ((h->rateFast & 0xFF000000) <= maxED)
-					&& ((h->rateFast & 0xFF0000) >= minEP)
-					&& ((h->rateFast & 0xFF0000) <= maxEP)
-					&& ((h->rateFast & 0xFF00) >= minER)
-					&& ((h->rateFast & 0xFF00) <= maxER))
-				{
-					comprPuz* hh = const_cast<comprPuz*>(&(*h));
-					src.push_back(hh);
+				if(noSingles) {
+					if(((h->rateFast & 0xFF) < n) //not relabeled to this depth unconditionally
+						&& ((h->rateFinal & 0xFF) < n) //not relabeled to this depth ignoring puzzles solved by singles
+						&& ((h->rateFast & 0xFF000000) >= minED)
+						&& ((h->rateFast & 0xFF000000) <= maxED)
+						&& ((h->rateFast & 0xFF0000) >= minEP)
+						&& ((h->rateFast & 0xFF0000) <= maxEP)
+						&& ((h->rateFast & 0xFF00) >= minER)
+						&& ((h->rateFast & 0xFF00) <= maxER))
+					{
+						puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
+						src.push_back(hh);
+					}
 				}
+				else {
+					if(((h->rateFast & 0xFF) < n) //not relabeled to this depth
+						&& ((h->rateFast & 0xFF000000) >= minED)
+						&& ((h->rateFast & 0xFF000000) <= maxED)
+						&& ((h->rateFast & 0xFF0000) >= minEP)
+						&& ((h->rateFast & 0xFF0000) <= maxEP)
+						&& ((h->rateFast & 0xFF00) >= minER)
+						&& ((h->rateFast & 0xFF00) <= maxER))
+					{
+						puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
+						src.push_back(hh);
+					}
+				}
+				if(src.size() >= max_batch_size[n]) break; //limit to some reasonable batch size
 			}
 			if(opt.verbose) {
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d items\n", n, maxPasses, (int)src.size());
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, (int)src.size());
 			}
 			puzzleSet allFound;
+			size_t percentage = 0;
+			size_t resNum = 0;
+			size_t resCount = src.size();
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif
-			for(int i = 0; i < src.size(); i++) {
-				comprPuz* hh = src[i];
-				if((hh->rateFast & 0xFF) < n) { //LSB = n = relabeled up to depth n
-					hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
-				}
+			for(size_t i = 0; i < resCount; i++) {
+				if(gExiting) continue;
+				puzzleRecord* hh = src[i];
+//				if((hh->rateFast & 0xFF) < n) { //LSB = n = relabeled up to depth n
+//					hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
+//				}
 				uncomprPuz u;
 				uncompress(u, *hh);
 				//if((hh->rateFast & 0xFF00) == 0) { //calculate ER
@@ -1062,21 +1096,59 @@ public:
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-				//join local candidates
-				allFound.insert(found.begin(), found.end());
-				//for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
-				//	add(lc->chars, 0, 1);
-				//}
+				{
+					//join local candidates
+					allFound.insert(found.begin(), found.end());
+					//for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
+					//	add(lc->chars, 0, 1);
+					//}
 
-				//for non-parallel mode
-				//solverRelabel(u.p.chars, n, false, true, noSingles, relCallBack, this);
+					//for non-parallel mode
+					//solverRelabel(u.p.chars, n, false, true, noSingles, relCallBack, this);
+					if(opt.verbose) {
+						resNum++;
+						size_t new_percentage = resNum * 10 / resCount;
+						if(percentage < new_percentage) {
+							percentage = new_percentage;
+							fprintf(stderr, "/");
+						}
+					}
+				}
 			}
-			for(puzzleSet::const_iterator lc = allFound.begin(); lc != allFound.end(); lc++) {
+			percentage = 0;
+			resNum = 0;
+			resCount = allFound.size();
+			for(puzzleSet::const_iterator lc = allFound.begin(); lc != allFound.end() && !gExiting; lc++) {
 				add(lc->chars, 0, 1);
+				if(opt.verbose) {
+					resNum++;
+					size_t new_percentage = resNum * 10 / resCount;
+					if(percentage < new_percentage) {
+						percentage = new_percentage;
+						fprintf(stderr, "\\");
+					}
+				}
 			}
 			fastRater.skfrCommit();
 			new_size = theList.size();
-		} while(new_size > old_size && --maxPasses > 0);
+			//This pass is done. Mark the seed as used at appropriate depth.
+			if(!gExiting) {
+				for(size_t i = 0; i < src.size(); i++) {
+					puzzleRecord* hh = src[i];
+					if(noSingles) {
+						if((hh->rateFinal & 0xFF) < n) { //LSB = n = relabeled up to depth n (conditionally)
+							hh->rateFinal = (hh->rateFinal & 0xFFFFFF00) | n;
+						}
+					}
+					if((hh->rateFast & 0xFF) < n) { //LSB = n = relabeled up to depth n (unconditionally)
+						hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
+					}
+				}
+			}
+			if(opt.verbose) {
+				fprintf(stderr, "\n");
+			}
+		} while((!gExiting) && new_size > old_size && --maxPasses > 0);
 	}
 
 	//this is called by solverRelabel on any puzzle candidate
@@ -1123,7 +1195,7 @@ public:
 		v = (v & 0x33333333) + ((v >> 2) & 0x33333333);     // temp
 		return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
 	}
-	int distance(const comprPuz &p1, const comprPuz &p2) const { //get minimal hamming distance, print p2 unchanged
+	int distance(const puzzleRecord &p1, const puzzleRecord &p2) const { //get minimal hamming distance, print p2 unchanged
 		if(size > 32)
 			return -1;
 		if(ppp.automorphismLevel > 8)
@@ -1403,7 +1475,7 @@ int gotchiPass(const char *cmd) {
 		g.add(buf, 1);
 	}
 	if(opt.verbose) {
-		fprintf(stderr, "Automorphism level %d\n", g.ppp.automorphismLevel);
+		fprintf(stderr, "Number of symmetries %d\n", g.ppp.automorphismLevel);
 		fprintf(stderr, "%d puzzles loaded\n", (int)g.theList.size());
 	}
 	g.fastRateAll();

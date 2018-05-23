@@ -3,10 +3,19 @@
 #include <stdio.h>
 #include <time.h>
 #include "options.h"
+#include <csignal>
+#include <atomic>
 
 const char *versionString = "GridChecker (Patterns Game clone) v1.32 (2018-05-18)";
 
 //#define DIRTY_TEST	//in this mode function "test" is run w/o processing the command line parameters
+
+volatile std::atomic_bool gExiting = ATOMIC_VAR_INIT(false);
+void exit_signal_handler(int signal)
+{
+	gExiting = true;
+	signal++; //suppress compiler warnings
+}
 
 #ifdef DIRTY_TEST
 extern void test(); //debug
@@ -14,7 +23,7 @@ extern void test(); //debug
 
 int main(int argc, char* argv[])
 {
-
+	std::signal(SIGINT, exit_signal_handler);
 	clock_t start, finish;
 	int ret;
 	start = clock();
