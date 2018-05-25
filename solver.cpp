@@ -51,10 +51,11 @@ Segment is a combination of first/second/third three rows or columns.
 #endif //__INTEL_COMPILER
 
 #include <limits.h>
+#include <memory.h>
 #include "solver.h"
 #include "tables.h"
 //#include "grid.h" //for unavoidables
-#include "rowminlex.h" //for essentially different solutions
+//#include "rowminlex.h" //for essentially different solutions
 
 //Use constants and tabular functions whenever possible
 
@@ -177,7 +178,7 @@ struct game
 	//game *masterGame;				//sometimes we are jumping directly to g->masterGame->done
 	cellDigit *cellDigits;
 	char *results;					//external buffer for solutions
-	uaCollector *uaColl;			//callback class for processing the solutions one by one
+	//uaCollector *uaColl;			//callback class for processing the solutions one by one
 	const int *knownSolution;		//pointer to a bitmapped solution to compare with or to guess from
 	int *pencilmarks;				//pointer to a bitmapped possibilities for multisolution puzzle
 	//int guessDepth;
@@ -201,7 +202,7 @@ static const game defaultGame =
 	//NULL, //&masterGame
 	NULL, //&cellDigits
 	NULL, //&results
-	NULL, //&uaCollector
+	//NULL, //&uaCollector
 	NULL, //&knownSolution
 	NULL, //&pencilmarks
 	//0, //guessDepth
@@ -211,24 +212,7 @@ static const game defaultGame =
 //extern int z0, z1;
 
 void solutionFound(game &g) {
-	if(g.mode & MODE_EDIFFERENT) { //check whether solution is essentially different from knownSolution
-		char sol[81];
-		char solCan[81];
-		int canBM[81];
-		for(int j = 0; j < 81; j++) {
-			sol[j] = Bitmap2Digit[g.cellDigits[j]];
-		}
-		rowminlex(sol, solCan);
-		digit2bitmap(solCan, canBM);
-		if(memcmp(g.knownSolution, canBM, 81 * sizeof(int))) { //different
-			g.nSolutions = 1;
-			g.mode |= (MODE_STOP_PROCESSING | MODE_STOP_GUESSING); //force exit
-			return;
-		}
-		g.mode |= MODE_STOP_PROCESSING; //treat isomorphs a s no-solution
-		return;
-	}
-	else if(g.pencilmarks) { //compose pencilmarks
+	if(g.pencilmarks) { //compose pencilmarks
 		for(int j = 0; j < 81; j++) {
 			if(g.cellDigits[j]) {
 				g.pencilmarks[j] |= g.cellDigits[j];
@@ -238,19 +222,19 @@ void solutionFound(game &g) {
 			}
 		}
 	}
-	else if(g.uaColl) {//collect UA sets
-		if (g.nSolutions) {//callback for each solution except the first
-			char sol[81];
-			for(int j = 0; j < 81; j++) {
-				sol[j] = Bitmap2Digit[g.cellDigits[j]];
-			}
-			if(g.uaColl->addSolution(sol)) { //limit reached
-				//g->nSolutions = g->maxSolutions;
-				g.mode |= (MODE_STOP_PROCESSING | MODE_STOP_GUESSING); //force exit
-				return;
-			}
-		}
-	}
+//	else if(g.uaColl) {//collect UA sets
+//		if (g.nSolutions) {//callback for each solution except the first
+//			char sol[81];
+//			for(int j = 0; j < 81; j++) {
+//				sol[j] = Bitmap2Digit[g.cellDigits[j]];
+//			}
+//			if(g.uaColl->addSolution(sol)) { //limit reached
+//				//g->nSolutions = g->maxSolutions;
+//				g.mode |= (MODE_STOP_PROCESSING | MODE_STOP_GUESSING); //force exit
+//				return;
+//			}
+//		}
+//	}
 	else if(g.results) {//add the solution to the external list
 		for(int j = 0; j < 81; j++) {
 			g.results[81 * g.nSolutions + j] = Bitmap2Digit[g.cellDigits[j]];
@@ -511,93 +495,6 @@ ret_stop:
 	g.mode |= MODE_STOP_PROCESSING;
 	return;
 }
-//#include "minimizer.h"
-//static int inline checkForSubsets(game& g) {
-//	bitmap * cp = g.cellPossibilities;
-//	const bitmap *const gkd = g.groupKnownDigits;
-//	int found = 0;
-//	for(int numBits = 2; numBits < 3; numBits++) {
-//	//for(int numBits = 2; numBits < 8; numBits++) {
-//		size_t startMask = (1 << numBits) - 1;
-//		for(int gi = 0; gi < 27; gi++) {
-//			const cellIndex *const gc = cellsInGroup[gi];
-//			size_t unsolved = 511 ^ gkd[gi];
-//			if(BitCount[unsolved] < 2 * numBits) continue; //useful for naked only
-//			//identify pairs of interest
-//			for(size_t mask = startMask; mask < 511; mask = minimizer::nextPerm(mask)) {
-//				if((mask & unsolved) == mask) {
-//					int nakedCells = 0;
-//					int hiddenCells = 0;
-//					for(int ci = 0; ci < 9; ci++) {
-//						const int cellPoss = cp[gc[ci]];
-//						if(0 == cellPoss) continue;
-//						nakedCells |= (((int)((mask & cellPoss) == cellPoss)) << ci);
-//						hiddenCells |= (((int)((mask & cellPoss) != 0)) << ci);
-//					}
-//					int nNaked = BitCount[nakedCells];
-//					int nHidden = BitCount[hiddenCells];
-//					if(nNaked > numBits || nHidden < numBits) { //less cells for more values
-//						g.mode |= MODE_STOP_PROCESSING;
-//						return 0;
-//					}
-//					if(nNaked < numBits && nHidden > numBits) continue;
-//					if(nNaked < numBits) nakedCells = 511; //bypass
-//					if(nHidden > numBits) hiddenCells = 0; //bypass
-//					for(int ci = 0; ci < 9; ci++) {
-//						const int& cellPoss = cp[gc[ci]];
-//						if(cellPoss == 0) continue; //ignore solved cells
-//						if(hiddenCells & (1 << ci)) { //eliminate cell possibilities from outside the mask if any
-//							const int newPoss = cellPoss & mask;
-//							if(newPoss != cellPoss) {
-//								found = 1;
-//								//printf("H");
-//								if(numBits > 4) { //there is something wrong - no complementary subset of size 9-numBits ???
-//									printf("h");
-//									//g.mode |= MODE_STOP_PROCESSING;
-//									//return 0;
-//								}
-//								if(Bitmap2Digit[newPoss]) {
-//									setDigit(g, gc[ci], newPoss);
-//									if(g.mode & MODE_STOP_PROCESSING) return 0;
-//								}
-//								else {
-//									cp[gc[ci]] = newPoss; //clear some possibilities
-//								}
-//							}
-//						}
-//						if(0 == (nakedCells & (1 << ci))) { // clear the possibilities within the mask if any
-//							const int newPoss = cellPoss & ~mask;
-//							if(newPoss != cellPoss) {
-//								found = 1;
-//								//printf("N");
-//								if(numBits > 4) { //there is something wrong - no complementary subset of size 9-numBits ???
-//									printf("n");
-//									//g.mode |= MODE_STOP_PROCESSING;
-//									//return 0;
-//								}
-//								if(newPoss == 0) {
-//									g.mode |= MODE_STOP_PROCESSING; //no possibility for this cell
-//									return 0;
-//								}
-//								if(Bitmap2Digit[newPoss]) {
-//									setDigit(g, gc[ci], newPoss);
-//									if(g.mode & MODE_STOP_PROCESSING) return 0;
-//								}
-//								else {
-//									cp[gc[ci]] = newPoss; //clear some possibilities
-//								}
-//							}
-//						}
-//					}
-//					if(found) {
-//						return 1;
-//					}
-//				}
-//			}
-//		}
-//	}
-//	return 0;
-//}
 
 //Loop trough the groups, find the only cell containing particular digit in the group if any,
 //then set the digit found.
@@ -916,47 +813,6 @@ restart:
 
 ////Perform any solving algorithms.
 ////Finally make a guess and call recursively until success (solved) or failure (no solution).
-//static void attempt1(game &g)
-//{
-//	game gg;
-//restart:
-//	checkForLastOccurenceInGroup(g); //the first algorithm performs internal repeating
-//	if(g.mode & MODE_STOP_PROCESSING) return;
-//#ifdef USE_LOCKED_CANDIDATES
-//	if(g.maxSolutions != 1)
-//	{
-//		FindLockedCandidates(g); //bb_sudoku by Brian Turner
-//		if(g.mode & MODE_STOP_PROCESSING) return;
-//	}
-//#endif // USE_LOCKED_CANDIDATES
-//
-//	//Prepare a guess
-//	//Findout unsolved cells with less possibilities
-//	pmWeights w;
-//	w.init(g);
-//	pmWeight &ww = w.w[0];
-//	//guess the most probablistic pencilmark
-//	gg = g; //clone the context
-//	setDigit(gg, ww.cell, 1 << ww.digit);
-//	if(0 == (gg.mode & MODE_STOP_PROCESSING)) {
-//		attempt1(gg);
-//	}
-//	if(gg.mode & MODE_STOP_GUESSING) {
-//		g.mode = gg.mode;
-//		g.nSolutions = gg.nSolutions;
-//		return;
-//	}
-//	g.nSolutions = gg.nSolutions;
-//	//now try the alternative by removal of the guess from the possibilities
-//	//do it on the original
-//	g.cellPossibilities[ww.cell] ^= (1 << ww.digit); //clear the guessed pencilmark
-//	unsigned int rest = Bitmap2Digit[g.cellPossibilities[ww.cell]];
-//	if(rest) { //it has been a bivalue cell so now it is solved
-//		setDigit(g, ww.cell, g.cellPossibilities[ww.cell]);
-//		if(g.mode & MODE_STOP_PROCESSING) return;
-//	}
-//	goto restart;
-//}
 
 //Set the initially known digits.
 //The context is updated on 2 passes.
@@ -1138,22 +994,6 @@ extern unsigned long long solve(const int* gridBM, const char* in, const unsigne
 	return g.nSolutions;
 }
 
-extern unsigned long long solve(const int* gridBM, const char* in, uaCollector *theCollector)
-{
-	cellDigit cellDigits[81];
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = ULLONG_MAX;
-	g.knownSolution = gridBM;
-	g.cellDigits = cellDigits;
-	g.results = (char*)1; //force writing the results
-	g.uaColl = theCollector;
-	init(g, in); //set all known digits
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		attempt(g); //do the job
-	}
-	return g.nSolutions;
-}
-
 extern unsigned long long solve(const char* in, const unsigned long long maxSolutions)
 {
 	game g = defaultGame; //start from a copy of the empty game
@@ -1163,67 +1003,6 @@ extern unsigned long long solve(const char* in, const unsigned long long maxSolu
 		attempt(g); //do the job
 	}
 	return g.nSolutions;
-}
-
-static double probablisticGuess(game &g) {
-	//Findout unsolved cells with less possibilities
-	pmWeights w;
-	w.init(g);
-	//solve in all equally-probablictic ways and accumulate the number of the guesses
-	double nGuesses = 0;
-	for(int i = 0; i < w.size; i++) {
-		game gg = g; //clone the context
-		setDigit(gg, w.w[i].cell, 1 << w.w[i].digit);
-		if(0 == (gg.mode & MODE_STOP_PROCESSING)) {
-			fastEliminations(gg);
-			//checkForLastOccurenceInGroup(gg);
-		}
-		if(gg.mode & MODE_STOP_PROCESSING) { //solved or contadiction found
-			if(0 == gg.nSolutions) { //wrong guess
-				gg = g; //reset to original
-				gg.cellPossibilities[w.w[i].cell] ^= (1 << w.w[i].digit); //clear the known wrong pencilmark
-				unsigned int rest = Bitmap2Digit[gg.cellPossibilities[w.w[i].cell]];
-				if(rest) { //it has been a bivalue cell so now it is solved
-					setDigit(gg, w.w[i].cell, gg.cellPossibilities[w.w[i].cell]);
-					if(gg.mode & MODE_STOP_PROCESSING) { //solved or contadiction found w/o more guesses
-						continue;
-					}
-				}
-				fastEliminations(gg);
-				//checkForLastOccurenceInGroup(gg);
-				if(gg.mode & MODE_STOP_PROCESSING) { //solved or contadiction found w/o more guesses
-					continue;
-				}
-				//more guessing required
-			}
-			else { //right guess, solved
-				continue;
-			}
-		}
-		//more guessing required
-		//gg is either with guess set or with guess removed
-		//singles are passed
-		nGuesses += probablisticGuess(gg);
-	}
-	//return w.size + nGuesses; //all guesses in all paths
-	return 1 + (double)nGuesses / w.size; //avarage guesses = this guess + scaled children
-}
-
-extern double solverRate(const char* in) {
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = 1;
-	//g.maxSolutions = ULLONG_MAX;
-	init(g, in); //set all known digits
-	if(g.mode & MODE_STOP_PROCESSING) {
-		return 0; //no solution or solved by direct eliminations
-	}
-	fastEliminations(g);
-	//checkForLastOccurenceInGroup(g); //the first algorithm performs internal repeating
-	if(g.mode & MODE_STOP_PROCESSING) {
-		return 0; //invalid or solved by singles
-	}
-	//we need guessing
-	return probablisticGuess(g);
 }
 
 unsigned long long checkNoSingles(const char* in)
@@ -1253,397 +1032,7 @@ unsigned long long checkNoSingles(const char* in)
 	return 1; //remove to make this function universal. Currently it is called after obtaining the only solution.
 }
 
-unsigned long long solveSingles(const char* in)
-{
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = 1;
-	init(g, in); //set all known digits
-	if(g.mode & MODE_STOP_PROCESSING) //invalid or solved by direct eliminations
-		return g.nSolutions;
-	checkForLastOccurenceInGroup(g);
-	if(g.mode & MODE_STOP_PROCESSING) //invalid or solved by singles
-		return g.nSolutions;
-	return 0; //no solution
-}
-
-extern int solverBackdoor(char* in, const bool verbose) {
-	char sol[256]; //2*81
-	int bdCells[88];
-	int found = 0;
-	if(solve(in, 2, sol) != 1)
-		return -1;
-	if(solveSingles(in)) { //solved with singles, no need of backdoor examination
-		return 0;
-	}
-	for(int i = 0; i < 81; i++) {
-		if(in[i])
-			continue;
-		in[i] = sol[i];
-		if(solveSingles(in)) { //cell at i is a backdoor
-			found = 1;
-			goto level1_done;
-		}
-		in[i] = 0;
-	}
-level1_done:
-	if(found)
-		return 1;
-	for(int i = 0; i < 80; i++) {
-		if(in[i])
-			continue;
-		in[i] = sol[i];
-		for(int j = i + 1; j < 81; j++) {
-			if(in[j])
-				continue;
-			in[j] = sol[j];
-			if(solveSingles(in)) { //cells at i,j are a backdoor
-				found = 1;
-				goto level2_done;
-			}
-			in[j] = 0;
-		}
-		in[i] = 0;
-	}
-level2_done:
-	if(found)
-		return 2;
-	if(verbose) {
-		for(int i = 0; i < 88; i++) {
-			bdCells[i] = 0;
-		}
-	}
-	for(int i = 0; i < 79; i++) {
-		if(in[i])
-			continue;
-		in[i] = sol[i];
-		for(int j = i + 1; j < 80; j++) {
-			if(in[j])
-				continue;
-			in[j] = sol[j];
-			for(int k = j + 1; k < 81; k++) {
-				if(in[k])
-					continue;
-				in[k] = sol[k];
-				if(solveSingles(in)) { //cells at i,j,k are a backdoor
-					found = 1;
-					//dump the backdoor
-					if(verbose) {
-						bdCells[i] = bdCells[j] = bdCells[k] = 1;
-						//printf("\n%d\t%d\t%d",i, j, k);
-					}
-					else
-						goto level3_done;
-				}
-				in[k] = 0;
-			}
-			in[j] = 0;
-		}
-		in[i] = 0;
-	}
-level3_done:
-	if(found) {
-		if(verbose) {
-			int j = 0;
-			for(int i = 0; i < 81; i++) {
-				if(bdCells[i] == 0) {
-					//in[i] = sol[i];
-					j++;
-					printf("%c", sol[i] + '0');
-				}
-				else if(in[i]) {
-					j++;
-					printf("%c", sol[i] + '0');
-				}
-				else {
-					printf(".");
-				}
-			}
-			printf("\t%d\t3", j); //puzzle<tab>num givens<tab>maximized puzzle<tab>num maximized givens<tab>backdoor size=3
-		}
-		return 3;
-	}
-	if(verbose) {
-		for(int i = 0; i < 88; i++) {
-			bdCells[i] = 0;
-		}
-	}
-	for(int i = 0; i < 78; i++) {
-		if(in[i])
-			continue;
-		in[i] = sol[i];
-		for(int j = i + 1; j < 79; j++) {
-			if(in[j])
-				continue;
-			in[j] = sol[j];
-			for(int k = j + 1; k < 80; k++) {
-				if(in[k])
-					continue;
-				in[k] = sol[k];
-				for(int l = k + 1; l < 81; l++) {
-					if(in[l])
-						continue;
-					in[l] = sol[l];
-					if(solveSingles(in)) { //cells at i,j,k,l are a backdoor
-						found = 1;
-						//dump the backdoor
-						if(verbose) {
-							bdCells[i] = bdCells[j] = bdCells[k] = bdCells[l] = 1;
-							//printf("\n%d\t%d\t%d\t%d",i, j, k, l);
-						}
-						else
-							goto level4_done;
-					}
-					in[l] = 0;
-				}
-				in[k] = 0;
-			}
-			in[j] = 0;
-		}
-		in[i] = 0;
-	}
-level4_done:
-	if (found) {
-		if (verbose) {
-			int j = 0;
-			for (int i = 0; i < 81; i++) {
-				if (bdCells[i] == 0) {
-					//in[i] = sol[i];
-					j++;
-					printf("%c", sol[i] + '0');
-				}
-				else if (in[i]) {
-					j++;
-					printf("%c", sol[i] + '0');
-				}
-				else {
-					printf(".");
-				}
-			}
-			printf("\t%d\t4", j); //puzzle<tab>num givens<tab>maximized puzzle<tab>num maximized givens<tab>backdoor size=4
-		}
-		return 4;
-	}
-	return 5;
-}
-
-extern unsigned long long solve(const char* in, int* pencilMarks)
-{
-	cellDigit cellDigits[81];
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = ULLONG_MAX;
-	g.cellDigits = cellDigits;
-	g.pencilmarks = pencilMarks;
-	memset(pencilMarks, 0, 81*sizeof(pencilMarks[0]));
-	init(g, in); //set all known digits
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		attempt(g); //do the job
-	}
-	return g.nSolutions;
-}
-
-extern bool hasEDSolution(const int* gridBM, const char* in)
-{
-	cellDigit cellDigits[81];
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = 2;
-	g.mode |= MODE_EDIFFERENT;
-	g.knownSolution = gridBM;
-	g.cellDigits = cellDigits;
-	init(g, in); //set all known digits
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		attempt(g); //do the job
-	}
-	return g.nSolutions == 1;
-}
-
-extern void findPencilMarks(char* in, short* pencilMarks, short *pmHints/* = NULL*/) { //find all "unsolvable" pencilmarks for multiple solution pseudo puzzle
-	memset(pencilMarks, 0, 81*sizeof(int));
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = 1;
-	init(g, in); //set all known digits
-	if(g.mode & MODE_STOP_PROCESSING) return; //0 or 1 solutions
-	checkForLastOccurenceInGroup(g); //performs internal repeating
-	if(g.mode & MODE_STOP_PROCESSING) return; //0 or 1 solutions
-	FindLockedCandidates(g);
-	if(g.mode & MODE_STOP_PROCESSING) return; //0 or 1 solutions
-	for(int pos = 0; pos < 81; pos++) {
-		int pm = g.cellPossibilities[pos];
-		if(pm) {
-			//unsolved cell
-			int valueBM;
-			while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
-				pm ^= valueBM; //clear this bit from the pencilmarks
-				game gg = g; //clone the game
-				//set the new given
-				setDigit(gg, pos, valueBM);
-				if((gg.mode & MODE_STOP_PROCESSING) == 0) {
-					attempt(gg); //check for any solution
-				}
-				if(gg.nSolutions == 0) {
-					//invalid pencilmark	, clear from the original solver
-					g.cellPossibilities[pos] ^= valueBM;
-					checkForLastOccurenceInGroup(g);
-					FindLockedCandidates(g);
-					pm &= g.cellPossibilities[pos]; //if the above reductions affect the rest of the possibilities for the current cell
-					continue; //check the next value for this cell
-				}
-				//tests passed. Now add the puzzle to out.
-				pencilMarks[pos] |= valueBM;
-			}
-			if(pencilMarks[pos]) {
-				//some possibilities
-				if(Bitmap2Digit[pencilMarks[pos]]) {
-					//single possibility => solved, set in original solver
-					pencilMarks[pos] = 0;
-					setDigit(g, pos, valueBM);
-					if(g.mode & MODE_STOP_PROCESSING) goto error; //0 or 1 solutions
-					checkForLastOccurenceInGroup(g);
-					if(g.mode & MODE_STOP_PROCESSING) goto error; //0 or 1 solutions
-					FindLockedCandidates(g);
-					if(g.mode & MODE_STOP_PROCESSING) goto error; //0 or 1 solutions
-				}
-			}
-			else {
-				//no valid pencilmarks for this cell => no solution
-				goto error;
-			}
-		}
-	}
-	return;
-error:
-	memset(pencilMarks, 0, 81*sizeof(int));
-}
-
-extern int solverPlus(char* in, const int maxPuzzles, char* out, unsigned long long *nSol)
-{
-	int nRes = 0; //number of resulting puzzles
-	int pencilMarks[81];
-	cellDigit cellDigits[81];
-	game g = defaultGame; //start from a copy of the empty game
-	g.maxSolutions = INT_MAX;
-	g.cellDigits = cellDigits;
-	g.pencilmarks = pencilMarks;
-	memset(pencilMarks, 0, 81*sizeof(pencilMarks[0]));
-	init(g, in); //set all known digits
-	game gTemplate = g;
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		//obtain pencilMarks
-		attempt(g); //this destroys g.cellPossibilities
-	}
-	//at this stage nSolutions and pencilmarks are valid
-	if(g.nSolutions < 2 || g.nSolutions == INT_MAX) {
-		//no solution, or single solution, or not all solutions found
-		return 0; //no new puzzles
-	}
-	gTemplate.pencilmarks = NULL;
-	gTemplate.cellDigits = NULL; //later we will need only the number of solutions
-	gTemplate.mode = MODE_SOLVING;
-	gTemplate.nSolutions = 0;
-	//help the solver by adding the rest of the solved cells as givens
-	for(int i = 0; i < 81; i++) {
-		if(in[i]) {
-			continue; //clue
-		}
-		if(Bitmap2Digit[pencilMarks[i]]) {
-			//single possibility
-			setDigit(gTemplate, i, pencilMarks[i]);
-			if(gTemplate.mode & MODE_STOP_PROCESSING) {
-				return 0; //solved or error
-			}
-		}
-	}
-
-	//count the clues, store positions, and prepate templates for redundancy checking
-	int nClues = 0;
-	int cluePositions[81];
-	game mms[81]; //semi-initialized templates with one clue removed
-	int mmPencilMarks[81];
-	cellDigit mmCellDigits[81][81];
-	for(int pos = 0; pos < 81; pos++) {
-		int v = in[pos];
-		if(v) {
-			cluePositions[nClues] = pos;
-			in[pos] = 0;
-			mms[nClues] = defaultGame;
-			mms[nClues].maxSolutions = INT_MAX;
-			mms[nClues].cellDigits = mmCellDigits[nClues];
-			mms[nClues].pencilmarks = mmPencilMarks;
-			init(mms[nClues], in); //set all clues but this at pos
-			//don't solve to obtain more fixed clues - it could take long time
-			mms[nClues].cellDigits = cellDigits;
-			in[pos] = v;
-			if(mms[nClues].mode & MODE_STOP_PROCESSING) {
-				//something wrong?
-				return 0;
-			}
-			nClues++;
-		}
-	}
-	//traverse the possibilities for unsolved cells
-	for(int pos = 0; pos < 81; pos++) {
-		int pm = pencilMarks[pos];
-		if(Bitmap2Digit[pm]) {
-			continue; //single possibility == solved or given
-		}
-		int valueBM;
-		while((valueBM = (pm & -pm))) { //take the rightmost nonzero bit
-			pm ^= valueBM; //clear this bit from the pencilmarks
-			game gg = gTemplate;
-			gg.cellDigits = NULL;
-			gg.pencilmarks = NULL;
-			//set the new given
-			setDigit(gg, pos, valueBM);
-			if(0 == (gg.mode & MODE_STOP_PROCESSING)) {
-				attempt(gg); //do the job
-			}
-			if(gg.nSolutions == 0) {
-				//something wrong?
-				return 0;
-			}
-			//redundancy test
-			for(int oldClueIndex = 0; oldClueIndex < nClues; oldClueIndex++) {
-				//clone the semi-solved game
-				game ggg = mms[oldClueIndex];
-				memcpy(cellDigits, mmCellDigits[oldClueIndex], 81*sizeof(cellDigits[0]));
-				memset(mmPencilMarks, 0, 81*sizeof(mmPencilMarks[0]));
-				//obtain pencilmarks 
-				setDigit(ggg, pos, valueBM); //set the new given
-				if(0 == (ggg.mode & MODE_STOP_PROCESSING)) {
-					attempt(ggg);
-				}
-				if(Bitmap2Digit[mmPencilMarks[cluePositions[oldClueIndex]]]) {
-					//adding the clue valueBM at position pos makes the clue at cluePositions[oldClueIndex] redundant
-					//here is the place to compose a matrix with redundants for later +1 (TODO?)
-					//int xxl = 0;
-					goto nextValue;
-				}
-			}
-			//redundancy test passed
-			//store the puzzle
-			if(nRes == maxPuzzles) {
-				//output buffer overflow
-				return nRes;
-			}
-			nSol[nRes] = gg.nSolutions;
-			for(int i = 0; i < 81; i++) {
-				out[nRes * 81 + i] = in[i];
-			}
-			out[nRes * 81 + pos] = Bitmap2Digit[valueBM];
-			if(nClues >= 38) {
-				for(int i = 0; i < 81; i++) {
-					printf("%c", '0' + out[nRes * 81 + i]);
-				}
-				printf("\t%d\n", nClues + 1);
-			}
-			nRes++;
-nextValue:
-			;
-		}
-	}
-	return nRes;
-}
-
-extern NOINLINE int solverIsIrreducibleByProbing(char *puz) { //return nSol for irreducible puzzles, else 0
+extern int solverIsIrreducibleByProbing(char *puz) { //return nSol for irreducible puzzles, else 0
 	//if a given can be replaced with another given and that lead to valid solution(s) then it is not redundant
 	for(int red = 0; red < 81; red++) {
 		if(puz[red] == 0)
@@ -1919,56 +1308,6 @@ nextValue:
 	return ret;
 }
 
-//the code below is slow!
-extern unsigned long long solverIsIrreducibleBySolCount(char *puz) { //return nSol for irreducible puzzles, else 0
-	//obtain the number of solutions of the original puzzle
-	const int maxSol = 10000; // up to INT_MAX - 1
-	unsigned long long nSol = solve(puz, maxSol);
-	if(nSol == maxSol) {
-		fprintf(stderr, "solverIsIrreducibleBySolCount: maximum number of %d solutions reached!", maxSol);
-		exit(1);
-	}
-	//now check whether removal of any of the clues results in the same number of solutions => is redundant
-#ifdef _OPENMP
-	//compose a list of {-1} pseudopuzzles
-	char m1[81][88]; //max 81 subpuzzles
-	int nClues = 0; //number of valid items in m1
-	for(int i = 0; i < 81; i++) {
-		if(puz[i]) {
-			memcpy(m1[nClues], puz, 81);
-			m1[nClues][i] = 0;
-			nClues++;
-		}
-	}
-	//check for minimality
-	int redundantNotFound = 1;
-#pragma omp parallel for schedule(dynamic, 1)
-	for(int i = 0; i < nClues; i++) {
-		#pragma omp flush(redundantNotFound)
-		if(redundantNotFound && nSol == solve(m1[i], nSol + 1)) {
-			//same number of solutions => i-th clue is redundant
-			redundantNotFound = 0;
-		}
-	}
-	return redundantNotFound ? nSol : 0;
-#else //_OPENMP
-	// sequential processing of {-1} pseudopuzzles
-	for(int i = 0; i < 81; i++) {
-		int rClue = puz[i];
-		if(rClue == 0)
-			continue; //not a clue
-		puz[i] = 0;
-		unsigned long long nRedSol = solve(puz, nSol + 1);
-		puz[i] = rClue; //restore the puzzle
-		if(nSol == nRedSol) {
-			//same number of solutions => clue at [i] is redundant
-			return 0;
-		}
-	}
-	return nSol;
-#endif //_OPENMP
-}
-
 struct solverRelab {
 	int patternSize;
 	int patternPositions[81];
@@ -2224,148 +1563,5 @@ extern int solverPattern(char* in, const int nClues, const int* cluePositions, i
 	}
 	in[pos] = 0;
 	return ret;
-}
-
-extern bool solverIsUniqueByPM(const int* in) {
-	game g = defaultGame;
-	g.maxSolutions = 2;
-	init(g, in); //set all known pencilmarks
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		attempt(g); //do the job
-	}
-	return (g.nSolutions == 1);
-}
-
-extern unsigned long long solverNumSolutionsByPM(const int* in) {
-	game g = defaultGame;
-	g.maxSolutions = ULLONG_MAX;
-	init(g, in); //set all known pencilmarks
-	if(0 == (g.mode & MODE_STOP_PROCESSING)) {
-		attempt(g); //do the job
-	}
-	return g.nSolutions;
-}
-
-void str2pm(const char *p, int *pm) {
-	for(int c = 0; c < 81; c++) {
-		pm[c] = 0;
-		for(int d = 0; d < 9; d++) {
-			if((p[9*c+d] - '1') == d) pm[c] |= (1 << d);
-		}
-	}
-}
-
-void pm2str(char *p, int *pm) {
-	for(int c = 0; c < 81; c++) {
-		for(int d = 0; d < 9; d++) {
-			if(pm[c] & (1 << d))
-				p[9*c+d] = '1' + d;
-			else
-				p[9*c+d] = '_';
-		}
-	}
-}
-
-#include <math.h>
-#include <algorithm>
-#include <functional>      // For greater<int>( )
-
-extern void solverXXL1(const char* in) {
-	int pm[81];
-	//printf("%729.729s\n", in);
-	str2pm(in, pm);
-	char b[1000];
-	pm2str(b, pm);
-	printf("%729.729s\n", b);
-	printf("N=%llu\n", solverNumSolutionsByPM(pm));
-}
-
-extern void solverXXL(const char* in) {
-	int pm[81];
-	int givenCells[81];
-	int nGivens = 0;
-	for(int i = 0; i < 81; i++) {
-		int v = in[i];
-		if(v) {
-			pm[i] = Digit2Bitmap[v];
-			givenCells[nGivens++] = i;
-		}
-		else {
-			pm[i] = 511;
-		}
-	}
-	//extend pencilmarks for one given at a time while still unique
-	int res = 0;
-	int maxBits[81];
-	int floatingBits[81];
-//	int floatingDigitOccurences[9];
-//	for(int d = 0; d < 9; d++) {
-//		floatingDigitOccurences[d] = 0;
-//	}
-	for(int n = 0; n < nGivens; n++) {
-		floatingBits[n] = 0;
-		maxBits[n] = 1;
-		int cell = givenCells[n];
-		int oldPm = pm[cell];
-		//for(int v = 1; v < 512; v++) {
-		//	if(0 == (v & oldPm))
-		//		continue; //skip pencilmarks that exclude the original given
-		//	if(v == oldPm)
-		//		continue; //skip pencilmarks exactly matching the original given
-		//	pm[cell] = v;
-		//	if(solverIsUniqueByPM(pm)) {
-		//		int bc = BitCount[v];
-		//		if(maxBits[n] < bc) maxBits[n] = bc;
-		//	}
-		//}
-		//res *= (10 - maxBits[n]);
-
-		for(int v = 1; v < 512; v <<= 1) {
-			if(v == oldPm)
-				continue; //skip pencilmarks exactly matching the original given
-			pm[cell] |= v;
-			if(solverIsUniqueByPM(pm)) {
-				maxBits[n]++;
-				floatingBits[n] |= v;
-			}
-			pm[cell] = oldPm; //restore the pencilmark
-		}
-		res += maxBits[n];
-	}
-	printf("%d\t%d\t", nGivens, res);
-	std::sort(maxBits, maxBits + nGivens, greater<int>());
-	for(int n = 0; n < nGivens; n++) {
-		printf("%d ", maxBits[n]);
-		pm[givenCells[n]] |= (511 & ~floatingBits[n]);
-	}
-	//dump pencilmarks
-	//printf("\n");
-	//for(int r = 0, i = 0; r < 9; r++) {
-	//	for(int c = 0; c < 9; c++, i++) {
-	//		printf("%s", c % 3 ? "   " : " | ");
-	//		for(int d = 0; d < 9; d++) {
-	//			printf("%c", (pm[i] & (1 << d)) ? ('1' + d) : (floatingDigitOccurences[d]++, '_'));
-	//		}
-	//	}
-	//	printf("|\n");
-	//}
-	//printf("\n");
-	//for(int d = 0; d < 9; d++) {
-	//	printf("%2.2d ", floatingDigitOccurences[d]);
-	//}
-	//printf("\n");
-	char b[1000];
-	pm2str(b, pm);
-	printf("\n%729.729s\n", b);
-
-	//if(solverIsUniqueByPM(pm)) { //........1.....2.34..4...52...3..52...1..6....7..8.......5..4.9..8.7.....6...1....
-	//	printf("U");
-	//}
-	//printf("N=%llu\n", solverNumSolutionsByPM(pm));
-}
-
-extern void digit2bitmap(const char* in, int* out) {
-	for(int i = 0; i < 81; i++)
-		out[i] = Digit2Bitmap[(int)in[i]];
 }
 

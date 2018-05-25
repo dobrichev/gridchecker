@@ -1,6 +1,6 @@
+#include "t_128.h"
 #include "ch81.h"
 #include "solver.h"
-#include "rowminlex.h"
 #include "options.h"
 #include "rate.h"
 #include <vector>
@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <functional>
 #include "patterns.h"
+#include "mm_allocator.h"
+#include "../fsss2/fsss2.h"
 
 using namespace std;
 
@@ -259,217 +261,6 @@ int mapPuz_callback (void *context, const char *puz, char *m, const morph &theMo
 	return 1; //exit on first call
 }
 
-int scanfor(const char *p) {
-	pat ppp;
-	ppp.init(p);
-	if(opt.verbose) {
-		fprintf(stderr, "Symmetry Level\t%d\n", ppp.automorphismLevel);
-	}
-	char buf[2000];
-	//ch81 puzText;
-	while(fgets(buf, sizeof(buf), stdin)) {
-		grid g;
-		if(g.fromString(buf))
-			continue;	//silently skip incomplete grids
-		g.findShortUA();
-		//copy UA to array for faster access
-		vector<bm128, mm_allocator<bm128> > uav;
-		for(usetListBySize::const_iterator ua = g.usetsBySize.begin(); ua != g.usetsBySize.end(); ua++) {
-			uav.push_back(*ua);
-		}
-		int nua = (int)uav.size();
-		puzzleSet ps;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic, 1)
-#endif //_OPENMP
-		for(int i = 0; i < (int)ppp.morphs.size(); i++) {
-			bm128 pbm = ppp.morphs[i];
-			for(int n = 0; n < nua; n++) {
-				if(uav[n].isDisjoint(pbm)) {
-					goto nextPuzzle;
-				}
-			}
-			ch81 puzInGrid;
-			pbm.toPuzzle(g.digits, puzInGrid.chars);
-			if(solve(g.gridBM, puzInGrid.chars, 2) != 1)
-				continue;
-			//check for minimality
-			for(int pos = 0; pos < 81; pos++) {
-				if(puzInGrid.chars[pos] == 0)
-					continue;
-				puzInGrid.chars[pos] = 0;
-				if(solve(g.gridBM, puzInGrid.chars, 2) == 1) { //redundant given found
-					goto nextPuzzle;
-				}
-				puzInGrid.chars[pos] = g.digits[pos];
-			}
-			//remap to pattern's coordinate system
-			morph mo;
-			ch81 pmap; //used for reverse mapping the puzzle
-			mo.byIndex(ppp.morphIndex[i]);
-			getMorphs(pmap.chars, probe.chars, mo, mo, &mapPuz_callback);
-			ch81 puzInPattern;
-			ch81 puzMinlex;
-			for(int j = 0; j < 81; j++) {
-				puzInPattern.chars[pmap.chars[j]] = puzInGrid.chars[j];
-			}
-			//minlex and print
-			ppp.minlex(puzInPattern.chars, puzMinlex.chars);
-#ifdef _OPENMP
-#pragma omp critical
-#endif //_OPENMP
-			ps.insert(puzMinlex);
-nextPuzzle:
-			;
-		}
-		ps.saveToFile(stdout);
-		fflush(stdout);
-		if(opt.verbose) {
-			fprintf(stderr, ".");
-		}
-	}
-	if(opt.verbose) {
-		fprintf(stderr, "\n");
-	}
-	return 0;
-}
-
-int settle(const char* p) {
-	//non-minimal puzzle with 999911111 digit distribution.
-	//.6..12.34.13.74.2.2.43..1....2.314..13.4..8.24..2...13.21.4.3...4..932.13..12..45 10.4/10.4/10.0
-	//.6..ab.cd.ac.7d.b.b.dc..a....b.cad..ac.d..8.bd..b...ac.ba.d.c...d..9cb.ac..ab..d5 input non-minimal, abcd are optional
-
-	pat ppp;
-	ppp.init(p);
-	if(opt.verbose) {
-		fprintf(stderr, "Symmetry Level\t%d\n", ppp.automorphismLevel);
-	}
-
-	char buf[2000];
-	puzzleSet ps;
-	while(fgets(buf, sizeof(buf), stdin)) {
-		//parse the input: givens in fullPuz, digits in fixPuz
-		ch81 fullPuz;
-		//ch81 fixPuz;
-		//ch81 puzMinlex;
-		bm128 pbmAll;
-		bm128 pbmFixed;
-		pbmAll.clear();
-		pbmFixed.clear();
-		for(int i = 0; i < 81; i++) {
-			char c = buf[i] - '0';
-			if(c >= 1 && c <= 9) {
-				fullPuz.chars[i] = c;
-				//fixPuz.chars[i] = c;
-				pbmFixed.setBit(i);
-			}
-			else {
-				c = buf[i] - 'a' + 1; //translate "abc" to 123
-				if(c >= 1 && c <= 9) {
-					fullPuz.chars[i] = c;
-					//fixPuz.chars[i] = 0;
-					pbmAll.setBit(i);
-				}
-				else {
-					fullPuz.chars[i] = 0;
-					//fixPuz.chars[i] = 0;
-				}
-			}
-		}
-		pbmAll |= pbmFixed;
-		int gridBM[81];
-		ch81 sol2[2];
-		if(solve(fullPuz.chars, 2, sol2[0].chars) != 1) {
-			//silently ignore invalid puzzles
-			continue;
-		}
-		digit2bitmap(sol2[0].chars, gridBM);
-		//iterate all pattern morphs
-		//add morphs where 1) all pattern givens are covered by fullPuz, and 2) all fixPuz are covered by the pattern
-		int n1 = 0, n2 = 0; //debug
-		for(int i = 0; i < (int)ppp.morphs.size(); i++) {
-			ch81 puzInMorph;
-			bm128 pbm = ppp.morphs[i];
-			if(!pbm.isSubsetOf(pbmAll))
-				continue; // non-givens within the pattern
-			n1++; //debug
-			if(!pbmFixed.isSubsetOf(pbm))
-				continue; // forced given outside of the pattern
-			n2++; //debug
-			pbm.toPuzzle(sol2[0].chars, puzInMorph.chars);
-			//pbm.toPuzzle(fullPuz.chars, puzInMorph.chars);
-			if(solve(gridBM, puzInMorph.chars, 2) != 1)
-				continue; //multiple solutions
-			//check for minimality
-			for(int pos = 0; pos < 81; pos++) {
-				if(puzInMorph.chars[pos] == 0)
-					continue;
-				puzInMorph.chars[pos] = 0;
-				if(solve(gridBM, puzInMorph.chars, 2) == 1) { //redundant given found
-					goto nextPuzzle;
-				}
-				puzInMorph.chars[pos] = sol2[0].chars[pos];
-			}
-			//remap to puzzle's coordinate system
-			morph mo;
-			mo.byIndex(ppp.morphIndex[i]);
-			ch81 pmap; //used for reverse mapping the puzzle
-			getMorphs(pmap.chars, probe.chars, mo, mo, &mapPuz_callback);
-			ch81 puzInPattern;
-			ch81 puzMinlex;
-			for(int j = 0; j < 81; j++) {
-				puzInPattern.chars[pmap.chars[j]] = puzInMorph.chars[j];
-			}
-			//minlex and print
-			ppp.minlex(puzInPattern.chars, puzMinlex.chars);
-			ps.insert(puzMinlex);
-nextPuzzle:
-			;
-		}
-		//debug
-		if(opt.verbose) {
-			fprintf(stderr, "Passed %d,\t%d\tof\t%d\n", n1, n2, (int)ppp.morphs.size());
-		}
-	}
-	ps.saveToFile(stdout);
-	return 0;
-}
-
-int patCanon() {
-	pat ppp;
-	char buf[2000];
-	bool first = true;
-	ch81 puzInPattern;
-	ch81 puzMinlex;
-	puzzleSet ps;
-	while(fgets(buf, sizeof(buf), stdin)) {
-		puzInPattern.fromString(buf);
-		if(first) { //initialize
-			ppp.init(buf);
-			if(opt.verbose) {
-				for(int i = 0; i < ppp.automorphismLevel; i++) {
-					fprintf(stderr, "%d\t", i);
-					//morph the pussle
-					for(int j = 0; j < 81; j++) {
-						if(puzInPattern.chars[j]) {
-							fprintf(stderr, "%2d ", ppp.maps[i].chars[j]);
-						}
-					}
-					fprintf(stderr, "\n");
-				}
-			}
-			//clear the unnecessary data
-			ppp.self_transformations.clear();
-			ppp.morphs.clear();
-			ppp.morphIndex.clear();
-			first = false;
-		}
-		ppp.minlex(puzInPattern.chars, puzMinlex.chars);
-		ps.insert(puzMinlex);
-	}
-	ps.saveToFile(stdout);
-	return 0;
-}
 
 int statistics() {
 	char buf[1000];
@@ -937,7 +728,7 @@ private:
 		c.rateFast = (((((u.rateFastED << 8) | u.rateFastEP) << 8) | u.rateFastER) << 8) | u.specTransformedUpTo;
 		c.rateFinal = (((((u.rateFinalED << 8) | u.rateFinalEP) << 8) | u.rateFinalER) << 8) | u.transformedUpTo;
 	}
-	void uncompress(uncomprPuz &u, const puzzleRecord &c) const {
+	void uncompress(const puzzleRecord &c, uncomprPuz &u) const {
 		u.p.clear();
 		u.p.chars[map[0]] = 1;
 		if(0 == (size & 1)) { //half-byte
@@ -981,7 +772,7 @@ public:
 			if((h->rateFast & 0xFF00) == 0) { //ER was not set
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				uncomprPuz u;
-				uncompress(u, *hh);
+				uncompress(*hh, u);
 				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
 			}
 		}
@@ -1035,6 +826,10 @@ public:
 					if(!found)
 						return; //redundant clue u.p.chars[map[i]]
 				}
+
+//				if(0 == solverIsIrreducibleByProbing(u.p.chars)) {
+//					return; //redundant clue(s)
+//				}
 			}
 //#ifdef _OPENMP
 //#pragma omp critical
@@ -1089,13 +884,13 @@ public:
 //					hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
 //				}
 				uncomprPuz u;
-				uncompress(u, *hh);
+				uncompress(*hh, u);
 				//if((hh->rateFast & 0xFF00) == 0) { //calculate ER
 				//	//hh->rateFast |= fastRater.skfrER(u.p.chars);
 				//	fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
 				//}
 				puzzleSet found;
-				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, &found);
+				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, &found); //checking for minimality here is slower
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -1122,7 +917,7 @@ public:
 			resNum = 0;
 			resCount = allFound.size();
 			for(puzzleSet::const_iterator lc = allFound.begin(); lc != allFound.end() && !gExiting; lc++) {
-				add(lc->chars, 0, 1);
+				add(lc->chars, 0, 1); //checking for minimality here is less expensive then in generation
 				if(opt.verbose) {
 					resNum++;
 					size_t new_percentage = resNum * 10 / resCount;
@@ -1186,7 +981,7 @@ public:
 	void dump() {
 		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
 			uncomprPuz u;
-			uncompress(u, *h);
+			uncompress(*h, u);
 			char buf[256];
 			u.toString(buf);
 			printf("%s", buf);
@@ -1204,8 +999,8 @@ public:
 		if(ppp.automorphismLevel > 8)
 			return -1;
 		uncomprPuz u1, u2;
-		uncompress(u1, p1);
-		uncompress(u2, p2);
+		uncompress(p1, u1);
+		uncompress(p2, u2);
 		int b1[8][9], b2[9]; //32-bit bitmaps corresponding to each given's positions in the mapped coordinate system
 		char m1[8][81];
 		//get all positional morphs of the first puzzle
@@ -1505,15 +1300,6 @@ extern int processPatterns() {
 	}
 	else if(opt.patternOpt->enumerate) { // --pattern --enumerate [--subcanon] > out.txt
 		return enumerate(opt.patternOpt->enumerate, opt.patternOpt->fixclues);
-	}
-	else if(opt.patternOpt->scanfor) { // --pattern --scanfor <pattern> < grids.txt > puzzles.txt
-		return scanfor(opt.patternOpt->scanfor);
-	}
-	else if(opt.patternOpt->patcanon) { // --pattern --patcanon < in.txt > out.txt
-		return patCanon();
-	}
-	else if(opt.patternOpt->settle) { // --pattern --settle <pattern> < mspuz.txt > patpuz.txt
-		return settle(opt.patternOpt->settle);
 	}
 	else if(opt.patternOpt->pg) { // --pattern --pg <commands> < in.txt > out.txt
 		return gotchiPass(opt.patternOpt->pg);

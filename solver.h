@@ -2,14 +2,13 @@
 
 #define SOLVER_H_INCLUDED
 
+#include <memory> //NULL
 #include "tables.h"
-#include "grid.h"
 
 extern unsigned long long solve(const char* in, const unsigned long long maxSolutions);
 extern unsigned long long solve(const char* in, const unsigned long long maxSolutions, char* out);
 extern unsigned long long solve(const int* gridBM, const char* in, const unsigned long long maxSolutions);
 extern unsigned long long solve(const int* gridBM, const char* in, const unsigned long long maxSolutions, char* out);
-extern unsigned long long solve(const int* gridBM, const char* in, uaCollector *theCollector);
 extern unsigned long long solve(const char* in, int* pencilMarks);
 
 extern double solverRate(const char* in);

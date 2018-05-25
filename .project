@@ -3,6 +3,7 @@
 	<name>gridchecker</name>
 	<comment></comment>
 	<projects>
+		<project>fsss2</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
@@ -30,4 +31,16 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>fsss2.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/fsss2/fsss2.cpp</locationURI>
+		</link>
+		<link>
+			<name>fsss2.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/fsss2/fsss2.h</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>
