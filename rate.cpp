@@ -24,7 +24,7 @@ fskfr::fskfr() {
 	count = 0;
 }
 
-void fskfr::skfrMultiER(const char *p, unsigned int *rate) {
+void fskfr::skfrMultiER(const char *p, uint32_t *rate) {
 	for(int i = 0; i < 81; i++) {
 		puzzlesToRate[count].p[i] = p[i] + '0';
 	}
@@ -41,7 +41,7 @@ void fskfr::skfrCommit() {
 #endif //_OPENMP
 	for(int i = 0; i < count; i++) {
 		skfr::rateOnePuzzle(puzzlesToRate[i]);
-		*res[i] = ((*res[i]) & 0xFF) | (puzzlesToRate[i].ed << 24) | (puzzlesToRate[i].ep << 16) | (puzzlesToRate[i].er << 8);
+		*res[i] = ((*res[i]) & 0xFF) | (puzzlesToRate[i].ed << 24) | (puzzlesToRate[i].ep << 16) | (puzzlesToRate[i].er << 8); //don't touch the less significant 8 bits!
 	}
 	count = 0;
 }

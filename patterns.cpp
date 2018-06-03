@@ -10,6 +10,10 @@
 #include "patterns.h"
 #include "mm_allocator.h"
 #include "../fsss2/fsss2.h"
+#include <mutex>  // For std::unique_lock
+#include <shared_mutex>
+#include <thread>
+#include <inttypes.h>
 
 using namespace std;
 
@@ -147,7 +151,7 @@ allTranformations::~allTranformations() {
 void allTranformations::transform(const ch81 &src, ch81 &dest, int transformationIndex) const {
 	ch81 &ind = indices[transformationIndex];
 	for(int i = 0; i < 81; i++) {
-		dest.chars[ind.chars[i]] = src.chars[i];
+		dest.chars[(int)(ind.chars[i])] = src.chars[i];
 
 		//reverse transfor would look like
 		//dest.chars[i] = src.chars[ind.chars[i]];
@@ -214,10 +218,10 @@ struct pat {
 				res[pos] = 0;
 				continue;
 			}
-			if(map[p[pos]] == -1) { //first occurence of this label
-				map[p[pos]] = n++;
+			if(map[(int)(p[pos])] == -1) { //first occurrence of this label
+				map[(int)(p[pos])] = n++;
 			}
-			res[pos] = map[p[pos]];
+			res[pos] = map[(int)(p[pos])];
 		}
 	}
 	void minlex(const char *p, char *res) const {
@@ -617,50 +621,77 @@ int enumerate(const char* pattern, const char* fixclues) {
 	return err;
 }
 struct puzzleRecord {
-	unsigned char key[16];
-	unsigned int rateFast;
-	unsigned int rateFinal;
+	uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
+	uint32_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
+	uint32_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
+	//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
+	static const uint32_t rateMask = 0xFFFFFF00;
+	static const uint32_t depthMask = 0x07;
+	static const uint32_t minimalityMask = 0x18;
+	static const uint32_t ERmask = 0xFF00;
+	static const uint32_t EPmask = 0xFF0000;
+	static const uint32_t EDmask = 0xFF000000;
 	bool operator< (const puzzleRecord & other) const {
 		return(memcmp(this, &other, 16) < 0);
 	}
 	bool operator== (const puzzleRecord & other) const {
 		return(memcmp(this, &other, 16) == 0);
 	}
+	puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
+		if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
+		if((other.rateFast & depthMask) > (this->rateFast & depthMask)) this->rateFast = ((this->rateFast & (~depthMask)) | (other.rateFast & depthMask)); //the greater depth
+		if((other.rateFast & minimalityMask) > (this->rateFast & minimalityMask)) this->rateFast = ((this->rateFast & (~minimalityMask)) | (other.rateFast & minimalityMask)); //the greater minimality (just following convention)
+		if((other.rateFinal & rateMask) > (this->rateFinal & rateMask)) this->rateFinal = ((this->rateFinal & (~rateMask)) | (other.rateFinal & rateMask)); //the greater rating
+		if((other.rateFinal & depthMask) > (this->rateFinal & depthMask)) this->rateFinal = ((this->rateFinal & (~depthMask)) | (other.rateFinal & depthMask)); //the greater nosingles depth
+		return *this;
+	}
 };
+typedef std::set<puzzleRecord*> puzzleRecordset;
+
 struct inputFilter {
-	//void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
-	unsigned int minus;
-	unsigned int minED;
-	unsigned int maxED;
-	unsigned int minEP;
-	unsigned int maxEP;
-	unsigned int minER;
-	unsigned int maxER;
+	uint32_t minus;
+	uint32_t minED;
+	uint32_t maxED;
+	uint32_t minEP;
+	uint32_t maxEP;
+	uint32_t minER;
+	uint32_t maxER;
 	bool noSingles;
-	inputFilter(unsigned int n, unsigned int minED_, unsigned int maxED_, unsigned int minEP_, unsigned int maxEP_, unsigned int minER_, unsigned int maxER_, unsigned int noSingles_) :
-		minus(n & 7), minED((minED_ & 0xFF) << 24), maxED((maxED_ & 0xFF) << 24), minEP((minEP_ & 0xFF) << 16), maxEP((maxEP_ & 0xFF) << 16), minER((minER_ & 0xFF) << 8), maxER((maxER_ & 0xFF) << 8), noSingles(noSingles_) {}
+	uint32_t minMinimality;
+	uint32_t maxMinimality;
+	inputFilter(uint32_t n, uint32_t minED_, uint32_t maxED_, uint32_t minEP_, uint32_t maxEP_, uint32_t minER_, uint32_t maxER_,
+			uint32_t noSingles_, uint32_t minMinimality_ = 0, uint32_t maxMinimality_ = 3) :
+		minus(n & puzzleRecord::depthMask),
+		minED((minED_ << 24) & puzzleRecord::EDmask), maxED((maxED_ << 24) & puzzleRecord::EDmask),
+		minEP((minEP_ << 16) & puzzleRecord::EPmask), maxEP((maxEP_ << 16) & puzzleRecord::EPmask),
+		minER((minER_ << 8) & puzzleRecord::ERmask), maxER((maxER_ << 8) & puzzleRecord::ERmask),
+		noSingles(noSingles_), minMinimality((minMinimality_ << 4) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 4) & puzzleRecord::minimalityMask) {}
 	bool matches(const puzzleRecord& rec) const {
 		if(noSingles) {
-			if(((rec.rateFast & 0xFF) < minus) //not relabeled to this depth unconditionally
-				&& ((rec.rateFinal & 0xFF) < minus) //not relabeled to this depth ignoring puzzles solved by singles
-				&& ((rec.rateFast & 0xFF000000) >= minED)
-				&& ((rec.rateFast & 0xFF000000) <= maxED)
-				&& ((rec.rateFast & 0xFF0000) >= minEP)
-				&& ((rec.rateFast & 0xFF0000) <= maxEP)
-				&& ((rec.rateFast & 0xFF00) >= minER)
-				&& ((rec.rateFast & 0xFF00) <= maxER))
+			if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth unconditionally
+				&& ((rec.rateFinal & puzzleRecord::depthMask) < minus) //not relabeled to this depth ignoring puzzles solved by singles
+				&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
+				&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
+				&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
+				&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
+				&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
+				&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
 			{
 				return true;
 			}
 		}
 		else {
-			if(((rec.rateFast & 0xFF) < minus) //not relabeled to this depth
-				&& ((rec.rateFast & 0xFF000000) >= minED)
-				&& ((rec.rateFast & 0xFF000000) <= maxED)
-				&& ((rec.rateFast & 0xFF0000) >= minEP)
-				&& ((rec.rateFast & 0xFF0000) <= maxEP)
-				&& ((rec.rateFast & 0xFF00) >= minER)
-				&& ((rec.rateFast & 0xFF00) <= maxER))
+			if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth
+				&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
+				&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
+				&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
+				&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
+				&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
+				&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
 			{
 				return true;
 			}
@@ -674,19 +705,20 @@ class pgGotchi {
 public:
 	struct uncomprPuz {
 		ch81 p;
-		int rateFastED;
-		int rateFastEP;
-		int rateFastER;
-		int rateFinalED;
-		int rateFinalEP;
-		int rateFinalER;
-		int specTransformedUpTo;
-		int transformedUpTo;
+		uint32_t rateFastED;
+		uint32_t rateFastEP;
+		uint32_t rateFastER;
+		uint32_t rateFinalED;
+		uint32_t rateFinalEP;
+		uint32_t rateFinalER;
+		uint32_t specTransformedUpTo;
+		uint32_t transformedUpTo;
+		uint32_t minimality;
 		void toString(char *s) const {
 			p.toString(s);
-			sprintf(s + 81, " ED=%d.%1.1d/%d.%1.1d/%d.%1.1d %d %d ED=%d.%1.1d/%d.%1.1d/%d.%1.1d\n",
+			sprintf(s + 81, " ED=%u.%1.1u/%u.%1.1u/%u.%1.1u %u %u %u ED=%u.%1.1d/%u.%1.1u/%u.%1.1u\n",
 				rateFastER / 10, rateFastER % 10, rateFastEP / 10, rateFastEP % 10, rateFastED / 10, rateFastED % 10,
-				specTransformedUpTo, transformedUpTo,
+				specTransformedUpTo, transformedUpTo, minimality,
 				rateFinalER / 10, rateFinalER % 10, rateFinalEP / 10, rateFinalEP % 10, rateFinalED / 10, rateFinalED % 10);
 		}
 		int fromString(const char *s) {
@@ -696,9 +728,10 @@ public:
 			int ret = p.fromString(s);
 			specTransformedUpTo = 0;
 			transformedUpTo = 0;
-			sscanf(s + 81, " ED=%d.%d/%d.%d/%d.%d %d %d ED=%d.%d/%d.%d/%d.%d",
+			minimality = 0;
+			sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%d.%u",
 				&rateFastERh, &rateFastERl, &rateFastEPh, &rateFastEPl, &rateFastEDh, &rateFastEDl,
-				&specTransformedUpTo, &transformedUpTo,
+				&specTransformedUpTo, &transformedUpTo, &minimality,
 				&rateFinalERh, &rateFinalERl, &rateFinalEPh, &rateFinalEPl, &rateFinalEDh, &rateFinalEDl);
 			rateFastER = 10 * rateFastERh + rateFastERl;
 			rateFastEP = 10 * rateFastEPh + rateFastEPl;
@@ -716,6 +749,29 @@ public:
 private:
 	fskfr fastRater;
 	int map[34]; //compressed to real position
+	mutable std::shared_mutex mutex_;
+	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, uint32_t depth) {
+		uint32_t newMask = depth & puzzleRecord::depthMask;
+		if(noSingles) {
+			if((hh->rateFinal & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (conditionally)
+				hh->rateFinal = (hh->rateFinal & (~puzzleRecord::depthMask)) | newMask;
+			}
+		}
+		if((hh->rateFast & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
+			hh->rateFast = (hh->rateFast & (~puzzleRecord::depthMask)) | newMask;
+		}
+	}
+	void updateRelabelDepth(puzzleRecord* hh, bool noSingles, uint32_t depth) {
+		std::unique_lock<std::shared_mutex> lock(mutex_);
+		updateRelabelDepthNoLock(hh, noSingles, depth);
+	}
+	void updateRelabelDepth(puzzleRecordset& src, bool noSingles, uint32_t depth) {
+		std::unique_lock<std::shared_mutex> lock(mutex_);
+		for(puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
+			puzzleRecord* hh = *i;
+			updateRelabelDepthNoLock(hh, noSingles, depth);
+		}
+	}
 	void compress(const uncomprPuz &u, puzzleRecord &c) const {
 		for(int i = 0; i < 16; i++)
 			c.key[i] = 0;
@@ -725,8 +781,8 @@ private:
 		for(int i = 1, j = 0; i < size - 1; j++, i += 2) { //start from the second given, the first is always "1"
 			c.key[j] = u.p.chars[map[i]] | (u.p.chars[map[i + 1]] << 4);
 		}
-		c.rateFast = (((((u.rateFastED << 8) | u.rateFastEP) << 8) | u.rateFastER) << 8) | u.specTransformedUpTo;
-		c.rateFinal = (((((u.rateFinalED << 8) | u.rateFinalEP) << 8) | u.rateFinalER) << 8) | u.transformedUpTo;
+		c.rateFast = (((((u.rateFastED << 8) | u.rateFastEP) << 8) | u.rateFastER) << 8) | (u.specTransformedUpTo & puzzleRecord::depthMask) | ((u.minimality << 3) & puzzleRecord::minimalityMask);
+		c.rateFinal = (((((u.rateFinalED << 8) | u.rateFinalEP) << 8) | u.rateFinalER) << 8) | (u.transformedUpTo & puzzleRecord::depthMask);
 	}
 	void uncompress(const puzzleRecord &c, uncomprPuz &u) const {
 		u.p.clear();
@@ -738,8 +794,9 @@ private:
 			u.p.chars[map[i]] = c.key[j] & 0x0F;
 			u.p.chars[map[i + 1]] = c.key[j] >> 4;
 		}
-		u.specTransformedUpTo = c.rateFast & 0xFF;
-		unsigned int t = c.rateFast >> 8;
+		u.specTransformedUpTo = c.rateFast & puzzleRecord::depthMask;
+		u.minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
+		uint32_t t = c.rateFast >> 8;
 		u.rateFastER = t & 0xFF;
 		t >>= 8;
 		u.rateFastEP = t & 0xFF;
@@ -778,7 +835,7 @@ public:
 		}
 		fastRater.skfrCommit();
 	}
-	void add(const char* p, const int allowUpdates = 0, const int checkRedundancy = 0) { // 
+	void add(const char* p, const int allowUpdates = 0) { //
 		uncomprPuz u;
 		puzzleRecord c;
 		u.fromString(p);
@@ -794,159 +851,95 @@ public:
 		//if(h != theList.end()) { //update
 		if(h != theList.end() && c == *h) { //update
 			if(allowUpdates) {
-				for(int i = 0; i < 8; i++) { //store the higher of the values
-					if(((unsigned char *)(&c.rateFast))[i] < ((unsigned char *)(&h->rateFast))[i])
-						((unsigned char *)(&c.rateFast))[i] = ((unsigned char *)(&h->rateFast))[i];
-				}
+//				for(int i = 0; i < 8; i++) { //store the higher of the values
+//					if(((unsigned char *)(&c.rateFast))[i] < ((unsigned char *)(&h->rateFast))[i])
+//						((unsigned char *)(&c.rateFast))[i] = ((unsigned char *)(&h->rateFast))[i];
+//				}
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-				*hh = c;
-				if((c.rateFast & 0xFF00) == 0) { //calculate ER
+				hh->merge(c);
+				if((hh->rateFast & 0xFF00) == 0) { //calculate ER
 					fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
 				}
 			}
 		}
 		else { //insert
 			//make additional tests here
-			if(checkRedundancy) {
+			if(0 == u.minimality) {
 				//test for redundancy
-				for(int i = 0; i < size; i++) {
-					int oldValue = u.p.chars[map[i]];
-					bool found = false;
-					//trying all 8 possibilities works faster than clearing the given and checking for a second solution
-					for(int v = 1; v <= 9; v++) {
-						if(v == oldValue)
-							continue;
-						u.p.chars[map[i]] = v;
-						if(solve(u.p.chars, 1)) {
-							found = true;
-							break;
-						}
-					}
-					u.p.chars[map[i]] = oldValue;
-					if(!found)
-						return; //redundant clue u.p.chars[map[i]]
+				if(0 == solverIsIrreducibleByProbing(u.p.chars)) {
+					c.rateFast |= ((uint32_t)1 << 3);
+					//return; //redundant clue(s)
 				}
-
-//				if(0 == solverIsIrreducibleByProbing(u.p.chars)) {
-//					return; //redundant clue(s)
-//				}
+				else {
+					c.rateFast |= ((uint32_t)2 << 3);
+				}
 			}
-//#ifdef _OPENMP
-//#pragma omp critical
-//#endif
 			{
 			//redundancy test passed
 			//insert the puzzle, use h as a hint
 			pgContainer::iterator hhh = theList.insert(h, c);
 			//rate the puzzle
-			if((c.rateFast & 0xFF00) == 0) { //calculate ER
+			if((c.rateFast & puzzleRecord::rateMask) == 0) { //calculate ER
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*hhh));
 				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
 			}
 			} //critical
 		}
 	}
-	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles) {
-		static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
-		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles);
-		pgContainer::size_type new_size = theList.size();
-		pgContainer::size_type old_size;
-		pgContainer::size_type resCount;
-		const pgContainer::size_type max_batch_size = max_batch_sizes[n];
+	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
+		//static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
+		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, 0, 3);
+		int resCount;
+		//const pgContainer::size_type max_batch_size = max_batch_sizes[n];
 		if(maxPasses == 0) maxPasses = 1;
 		do {
 			//get puzzles passing filter and not relabeled up to n (if any)
-			old_size = new_size;
-			std::vector<puzzleRecord*> src;
+			puzzleRecordset src;
 			resCount = 0;
 			for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				if(iFilter.matches(*hh)) {
-					src.push_back(hh);
+					src.insert(hh);
 					resCount++;
-					if(resCount >= max_batch_size) break; //limit to some reasonable batch size
+					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
 				}
 			}
 			if(opt.verbose) {
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, (int)resCount);
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
 			}
-			//relabel
-			puzzleSet allFound;
+			//relabel & insert
 			size_t percentage = 0;
 			size_t resNum = 0;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic, 1)
-#endif
-			for(size_t i = 0; i < resCount; i++) {
+			for(puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
 				if(gExiting) continue;
-				puzzleRecord* hh = src[i];
-//				if((hh->rateFast & 0xFF) < n) { //LSB = n = relabeled up to depth n
-//					hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
-//				}
+				puzzleRecord* hh = *i;
 				uncomprPuz u;
 				uncompress(*hh, u);
-				//if((hh->rateFast & 0xFF00) == 0) { //calculate ER
-				//	//hh->rateFast |= fastRater.skfrER(u.p.chars);
-				//	fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
-				//}
 				puzzleSet found;
 				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, &found); //checking for minimality here is slower
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-				{
-					//join local candidates
-					allFound.insert(found.begin(), found.end());
-					//for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
-					//	add(lc->chars, 0, 1);
-					//}
-
-					//for non-parallel mode
-					//solverRelabel(u.p.chars, n, false, true, noSingles, relCallBack, this);
-					if(opt.verbose) {
-						resNum++;
-						size_t new_percentage = resNum * 10 / resCount;
-						if(percentage < new_percentage) {
-							percentage = new_percentage;
-							fprintf(stderr, "/");
-						}
-					}
+				for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
+					//add(lc->chars, 0, 1);
+					add(lc->chars, 0);
 				}
-			}
-			percentage = 0;
-			resNum = 0;
-			resCount = allFound.size();
-			for(puzzleSet::const_iterator lc = allFound.begin(); lc != allFound.end() && !gExiting; lc++) {
-				add(lc->chars, 0, 1); //checking for minimality here is less expensive then in generation
+				updateRelabelDepth(hh, noSingles, n);
 				if(opt.verbose) {
 					resNum++;
 					size_t new_percentage = resNum * 10 / resCount;
 					if(percentage < new_percentage) {
 						percentage = new_percentage;
-						fprintf(stderr, "\\");
+						fprintf(stderr, "/");
 					}
 				}
 			}
 			fastRater.skfrCommit();
-			new_size = theList.size();
-			//This pass is done. Mark the seed as used at appropriate depth.
-			if(!gExiting) {
-				for(size_t i = 0; i < src.size(); i++) {
-					puzzleRecord* hh = src[i];
-					if(noSingles) {
-						if((hh->rateFinal & 0xFF) < n) { //LSB = n = relabeled up to depth n (conditionally)
-							hh->rateFinal = (hh->rateFinal & 0xFFFFFF00) | n;
-						}
-					}
-					if((hh->rateFast & 0xFF) < n) { //LSB = n = relabeled up to depth n (unconditionally)
-						hh->rateFast = (hh->rateFast & 0xFFFFFF00) | n;
-					}
-				}
-			}
+//			//This pass is done. Mark the seed as used at appropriate depth.
+//			if(!gExiting) {
+//				updateRelabelDepth(src, noSingles, n);
+//			}
 			if(opt.verbose) {
 				fprintf(stderr, "\n");
 			}
-		} while((!gExiting) && new_size > old_size && --maxPasses > 0);
+		} while((!gExiting) && resCount && --maxPasses > 0);
 	}
 
 	//this is called by solverRelabel on any puzzle candidate
@@ -1169,7 +1162,7 @@ void scanCollection(const char *ppuz){
 					ch81 map;
 					m.byIndex(ppp.morphIndex[i]);
 					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
-					for(int j = 0; j < 81; j++) {found.chars[map.chars[j]] = hard.chars[j];}
+					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
 					found.toString(foundText.chars);
 					fprintf(stdout, "%81.81s = %s\n", foundText.chars, buf + 81);
 					fflush(NULL);
@@ -1193,7 +1186,7 @@ void scanCollection(const char *ppuz){
 					ch81 map;
 					m.byIndex(ppp.morphIndex[i]);
 					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
-					for(int j = 0; j < 81; j++) {found.chars[map.chars[j]] = hard.chars[j];}
+					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
 					found.toString(foundText.chars);
 					fprintf(stdout, "%81.81s + %s\n", foundText.chars, buf + 81);
 					////debug
@@ -1226,7 +1219,7 @@ void scanCollection(const char *ppuz){
 					ch81 map;
 					m.byIndex(ppp.morphIndex[i]);
 					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
-					for(int j = 0; j < 81; j++) {found.chars[map.chars[j]] = hard.chars[j];}
+					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
 					int c;
 					solve(found.chars, 1, foundText.chars); //find missing value
 					for(int j = 0; j < 81; j++) {
@@ -1261,7 +1254,8 @@ int gotchiPass(const char *cmd) {
 	unsigned int maxER = 255;
 	unsigned int maxPasses = 1;
 	unsigned int noSingles = 0;
-	sscanf(cmd, "%d,%d,%d,%d,%d,%d,%d,%d,%d", &maxRel, &minER, &maxER, &minEP, &maxEP, &minED, &maxED, &maxPasses, &noSingles);
+	unsigned int onlyMinimals = 0; // 01=non-minimal; 10=minimal
+	sscanf(cmd, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u", &maxRel, &minER, &maxER, &minEP, &maxEP, &minED, &maxED, &maxPasses, &noSingles, &onlyMinimals);
 	pgGotchi g;
 	char buf[1000];
 	int first = 1;
@@ -1278,7 +1272,7 @@ int gotchiPass(const char *cmd) {
 	}
 	g.fastRateAll();
 	if(maxRel) { //for relabel = 0 rate only
-		g.relN(maxRel, minED, maxED, minEP, maxEP, minER, maxER, maxPasses, noSingles);
+		g.relN(maxRel, minED, maxED, minEP, maxEP, minER, maxER, maxPasses, noSingles, onlyMinimals);
 	}
 	//g.distance((*g.theList.begin()), (*g.theList.rbegin()));
 	if(opt.verbose) {
