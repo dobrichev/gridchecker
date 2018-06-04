@@ -9,13 +9,10 @@
 #include <functional>
 #include "patterns.h"
 #include "mm_allocator.h"
-#include "../fsss2/fsss2.h"
 #include <mutex>  // For std::unique_lock
 #include <shared_mutex>
 #include <thread>
 #include <inttypes.h>
-
-using namespace std;
 
 const morph morph_first = {0,0,0,0,0,0,0,0,0};
 const morph morph_last = {1,5,5,5,5,5,5,5,5};
@@ -158,18 +155,20 @@ void allTranformations::transform(const ch81 &src, ch81 &dest, int transformatio
 	}
 }
 
-struct pat {
-	ch81 original;
+class pat {
+private:
 	bm128IntMap ss; //pairs of (givens' positions, morph index)
 	vector<morph> self_transformations;
+public:
 	vector<bm128, mm_allocator<bm128> > morphs;
 	vector<int> morphIndex;
 	vector<ch81> maps;
-	int automorphismLevel;
+	int numAutomorphisms;
+private:
 	static int init_callback (void *context, const char *puz, char *m, const morph &theMorph) {
 		pat *pp = static_cast<pat*>(context);
 		if(0 == memcmp(puz, m, 81)) {
-			pp->automorphismLevel++;
+			pp->numAutomorphisms++;
 			pp->self_transformations.push_back(theMorph);
 		}
 		bm128 rr;
@@ -187,16 +186,51 @@ struct pat {
 		pp->maps.push_back(*(ch81*)m);
 		return 1; //exit on first call
 	}
+	void minRelabel(const char *src, char *res) const {
+		int map[10] = {0,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+		int n = 1;
+		for(int pos = 0; pos < 81; pos++) {
+			if(src[pos] == 0) {
+				res[pos] = 0;
+				continue;
+			}
+			if(map[(int)(src[pos])] == -1) { //first occurrence of this label
+				map[(int)(src[pos])] = n++;
+			}
+			res[pos] = map[(int)(src[pos])];
+		}
+	}
+	void minlex(const char *src, char *res) const {
+		if(numAutomorphisms == 1) {
+			minRelabel(src, res);
+			return;
+		}
+		char test[81];
+		char m[81];
+		minRelabel(src, res); //store the best at res
+		for(int i = 1; i < numAutomorphisms; i++) { //skip the non-morphed at 0
+			//morph the pussle
+			for(int j = 0; j < 81; j++) {
+				m[(int)maps[i].chars[j]] = src[j];
+			}
+			minRelabel(m, test);
+			if(memcmp(test, res, 81) < 0) { //store the best at res
+				memcpy(res, test, 81);
+			}
+		}
+	}
+public:
 	void init(const char *p) {
 		//copy the string
+		ch81 original;
 		original.fromString(p);
 		//convert to 0/1
 		for(int i = 0; i < 81; i++) {
 			if(original.chars[i])
 				original.chars[i] = 1;
 		}
-		automorphismLevel = 0;
-		//populate ss, self_transformations, automorphismLevel
+		numAutomorphisms = 0;
+		//populate ss, self_transformations, numAutomorphisms
 		getMorphs(this, original.chars, morph_first, morph_last, &pat::init_callback);
 		//init morphs using ss
 		for(bm128IntMap::const_iterator i = ss.begin(); i != ss.end(); i++) {
@@ -209,61 +243,29 @@ struct pat {
 		for(int i = 0; i < (int)self_transformations.size(); i++) {
 			getMorphs(this, probe.chars, self_transformations[i], self_transformations[i], &pat::map_callback);
 		}
-	}
-	void minRelabel(const char *p, char *res) const {
-		int map[10] = {0,-1,-1,-1,-1,-1,-1,-1,-1,-1};
-		int n = 1;
-		for(int pos = 0; pos < 81; pos++) {
-			if(p[pos] == 0) {
-				res[pos] = 0;
-				continue;
-			}
-			if(map[(int)(p[pos])] == -1) { //first occurrence of this label
-				map[(int)(p[pos])] = n++;
-			}
-			res[pos] = map[(int)(p[pos])];
-		}
-	}
-	void minlex(const char *p, char *res) const {
-		if(automorphismLevel == 1) {
-			minRelabel(p, res);
-			return;
-		}
-		char test[81];
-		char m[81];
-		minRelabel(p, res); //store the best at res
-		for(int i = 1; i < automorphismLevel; i++) { //skip the non-morphed at 0
-			//morph the pussle
-			for(int j = 0; j < 81; j++) {
-				m[maps[i].chars[j]] = p[j];
-			}
-			minRelabel(m, test);
-			if(memcmp(test, res, 81) < 0) { //store the best at res
-				memcpy(res, test, 81);
-			}
-		}
+		self_transformations.clear();
 	}
 	void getPosMorphs(const char *p, char *res) const {
-		memset(res, 0, 81 * automorphismLevel);
-		for(int i = 0; i < automorphismLevel; i++) {
+		memset(res, 0, 81 * numAutomorphisms);
+		for(int i = 0; i < numAutomorphisms; i++) {
 			char *m = res + 81 * i;
-			//morph the pussle
+			//morph the puzzle
 			for(int j = 0; j < 81; j++) {
-				m[maps[i].chars[j]] = p[j];
+				m[(int)maps[i].chars[j]] = p[j];
 			}
 		}
 	}
-	void minlex(ch81 &p) { //overwrite given puzzle with minlexed one
+	void minlex(ch81 &p) { //overwrite given puzzle with its minlex representation
 		ch81 res;
 		minlex(p.chars, res.chars);
 		p = res; //structure copy
 	}
 };
 
-int mapPuz_callback (void *context, const char *puz, char *m, const morph &theMorph) {
-	memcpy(context, m, 81);
-	return 1; //exit on first call
-}
+//int mapPuz_callback (void *context, const char *puz, char *m, const morph &theMorph) {
+//	memcpy(context, m, 81);
+//	return 1; //exit on first call
+//}
 
 
 int statistics() {
@@ -820,7 +822,6 @@ public:
 			}
 		}
 		ppp.init(exemplar);
-		ppp.self_transformations.clear();
 		ppp.morphs.clear();
 		ppp.morphIndex.clear();
 	}
@@ -989,7 +990,7 @@ public:
 	int distance(const puzzleRecord &p1, const puzzleRecord &p2) const { //get minimal hamming distance, print p2 unchanged
 		if(size > 32)
 			return -1;
-		if(ppp.automorphismLevel > 8)
+		if(ppp.numAutomorphisms > 8)
 			return -1;
 		uncomprPuz u1, u2;
 		uncompress(p1, u1);
@@ -1004,7 +1005,7 @@ public:
 				b1[i][j] = 0;
 			}
 		}
-		for(int j = 0; j < ppp.automorphismLevel; j++) {
+		for(int j = 0; j < ppp.numAutomorphisms; j++) {
 			for(int i = 0; i < size; i++) {
 				b1[j][m1[j][map[i]] - 1] |= Digit2Bitmap[i + 1]; //b1 is 0-based, bitmaps are 1-based
 			}
@@ -1025,7 +1026,7 @@ public:
 		}
 		int minBC = INT_MAX; //minimal bitcount = 2 * minimal hamming distance
 		int r[9]; //p1 givens relabeled to
-		for(int i = 0; i < ppp.automorphismLevel; i++) { //iterate all positional morphs of p1
+		for(int i = 0; i < ppp.numAutomorphisms; i++) { //iterate all positional morphs of p1
 			//do 9 nested loops (all possible relabelings of p1) finding the least distance
 			for(r[0] = 0; r[0] < 9; r[0]++) { //digit to relabel "1" in p1 to
 				int d1set = Digit2Bitmap[r[0] + 1];
@@ -1267,7 +1268,7 @@ int gotchiPass(const char *cmd) {
 		g.add(buf, 1);
 	}
 	if(opt.verbose) {
-		fprintf(stderr, "Number of symmetries %d\n", g.ppp.automorphismLevel);
+		fprintf(stderr, "Number of symmetries %d\n", g.ppp.numAutomorphisms);
 		fprintf(stderr, "%d puzzles loaded\n", (int)g.theList.size());
 	}
 	g.fastRateAll();
