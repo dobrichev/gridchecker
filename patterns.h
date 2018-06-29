@@ -3,7 +3,9 @@
 #include <atomic>
 extern volatile std::atomic_bool gExiting;
 
+
 struct morph {
+	typedef int morphCallBack(void *context, const char *p, char *morphed, const morph &morph);
 	int transpose; //0..1
 	int stackPerm;	//0..5
 	int stack1ColPerm;	//0..5
@@ -13,6 +15,12 @@ struct morph {
 	int band1RowPerm;	//0..5
 	int band2RowPerm;	//0..5
 	int band3RowPerm;	//0..5
+private:
+	static void getMorphs(void *context, const char* p, const morph &start, const morph &end, morphCallBack *cb);
+public:
+	static void processAllMorphs(void *context, const char* p, morphCallBack *cb);
+	static void processSingleMorph(void *context, const char* p, const morph &morph, morphCallBack *cb);
+	static void processSingleMorph(void *context, const char* p, const int morphIndex, morphCallBack *cb);
 	void byIndex(int i) {
 		band3RowPerm = i % 6; i /= 6;
 		band2RowPerm = i % 6; i /= 6;
@@ -38,12 +46,12 @@ struct morph {
 	}
 };
 
-class allTranformations {
-	ch81 * indices; //where to go
-	static int allCallback(void *context, const char *puz, char *m, const morph &theMorph);
-public:
-	static const int count;
-	allTranformations();
-	~allTranformations();
-	void transform(const ch81 &src, ch81 &dest, int transformationIndex) const;
-};
+//class allTranformations {
+//	ch81 * indices; //where to go
+//	static int allCallback(void *context, const char *puz, char *m, const morph &theMorph);
+//public:
+//	static const int count;
+//	allTranformations();
+//	~allTranformations();
+//	void transform(const ch81 &src, ch81 &dest, int transformationIndex) const;
+//};

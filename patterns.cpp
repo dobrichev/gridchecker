@@ -13,13 +13,11 @@
 #include <shared_mutex>
 #include <thread>
 #include <inttypes.h>
+#include <chrono>
 
-const morph morph_first = {0,0,0,0,0,0,0,0,0};
-const morph morph_last = {1,5,5,5,5,5,5,5,5};
+typedef uint32_t rating_t;
 
-typedef int morphCallBack(void *context, const char *p, char *morphed, const morph &morph);
-
-int getMorphs(void *context, const char* p, const morph &start, const morph &end, morphCallBack *cb) {
+void morph::getMorphs(void *context, const char* p, const morph &start, const morph &end, morphCallBack *cb) {
 	morph current;
 	//int n = 0;
 	char tp[9][9]; //transposed
@@ -108,7 +106,7 @@ int getMorphs(void *context, const char* p, const morph &start, const morph &end
 										}
 										int ret = (*cb)(context, p, (char*)b3rpp, current);
 										if(ret) { //call back
-											return ret; //immediately exit when callback returns nonzero
+											return; // ret; //immediately exit when callback returns nonzero
 										}
 										//n++;
 									}
@@ -120,10 +118,24 @@ int getMorphs(void *context, const char* p, const morph &start, const morph &end
 			}
 		}
 	}
-	return 0;
+	return;
+}
+void morph::processAllMorphs(void *context, const char* p, morphCallBack *cb) {
+	static const morph morph_first = {0,0,0,0,0,0,0,0,0};
+	static const morph morph_last = {1,5,5,5,5,5,5,5,5};
+	morph::getMorphs(context, p, morph_first, morph_last, cb);
+}
+void morph::processSingleMorph(void *context, const char* p, const morph &morph, morphCallBack *cb) {
+	morph::getMorphs(context, p, morph, morph, cb);
+}
+void morph::processSingleMorph(void *context, const char* p, const int morphIndex, morphCallBack *cb) {
+	morph m;
+	m.byIndex(morphIndex);
+	morph::getMorphs(context, p, m, m, cb);
 }
 
-class bm128IntMap : public map<bm128, int, less<bm128>, mm_allocator<pair<bm128, int> > > {};
+class bm128IntMap : public std::map<bm128, int, less<bm128>, mm_allocator<pair<bm128, int> > > {};
+class bm128IntsMap : public std::map<bm128, std::vector<int>, less<bm128>, mm_allocator<pair<bm128, std::vector<int>> > > {};
 const ch81 probe = {
 	{
 		 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,
@@ -132,28 +144,29 @@ const ch81 probe = {
 	}
 };
 
-//class allTranformations implementation
-const int allTranformations::count = 2*6*6*6*6*6*6*6*6;
-int allTranformations::allCallback(void *context, const char *puz, char *m, const morph &theMorph) {
-	memcpy(&((ch81*)context)[theMorph.index()], m, 81); 
-	return 0;
-}
-allTranformations::allTranformations() {
-	indices = (ch81*) malloc(81 * count);
-	getMorphs(indices, probe.chars, morph_first, morph_last, &allTranformations::allCallback);
-}
-allTranformations::~allTranformations() {
-	free(indices);
-}
-void allTranformations::transform(const ch81 &src, ch81 &dest, int transformationIndex) const {
-	ch81 &ind = indices[transformationIndex];
-	for(int i = 0; i < 81; i++) {
-		dest.chars[(int)(ind.chars[i])] = src.chars[i];
-
-		//reverse transfor would look like
-		//dest.chars[i] = src.chars[ind.chars[i]];
-	}
-}
+////class allTranformations implementation
+//const int allTranformations::count = 2*6*6*6*6*6*6*6*6;
+//int allTranformations::allCallback(void *context, const char *puz, char *m, const morph &theMorph) {
+//	(void)puz; //suppress compiler warnings
+//	memcpy(&((ch81*)context)[theMorph.index()], m, 81);
+//	return 0;
+//}
+//allTranformations::allTranformations() {
+//	indices = (ch81*) malloc(81 * count);
+//	getMorphs(indices, probe.chars, morph_first, morph_last, &allTranformations::allCallback);
+//}
+//allTranformations::~allTranformations() {
+//	free(indices);
+//}
+//void allTranformations::transform(const ch81 &src, ch81 &dest, int transformationIndex) const {
+//	ch81 &ind = indices[transformationIndex];
+//	for(int i = 0; i < 81; i++) {
+//		dest.chars[(int)(ind.chars[i])] = src.chars[i];
+//
+//		//reverse transfor would look like
+//		//dest.chars[i] = src.chars[ind.chars[i]];
+//	}
+//}
 
 class pat {
 private:
@@ -182,6 +195,7 @@ private:
 		return 0;
 	}
 	static int map_callback (void *context, const char *puz, char *m, const morph &theMorph) {
+		(void)puz; (void)theMorph; //suppress compiler warnings
 		pat *pp = static_cast<pat*>(context);
 		pp->maps.push_back(*(ch81*)m);
 		return 1; //exit on first call
@@ -231,7 +245,7 @@ public:
 		}
 		numAutomorphisms = 0;
 		//populate ss, self_transformations, numAutomorphisms
-		getMorphs(this, original.chars, morph_first, morph_last, &pat::init_callback);
+		morph::processAllMorphs(this, original.chars, &pat::init_callback);
 		//init morphs using ss
 		for(bm128IntMap::const_iterator i = ss.begin(); i != ss.end(); i++) {
 			morphs.push_back(i->first);
@@ -241,7 +255,7 @@ public:
 		ss.clear();
 		//compose transformation maps
 		for(int i = 0; i < (int)self_transformations.size(); i++) {
-			getMorphs(this, probe.chars, self_transformations[i], self_transformations[i], &pat::map_callback);
+			morph::processSingleMorph(this, probe.chars, self_transformations[i], &pat::map_callback);
 		}
 		self_transformations.clear();
 	}
@@ -470,6 +484,7 @@ int redundancy() {
 }
 
 int puzFound(void *context, const char* puz) {
+	(void)context; //suppress compiler warnings
 	char buf[1000];
 	ch81 p;
 	for(int i = 0; i < 81; i++)
@@ -624,20 +639,23 @@ int enumerate(const char* pattern, const char* fixclues) {
 }
 struct puzzleRecord {
 	uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
-	uint32_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
-	uint32_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
+	rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
+	rating_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
 	//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
-	static const uint32_t rateMask = 0xFFFFFF00;
-	static const uint32_t depthMask = 0x07;
-	static const uint32_t minimalityMask = 0x18;
-	static const uint32_t ERmask = 0xFF00;
-	static const uint32_t EPmask = 0xFF0000;
-	static const uint32_t EDmask = 0xFF000000;
+	static const rating_t rateMask = 0xFFFFFF00;
+	static const rating_t depthMask = 0x07;
+	static const rating_t minimalityMask = 0x18;
+	static const rating_t ERmask = 0xFF00;
+	static const rating_t EPmask = 0xFF0000;
+	static const rating_t EDmask = 0xFF000000;
 	bool operator< (const puzzleRecord & other) const {
 		return(memcmp(this, &other, 16) < 0);
 	}
 	bool operator== (const puzzleRecord & other) const {
 		return(memcmp(this, &other, 16) == 0);
+	}
+	bool isMinimal () const {
+		return((rateFast & minimalityMask) == (2 << 3));
 	}
 	puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
 		if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
@@ -647,27 +665,36 @@ struct puzzleRecord {
 		if((other.rateFinal & depthMask) > (this->rateFinal & depthMask)) this->rateFinal = ((this->rateFinal & (~depthMask)) | (other.rateFinal & depthMask)); //the greater nosingles depth
 		return *this;
 	}
+	rating_t getRateFinalER() const {
+		return (this->rateFinal & ERmask) >> 8;
+	}
+	rating_t getRateFinalEP() const {
+		return (this->rateFinal & EPmask) >> 16;
+	}
+	rating_t getRateFinalED() const {
+		return (this->rateFinal & EDmask) >> 24;
+	}
 };
 typedef std::set<puzzleRecord*> puzzleRecordset;
 
 struct inputFilter {
-	uint32_t minus;
-	uint32_t minED;
-	uint32_t maxED;
-	uint32_t minEP;
-	uint32_t maxEP;
-	uint32_t minER;
-	uint32_t maxER;
+	rating_t minus;
+	rating_t minED;
+	rating_t maxED;
+	rating_t minEP;
+	rating_t maxEP;
+	rating_t minER;
+	rating_t maxER;
 	bool noSingles;
-	uint32_t minMinimality;
-	uint32_t maxMinimality;
-	inputFilter(uint32_t n, uint32_t minED_, uint32_t maxED_, uint32_t minEP_, uint32_t maxEP_, uint32_t minER_, uint32_t maxER_,
-			uint32_t noSingles_, uint32_t minMinimality_ = 0, uint32_t maxMinimality_ = 3) :
+	rating_t minMinimality;
+	rating_t maxMinimality;
+	inputFilter(rating_t n, rating_t minED_, rating_t maxED_, rating_t minEP_, rating_t maxEP_, rating_t minER_, rating_t maxER_,
+			rating_t noSingles_, rating_t minMinimality_ = 0, rating_t maxMinimality_ = 3) :
 		minus(n & puzzleRecord::depthMask),
 		minED((minED_ << 24) & puzzleRecord::EDmask), maxED((maxED_ << 24) & puzzleRecord::EDmask),
 		minEP((minEP_ << 16) & puzzleRecord::EPmask), maxEP((maxEP_ << 16) & puzzleRecord::EPmask),
 		minER((minER_ << 8) & puzzleRecord::ERmask), maxER((maxER_ << 8) & puzzleRecord::ERmask),
-		noSingles(noSingles_), minMinimality((minMinimality_ << 4) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 4) & puzzleRecord::minimalityMask) {}
+		noSingles(noSingles_), minMinimality((minMinimality_ << 3) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 3) & puzzleRecord::minimalityMask) {}
 	bool matches(const puzzleRecord& rec) const {
 		if(noSingles) {
 			if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth unconditionally
@@ -700,8 +727,24 @@ struct inputFilter {
 		}
 		return false;
 	}
+	bool matchesRateFinal(const puzzleRecord& rec) const {
+		//here we don't care about depth but care about minimality
+		if(
+				   ((rec.rateFinal & puzzleRecord::EDmask) >= minED)
+				&& ((rec.rateFinal & puzzleRecord::EDmask) <= maxED)
+				&& ((rec.rateFinal & puzzleRecord::EPmask) >= minEP)
+				&& ((rec.rateFinal & puzzleRecord::EPmask) <= maxEP)
+				&& ((rec.rateFinal & puzzleRecord::ERmask) >= minER)
+				&& ((rec.rateFinal & puzzleRecord::ERmask) <= maxER)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality)
+			)
+		{
+			return true;
+		}
+		return false;
+	}
 };
-#if 1
 class pgGotchi {
 	//for 16+4+4 there is 3550103402/83=42772330 puzzles capacity
 public:
@@ -724,14 +767,14 @@ public:
 				rateFinalER / 10, rateFinalER % 10, rateFinalEP / 10, rateFinalEP % 10, rateFinalED / 10, rateFinalED % 10);
 		}
 		int fromString(const char *s) {
-			int rateFastERh = 0, rateFastERl = 0, rateFastEPh = 0, rateFastEPl = 0, rateFastEDh = 0, rateFastEDl = 0,
+			unsigned int rateFastERh = 0, rateFastERl = 0, rateFastEPh = 0, rateFastEPl = 0, rateFastEDh = 0, rateFastEDl = 0,
 				rateFinalERh = 0, rateFinalERl = 0, rateFinalEPh = 0, rateFinalEPl = 0, rateFinalEDh = 0, rateFinalEDl = 0;
 
 			int ret = p.fromString(s);
 			specTransformedUpTo = 0;
 			transformedUpTo = 0;
 			minimality = 0;
-			sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%d.%u",
+			sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%u.%u",
 				&rateFastERh, &rateFastERl, &rateFastEPh, &rateFastEPl, &rateFastEDh, &rateFastEDl,
 				&specTransformedUpTo, &transformedUpTo, &minimality,
 				&rateFinalERh, &rateFinalERl, &rateFinalEPh, &rateFinalEPl, &rateFinalEDh, &rateFinalEDl);
@@ -752,22 +795,22 @@ private:
 	fskfr fastRater;
 	int map[34]; //compressed to real position
 	mutable std::shared_mutex mutex_;
-	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, uint32_t depth) {
-		uint32_t newMask = depth & puzzleRecord::depthMask;
-		if(noSingles) {
-			if((hh->rateFinal & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (conditionally)
-				hh->rateFinal = (hh->rateFinal & (~puzzleRecord::depthMask)) | newMask;
+	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, rating_t depth) {
+		rating_t newMask = depth & puzzleRecord::depthMask;
+		if((hh->rateFinal & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
+			hh->rateFinal = (hh->rateFinal & (~puzzleRecord::depthMask)) | newMask;
+		}
+		if(!noSingles) {
+			if((hh->rateFast & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (only when not ignoring the singles)
+				hh->rateFast = (hh->rateFast & (~puzzleRecord::depthMask)) | newMask;
 			}
 		}
-		if((hh->rateFast & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
-			hh->rateFast = (hh->rateFast & (~puzzleRecord::depthMask)) | newMask;
-		}
 	}
-	void updateRelabelDepth(puzzleRecord* hh, bool noSingles, uint32_t depth) {
+	void updateRelabelDepth(puzzleRecord* hh, bool noSingles, rating_t depth) {
 		std::unique_lock<std::shared_mutex> lock(mutex_);
 		updateRelabelDepthNoLock(hh, noSingles, depth);
 	}
-	void updateRelabelDepth(puzzleRecordset& src, bool noSingles, uint32_t depth) {
+	void updateRelabelDepth(puzzleRecordset& src, bool noSingles, rating_t depth) {
 		std::unique_lock<std::shared_mutex> lock(mutex_);
 		for(puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
 			puzzleRecord* hh = *i;
@@ -798,7 +841,7 @@ private:
 		}
 		u.specTransformedUpTo = c.rateFast & puzzleRecord::depthMask;
 		u.minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
-		uint32_t t = c.rateFast >> 8;
+		rating_t t = c.rateFast >> 8;
 		u.rateFastER = t & 0xFF;
 		t >>= 8;
 		u.rateFastEP = t & 0xFF;
@@ -810,7 +853,6 @@ private:
 		u.rateFinalEP = t & 0xFF;
 		u.rateFinalED = t >> 8;
 	}
-public:
 	void init(const char *exemplar) {
 		uncomprPuz u;
 		size = u.fromString(exemplar);
@@ -825,16 +867,32 @@ public:
 		ppp.morphs.clear();
 		ppp.morphIndex.clear();
 	}
+public:
+	void load() {
+		char buf[1000];
+		int first = 1;
+		while(fgets(buf, sizeof(buf), stdin)) {
+			if(first) {
+				init(buf);
+				first = 0;
+			}
+			add(buf, 1);
+		}
+		if(opt.verbose) {
+			fprintf(stderr, "Number of symmetries %d\n", ppp.numAutomorphisms);
+			fprintf(stderr, "%d puzzles loaded\n", (int)theList.size());
+		}
+	}
 	void fastRateAll() {
 		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
 			if((h->rateFast & 0xFF00) == 0) { //ER was not set
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				uncomprPuz u;
 				uncompress(*hh, u);
-				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
+				fastRater.push(u.p.chars, &(hh->rateFast));
 			}
 		}
-		fastRater.skfrCommit();
+		fastRater.commit();
 	}
 	void add(const char* p, const int allowUpdates = 0) { //
 		uncomprPuz u;
@@ -859,7 +917,7 @@ public:
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				hh->merge(c);
 				if((hh->rateFast & 0xFF00) == 0) { //calculate ER
-					fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
+					fastRater.push(u.p.chars, &(hh->rateFast));
 				}
 			}
 		}
@@ -868,28 +926,29 @@ public:
 			if(0 == u.minimality) {
 				//test for redundancy
 				if(0 == solverIsIrreducibleByProbing(u.p.chars)) {
-					c.rateFast |= ((uint32_t)1 << 3);
+					c.rateFast |= ((rating_t)1 << 3);
 					//return; //redundant clue(s)
 				}
 				else {
-					c.rateFast |= ((uint32_t)2 << 3);
+					c.rateFast |= ((rating_t)2 << 3);
 				}
 			}
 			{
-			//redundancy test passed
-			//insert the puzzle, use h as a hint
-			pgContainer::iterator hhh = theList.insert(h, c);
-			//rate the puzzle
-			if((c.rateFast & puzzleRecord::rateMask) == 0) { //calculate ER
-				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*hhh));
-				fastRater.skfrMultiER(u.p.chars, &(hh->rateFast));
-			}
+				//redundancy test passed
+				//insert the puzzle, use h as a hint
+				std::unique_lock<std::shared_mutex> lock(mutex_);
+				pgContainer::iterator hhh = theList.insert(h, c);
+				//rate the puzzle
+				if((c.rateFast & puzzleRecord::rateMask) == 0) { //calculate ER
+					puzzleRecord* hh = const_cast<puzzleRecord*>(&(*hhh));
+					fastRater.push(u.p.chars, &(hh->rateFast));
+				}
 			} //critical
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
 		//static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
-		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, 0, 3);
+		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3);
 		int resCount;
 		//const pgContainer::size_type max_batch_size = max_batch_sizes[n];
 		if(maxPasses == 0) maxPasses = 1;
@@ -897,16 +956,22 @@ public:
 			//get puzzles passing filter and not relabeled up to n (if any)
 			puzzleRecordset src;
 			resCount = 0;
+			int redundantCount = 0;
 			for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				if(iFilter.matches(*hh)) {
 					src.insert(hh);
 					resCount++;
 					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
+					if(! onlyMinimals) {
+						if(!hh->isMinimal()) {
+							redundantCount++;
+						}
+					}
 				}
 			}
 			if(opt.verbose) {
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
 			}
 			//relabel & insert
 			size_t percentage = 0;
@@ -916,23 +981,24 @@ public:
 				puzzleRecord* hh = *i;
 				uncomprPuz u;
 				uncompress(*hh, u);
-				puzzleSet found;
-				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, &found); //checking for minimality here is slower
-				for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
-					//add(lc->chars, 0, 1);
-					add(lc->chars, 0);
-				}
+//				puzzleSet found;
+//				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal_unused, &found); //checking for minimality here is slower
+//				for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
+//					//add(lc->chars, 0, 1);
+//					add(lc->chars, 0);
+//				}
+				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, this); //checking for minimality here is slower
 				updateRelabelDepth(hh, noSingles, n);
 				if(opt.verbose) {
 					resNum++;
 					size_t new_percentage = resNum * 10 / resCount;
 					if(percentage < new_percentage) {
 						percentage = new_percentage;
-						fprintf(stderr, "/");
+						fprintf(stderr, "%c", new_percentage > 5 ? '\\' : '/');
 					}
 				}
 			}
-			fastRater.skfrCommit();
+			fastRater.commit();
 //			//This pass is done. Mark the seed as used at appropriate depth.
 //			if(!gExiting) {
 //				updateRelabelDepth(src, noSingles, n);
@@ -946,11 +1012,18 @@ public:
 	//this is called by solverRelabel on any puzzle candidate
 	//which a) has single completion, and b) conforms the noSingles filter
 	//but minimality is still to be checked
+//	static int relCallBackLocal_unused(const char *puz, void *context) {
+//		puzzleSet *pFound = static_cast< puzzleSet * > (context);
+//		ch81 p;
+//		p.toString(puz, p.chars);
+//		pFound->insert(p);
+//		return 0;
+//	}
 	static int relCallBackLocal(const char *puz, void *context) {
-		puzzleSet *pFound = static_cast< puzzleSet * > (context);
+		pgGotchi *this_ = static_cast< pgGotchi * > (context);
 		ch81 p;
 		p.toString(puz, p.chars);
-		pFound->insert(p);
+		this_->add(p.chars, 0);
 		return 0;
 	}
 
@@ -979,8 +1052,9 @@ public:
 			char buf[256];
 			u.toString(buf);
 			printf("%s", buf);
-			fflush(NULL);
+			//fflush(NULL);
 		}
+		fflush(NULL);
 	}
 	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
 		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
@@ -1118,9 +1192,38 @@ public:
 		}
 		return minBC / 2;
 	}
+	void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
+		inputFilter iFilter(0, 12, 120, 12, 120, 12, 120, 0, 2, 2); //ER>0 && EP>0 && ED>0 && minimal
+		//compose array of best puzzles for each final ER
+		uncomprPuz best_records[256];
+		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
+			puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
+			if(iFilter.matchesRateFinal(*hh)) {
+				rating_t test_ER = hh->getRateFinalER();
+				if(test_ER > 120) continue; //bug???
+				if(
+						(best_records[test_ER].rateFinalEP < hh->getRateFinalEP()) //better due to EP
+						||
+						(best_records[test_ER].rateFinalEP == hh->getRateFinalEP() && best_records[test_ER].rateFinalED < hh->getRateFinalED()) //better due to ED
+					) {
+					uncomprPuz best_puzzle;
+					uncompress(*hh, best_puzzle);
+					best_records[test_ER] = best_puzzle;
+				}
+			}
+		}
+		// copy the best puzzles to the output
+		char buf[1000];
+		for(int i = 120; i >= 0; i--) {
+			if(0 == best_records[i].rateFastEP) continue; //no puzzles for this ER
+			best_records[i].toString(buf);
+			puzzletList.push_back(buf);
+		}
+	}
 };
 
 int probe_map_callback (void *context, const char *puz, char *m, const morph &theMorph) {
+	(void)puz; (void)theMorph; //suppress compiler warnings
 	char *p = static_cast<char*>(context);
 	memcpy(p, m, 81);
 	return 1; //exit on first call
@@ -1132,10 +1235,35 @@ void scanCollection(const char *ppuz){
 	pat ppp;
 	ppp.init(ppuz);
 	int transfCount = ppp.morphs.size();
-	bm128 patBm;
-	patBm.clear();
-	for(int i = 0; i < 81; i++) {if(exemplar.chars[i]) patBm.setBit(i);}
+//	bm128 patBm;
+//	patBm.clear();
+//	for(int i = 0; i < 81; i++) {if(exemplar.chars[i]) patBm.setBit(i);}
+	int givenPositions[88];
+	for(int i = 0, n = 0; i < 81; i++) {
+		if(exemplar.chars[i]) givenPositions[n++] = i;
+	}
 	fprintf(stdout, "%81.81s original\n", ppuz);
+
+	//sort morphs for later binary search
+	bm128IntMap allMorphs;
+	bm128IntsMap allMorphsMinus1;
+	for(int i = 0; i < transfCount; i++) {
+		allMorphs[ppp.morphs[i]] = i;
+		for(int p = 0; p < size; p++) {
+			bm128 tmp(ppp.morphs[i]);
+			tmp.clearBit(givenPositions[p]);
+			allMorphsMinus1[tmp].push_back(i);
+		}
+	}
+
+//	//how the distribution looks like?
+//	int counts[100] = {0};
+//	for(bm128IntsMap::const_iterator m = allMorphsMinus1.begin(); m != allMorphsMinus1.end(); m++) {
+//		if(m->second.size() < 100) counts[m->second.size()]++;
+//	}
+//	for(int i = 0; i < 100; i++) {
+//		fprintf(stderr, "%d\t%d\n", i, counts[i]);
+//	}
 
 	//scan the collection
 	char buf[1000];
@@ -1149,20 +1277,12 @@ void scanCollection(const char *ppuz){
 		case 0:		//exact size match
 			hardBm.clear();
 			for(int i = 0; i < 81; i++) {if(hard.chars[i]) hardBm.setBit(i);}
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-			for(int i = 0; i < transfCount; i++) {
-				if(ppp.morphs[i] == hardBm)
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-				{
+			{
+				bm128IntMap::const_iterator foundAt = allMorphs.find(hardBm);
+				if(foundAt != allMorphs.end()) {
 					//compose transformation map
-					morph m;
 					ch81 map;
-					m.byIndex(ppp.morphIndex[i]);
-					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
+					morph::processSingleMorph(map.chars, probe.chars, ppp.morphIndex[foundAt->second], &probe_map_callback);
 					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
 					found.toString(foundText.chars);
 					fprintf(stdout, "%81.81s = %s\n", foundText.chars, buf + 81);
@@ -1170,68 +1290,30 @@ void scanCollection(const char *ppuz){
 				}
 			}
 			break;
-		case -1:	//one more clue
-			hardBm.clear();
-			for(int i = 0; i < 81; i++) {if(hard.chars[i]) hardBm.setBit(i);}
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-			for(int i = 0; i < transfCount; i++) {
-				if(ppp.morphs[i].isSubsetOf(hardBm))
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-				{
-					//compose transformation map
-					morph m;
-					ch81 map;
-					m.byIndex(ppp.morphIndex[i]);
-					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
-					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
-					found.toString(foundText.chars);
-					fprintf(stdout, "%81.81s + %s\n", foundText.chars, buf + 81);
-					////debug
-					//ppp.morphs[i].toMask81(foundText.chars);
-					//fprintf(stdout, "%81.81s\tmorphs[%d]\n", foundText.chars, i);
-					//for(int j = 0; j < 81; j++) foundText.chars[j] = '0' + map.chars[j] / 10;
-					//fprintf(stdout, "%81.81s\tmapHi\n", foundText.chars);
-					//for(int j = 0; j < 81; j++) foundText.chars[j] = '0' + map.chars[j] % 10;
-					//fprintf(stdout, "%81.81s\tmapLo\n", foundText.chars);
-					//hard.toString(foundText.chars);
-					//fprintf(stdout, "%81.81s\toriginal\n\n", foundText.chars);
-					fflush(NULL);
-				}
-			}
-			break;
 		case 1:		//one less clue
 			hardBm.clear();
 			for(int i = 0; i < 81; i++) {if(hard.chars[i]) hardBm.setBit(i);}
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-			for(int i = 0; i < transfCount; i++) {
-				if(hardBm.isSubsetOf(ppp.morphs[i]))
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-				{
-					//compose transformation map
-					morph m;
-					ch81 map;
-					m.byIndex(ppp.morphIndex[i]);
-					getMorphs(map.chars, probe.chars, m, m, &probe_map_callback);
-					for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
-					int c;
-					solve(found.chars, 1, foundText.chars); //find missing value
-					for(int j = 0; j < 81; j++) {
-						if(hard.chars[j] && (0 == found.chars[j])) {
-							c = foundText.chars[j];	//this is the hole
-							break;
+			{
+				bm128IntsMap::const_iterator foundAt = allMorphsMinus1.find(hardBm);
+				if(foundAt != allMorphsMinus1.end()) {
+					for(bm128IntsMap::value_type::second_type::size_type n = 0; n < foundAt->second.size(); n++) {
+						//compose transformation map
+						ch81 map;
+						morph::processSingleMorph(map.chars, probe.chars, ppp.morphIndex[foundAt->second[n]], &probe_map_callback);
+						for(int j = 0; j < 81; j++) {found.chars[(int)(map.chars[j])] = hard.chars[j];}
+						int redundantGivenPosition;
+						solve(found.chars, 1, foundText.chars); //find missing value
+						for(int j = 0; j < 81; j++) {
+							if(exemplar.chars[j] && (0 == found.chars[j])) {
+								redundantGivenPosition = j;
+								found.chars[redundantGivenPosition] = foundText.chars[redundantGivenPosition];	//this is the hole
+								break;
+							}
 						}
+						found.toString(foundText.chars);
+						fprintf(stdout, "%81.81s -%d %s\n", foundText.chars, redundantGivenPosition, buf + 81);
+						fflush(NULL);
 					}
-					found.toString(foundText.chars);
-					fprintf(stdout, "%81.81s -%d %s\n", foundText.chars, c, buf + 81);
-					fflush(NULL);
 				}
 			}
 			break;
@@ -1258,18 +1340,14 @@ int gotchiPass(const char *cmd) {
 	unsigned int onlyMinimals = 0; // 01=non-minimal; 10=minimal
 	sscanf(cmd, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u", &maxRel, &minER, &maxER, &minEP, &maxEP, &minED, &maxED, &maxPasses, &noSingles, &onlyMinimals);
 	pgGotchi g;
-	char buf[1000];
-	int first = 1;
-	while(fgets(buf, sizeof(buf), stdin)) {
-		if(first) {
-			g.init(buf);
-			first = 0;
+	g.load();
+	if(*cmd == 'd') {
+		const puzzleRecord *p2 = &(*g.theList.begin());
+		for(pgGotchi::pgContainer::iterator h = std::next(g.theList.begin()); h != g.theList.end(); h++) {
+			const puzzleRecord* p1 = const_cast<puzzleRecord*>(&(*h));
+			g.distance(*p1, *p2);
 		}
-		g.add(buf, 1);
-	}
-	if(opt.verbose) {
-		fprintf(stderr, "Number of symmetries %d\n", g.ppp.numAutomorphisms);
-		fprintf(stderr, "%d puzzles loaded\n", (int)g.theList.size());
+		return 0;
 	}
 	g.fastRateAll();
 	if(maxRel) { //for relabel = 0 rate only
@@ -1282,10 +1360,67 @@ int gotchiPass(const char *cmd) {
 	g.dump();
 	return 0;
 }
-#else
-	int gotchiPass(const char* options) {return 0;}
-#endif // patterns game
+//class task {
+//public:
+//	enum taskType {
+//		taskRelabel,
+//		taskApproxRate,
+//		taskRate
+//	} type;
+//	string inputParameters;
+//	string outputParameters;
+//	std::chrono::steady_clock::time_point sentTime;
+//	//sentTime = std::chrono::steady_clock::now();
+//};
+int apiListen(const char *host, int port);
+class pgDb {
+	char username[32];
+	char password[32];
+	char listeningAddress[100];
+	int listeningPort;
+public:
+	pgGotchi g;
+public:
+	void load(const char *cmd) {
+		//parse the command-line parameters
+		sscanf(cmd, "%31[^:]:%31[^@]@%100[^:]:%d", username, password, listeningAddress, &listeningPort);
+		if(opt.verbose) {
+			fprintf(stderr, "Starting server with\nUsername=%s\nPassword=%s\nAddress=%s\nPort=%u\n", username, password, listeningAddress, listeningPort);
+		}
+		//load the puzzles (part of) file
+		g.load();
+		if(opt.verbose) {
+			fprintf(stderr, "Running the listener. Press Ctrl-C to shutdown...\n");
+		}
+	}
+	void dump() {
+		g.dump();
+	}
+	void serve() {
+		while (!gExiting) { //this should be unnecessary
+			apiListen(listeningAddress, listeningPort);
+			//std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+	}
+};
 
+pgDb* Db = NULL; //use dirty global var (to postpone separation of the above class declarations from implementations)
+int pgServer(const char *cmd) {
+	Db = new pgDb();
+	Db->load(cmd);
+	Db->serve(); //blocks until Ctrl-C
+	Db->dump();
+	return 0;
+}
+
+/////////////////////
+///
+/// API functions
+void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
+	Db->g.getPlayablePuzzles(puzzletList);
+}
+
+/////////////////////
 extern int processPatterns() {
 	if(opt.patternOpt->redundancy) {// --pattern --redundancy < in.txt > out.txt
 		return redundancy();
@@ -1298,6 +1433,9 @@ extern int processPatterns() {
 	}
 	else if(opt.patternOpt->pg) { // --pattern --pg <commands> < in.txt > out.txt
 		return gotchiPass(opt.patternOpt->pg);
+	}
+	else if(opt.patternOpt->pgserver) { // --pattern --pgserver user:password@address:port < in.txt > out.txt
+		return pgServer(opt.patternOpt->pgserver);
 	}
 	return -1;
 }

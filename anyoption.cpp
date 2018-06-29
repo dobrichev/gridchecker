@@ -979,21 +979,22 @@ AnyOption::consumeFile( char *buffer )
        	int linelength = 0;
        	bool newline = true;
        	for( unsigned int i = 0 ; i < strlen( buffer ) ; i++ ){
-       	if( *cursor == endofline ) { /* end of line */
-          	if( pline != NULL ) /* valid line */
-               		processLine( pline, linelength );
-                 	pline = NULL;
-                 	newline = true;
-           	}else if( newline ){ /* start of line */
-                 	newline = false;
-              		if( (*cursor != comment ) ){ /* not a comment */
-		    		pline = cursor ;
-                    		linelength = 0 ;
-                	}
-             	}
-            	cursor++; /* keep moving */
-            	linelength++;
-       	}
+		if (*cursor == endofline) { /* end of line */
+			if (pline != NULL) /* valid line */
+				processLine(pline, linelength);
+			pline = NULL;
+			newline = true;
+		}
+		else if (newline) { /* start of line */
+			newline = false;
+			if ((*cursor != comment)) { /* not a comment */
+				pline = cursor;
+				linelength = 0;
+			}
+		}
+		cursor++; /* keep moving */
+		linelength++;
+	}
      	free (buffer);
 	return true;
 }

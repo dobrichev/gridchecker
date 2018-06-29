@@ -2,7 +2,8 @@
 
 #define T_128_H_INCLUDED
 
-#include <emmintrin.h>
+#include <smmintrin.h>
+//#include <emmintrin.h>
 #ifndef _MSC_VER
 	//assume every compiler but MS is C99 compliant and has inttypes
 	#include <inttypes.h>
@@ -62,7 +63,8 @@ public:
 	inline bool isDisjoint(const bm128& r) const {return equals(_mm_and_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i), _mm_setzero_si128());};
 	inline int mask8() const {return _mm_movemask_epi8(bitmap128.m128i_m128i);};
 	inline int toInt32() const {return _mm_cvtsi128_si32(bitmap128.m128i_m128i);};
-	inline bool isBitSet(const int theBit) const {return equals(*this & bitSet[theBit].m128i_m128i, bitSet[theBit].m128i_m128i);};
+	//inline bool isBitSet(const int theBit) const {return equals(*this & bitSet[theBit].m128i_m128i, bitSet[theBit].m128i_m128i);};
+	inline bool isBitSet(const int theBit) const {return !_mm_testz_si128(this->bitmap128.m128i_m128i, bitSet[theBit].m128i_m128i);}
 	inline void setBit(const int theBit) {*this |= bitSet[theBit].m128i_m128i;};
 	inline void clearBit(const int theBit) {bitmap128.m128i_m128i = _mm_andnot_si128(bitSet[theBit].m128i_m128i, bitmap128.m128i_m128i);};
 	inline void clearBits(const bm128& r) {bitmap128.m128i_m128i = _mm_andnot_si128(r.bitmap128.m128i_m128i, bitmap128.m128i_m128i);};

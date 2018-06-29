@@ -51,12 +51,15 @@ struct patternOptions {
 	const char *enumerate;
 	const char *fixclues;
 	const char *pg;
+	const char *pgserver;
 	bool statistics;
 	bool subcanon;
 	bool redundancy;
 	patternOptions() { //set defaults for all scan options
 		enumerate = NULL;
 		fixclues = NULL;
+		pg = NULL;
+		pgserver = NULL;
 		statistics = false;
 		subcanon = false;
 		redundancy = false;
@@ -69,6 +72,7 @@ struct patternOptions {
 		statistics = opt.getFlag("statistics");
 		subcanon = opt.getFlag("subcanon");
 		redundancy = opt.getFlag("redundancy");
+		pgserver = opt.getValue("pgserver");
 
 		return processPatterns();
 	}

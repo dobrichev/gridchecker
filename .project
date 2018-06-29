@@ -31,4 +31,11 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>api/stdsoap2.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/gsoap-2.8/gsoap/stdsoap2.cpp</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

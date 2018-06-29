@@ -33,7 +33,7 @@ options::options() {
 	anyopt.addUsage("   --enumerate <pattern> Prints puzzles for given pattern");
 	anyopt.setOption("enumerate");
 	anyopt.addUsage("     --subcanon              Print canonicalized ED puzzles");
-	//anyopt.setFlag("subcanon");
+	anyopt.setFlag("subcanon");
 	anyopt.addUsage("     --fixclues <puzzle>     Prints only puzzles containing this subpuzzle");
 	anyopt.setOption("fixclues");
 	anyopt.addUsage("   --patcanon            Prints canonicalized unique patterns from stdin");
@@ -41,6 +41,8 @@ options::options() {
 	anyopt.addUsage("   --pg depth,er,ER,ep,EP,ed,ED,maxPasses,noSingles  Re-labels stdin to stdout, related to Patterns Game");
 	anyopt.addUsage("   --pg s<pattern> < grids.txt > puzzles.txt          Scans grids for puzzles having the given pattern");
 	anyopt.setOption("pg");
+	anyopt.addUsage("   --pgserver user:password@address:port < oldDbFile > newDbFile    Handles Patterns Game");
+	anyopt.setOption("pgserver");
 	anyopt.addUsage("");
 
 	//by default all  options  will be checked on the command line and from option/resource file
