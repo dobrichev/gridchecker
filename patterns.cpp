@@ -281,6 +281,62 @@ public:
 //	return 1; //exit on first call
 //}
 
+class canonicalizerPreservingPattern {
+private:
+	int numAutomorphisms_; //1 to 8
+	ch81 maps[8];
+	void minRelabel(const char *src, char *res) const {
+		int map[10] = {0,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+		int n = 1;
+		for(int pos = 0; pos < 81; pos++) {
+			if(src[pos] == 0) {
+				res[pos] = 0;
+				continue;
+			}
+			if(map[(int)(src[pos])] == -1) { //first occurrence of this label
+				map[(int)(src[pos])] = n++;
+			}
+			res[pos] = map[(int)(src[pos])];
+		}
+	}
+	void minlex(const char *src, char *res) const {
+		if(numAutomorphisms_ == 1) {
+			minRelabel(src, res);
+			return;
+		}
+		char test[81];
+		char m[81];
+		minRelabel(src, res); //store the best at res
+		for(int i = 1; i < numAutomorphisms_; i++) { //skip the non-morphed at 0
+			//morph the pussle
+			for(int j = 0; j < 81; j++) {
+				m[(int)maps[i].chars[j]] = src[j];
+			}
+			minRelabel(m, test);
+			if(memcmp(test, res, 81) < 0) { //store the best at res
+				memcpy(res, test, 81);
+			}
+		}
+	}
+public:
+	int numAutomorphisms() const {
+		return numAutomorphisms_;
+	}
+	void initFromExemplar(const char *exemplar) {
+		pat ppp;
+		ppp.init(exemplar);
+		numAutomorphisms_ = ppp.numAutomorphisms;
+		if(numAutomorphisms_ > 8) exit(1); //error
+		for(int i = 0; i < numAutomorphisms_; i++) {
+			maps[i] = ppp.maps[i]; //structure copy
+		}
+	}
+	void canonicalize(ch81 &p) const { //overwrite given puzzle with its canonical representation
+		ch81 res;
+		minlex(p.chars, res.chars);
+		p = res; //structure copy
+	}
+};
 
 int statistics() {
 	char buf[1000];
@@ -665,6 +721,13 @@ struct puzzleRecord {
 		if((other.rateFinal & depthMask) > (this->rateFinal & depthMask)) this->rateFinal = ((this->rateFinal & (~depthMask)) | (other.rateFinal & depthMask)); //the greater nosingles depth
 		return *this;
 	}
+	puzzleRecord& updateMinimality(const rating_t minimality) {
+		if(0 == (this->rateFast & minimalityMask)) {
+			this->rateFast = ((this->rateFast & (~minimalityMask)) | ((minimality << 3) & minimalityMask));
+		}
+		return *this;
+	}
+
 	rating_t getRateFinalER() const {
 		return (this->rateFinal & ERmask) >> 8;
 	}
@@ -787,12 +850,17 @@ public:
 			return ret;
 		}
 	};
-	class pgContainer : public set<puzzleRecord> {};
-	pgContainer theList;
+//	class pgAllPuzzles : public set<puzzleRecord> {
+//		puzzleRecord* theArray;
+//		set<puzzleRecord> theSet;
+//	};
+	class pgAllPuzzles : public set<puzzleRecord> {};
+	pgAllPuzzles theList;
 	int size; //max 33
-	pat ppp;
+	//pat ppp;
 private:
-	fskfr fastRater;
+	canonicalizerPreservingPattern canonicalizer;
+	fskfr* fastRater;
 	int map[34]; //compressed to real position
 	mutable std::shared_mutex mutex_;
 	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, rating_t depth) {
@@ -863,9 +931,11 @@ private:
 				map[i++] = j;
 			}
 		}
-		ppp.init(exemplar);
-		ppp.morphs.clear();
-		ppp.morphIndex.clear();
+		canonicalizer.initFromExemplar(exemplar);
+		//ppp.init(exemplar); //only ppp.numAutomorphisms and ppp.minlex(p) are used later
+		//ppp.morphs.clear();
+		//ppp.morphIndex.clear();
+		fastRater = new fskfr;
 	}
 public:
 	void load() {
@@ -876,25 +946,25 @@ public:
 				init(buf);
 				first = 0;
 			}
-			add(buf, 1);
+			add(buf);
 		}
 		if(opt.verbose) {
-			fprintf(stderr, "Number of symmetries %d\n", ppp.numAutomorphisms);
+			fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
 			fprintf(stderr, "%d puzzles loaded\n", (int)theList.size());
 		}
 	}
 	void fastRateAll() {
-		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
+		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
 			if((h->rateFast & 0xFF00) == 0) { //ER was not set
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				uncomprPuz u;
 				uncompress(*hh, u);
-				fastRater.push(u.p.chars, &(hh->rateFast));
+				fastRater->push(u.p.chars, &(hh->rateFast));
 			}
 		}
-		fastRater.commit();
+		fastRater->commit();
 	}
-	void add(const char* p, const int allowUpdates = 0) { //
+	void add(const char* p) { //
 		uncomprPuz u;
 		puzzleRecord c;
 		u.fromString(p);
@@ -903,47 +973,26 @@ public:
 			if(u.p.chars[map[i]] < 1 || u.p.chars[map[i]] > 9)
 				return;
 		}
-		//minlex the source
-		ppp.minlex(u.p);
+		//canonicalize the source
+		canonicalizer.canonicalize(u.p);
 		compress(u, c);
-		pgContainer::iterator h = theList.lower_bound(c);
-		//if(h != theList.end()) { //update
-		if(h != theList.end() && c == *h) { //update
-			if(allowUpdates) {
-//				for(int i = 0; i < 8; i++) { //store the higher of the values
-//					if(((unsigned char *)(&c.rateFast))[i] < ((unsigned char *)(&h->rateFast))[i])
-//						((unsigned char *)(&c.rateFast))[i] = ((unsigned char *)(&h->rateFast))[i];
-//				}
-				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-				hh->merge(c);
-				if((hh->rateFast & 0xFF00) == 0) { //calculate ER
-					fastRater.push(u.p.chars, &(hh->rateFast));
-				}
+		auto insertResult = theList.insert(c);
+		//at this moment we have a stored puzzle with possibly unknown minimality
+		puzzleRecord* hh = const_cast<puzzleRecord*>(&(*insertResult.first));
+		if(insertResult.second) { //successfully inserted
+			if(0 == u.minimality) {
+				//test for redundancy and update the record
+				hh->updateMinimality(solverIsIrreducibleByProbing(u.p.chars) ? 2 : 1);
 			}
 		}
-		else { //insert
-			//make additional tests here
-			if(0 == u.minimality) {
-				//test for redundancy
-				if(0 == solverIsIrreducibleByProbing(u.p.chars)) {
-					c.rateFast |= ((rating_t)1 << 3);
-					//return; //redundant clue(s)
-				}
-				else {
-					c.rateFast |= ((rating_t)2 << 3);
-				}
-			}
-			{
-				//redundancy test passed
-				//insert the puzzle, use h as a hint
-				std::unique_lock<std::shared_mutex> lock(mutex_);
-				pgContainer::iterator hhh = theList.insert(h, c);
-				//rate the puzzle
-				if((c.rateFast & puzzleRecord::rateMask) == 0) { //calculate ER
-					puzzleRecord* hh = const_cast<puzzleRecord*>(&(*hhh));
-					fastRater.push(u.p.chars, &(hh->rateFast));
-				}
-			} //critical
+		else if(insertResult.first != theList.end()) { //found
+			hh->merge(c);
+		}
+		else { //failed for some reason => just ignore
+			return;
+		}
+		if((hh->rateFast & puzzleRecord::rateMask) == 0) { //queue the record for approximate rating
+			fastRater->push(u.p.chars, &(hh->rateFast));
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
@@ -957,7 +1006,7 @@ public:
 			puzzleRecordset src;
 			resCount = 0;
 			int redundantCount = 0;
-			for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
+			for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
 				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 				if(iFilter.matches(*hh)) {
 					src.insert(hh);
@@ -998,7 +1047,7 @@ public:
 					}
 				}
 			}
-			fastRater.commit();
+			fastRater->commit();
 //			//This pass is done. Mark the seed as used at appropriate depth.
 //			if(!gExiting) {
 //				updateRelabelDepth(src, noSingles, n);
@@ -1023,7 +1072,7 @@ public:
 		pgGotchi *this_ = static_cast< pgGotchi * > (context);
 		ch81 p;
 		p.toString(puz, p.chars);
-		this_->add(p.chars, 0);
+		this_->add(p.chars);
 		return 0;
 	}
 
@@ -1046,7 +1095,9 @@ public:
 //		return 0;
 //	}
 	void dump() {
-		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
+		delete fastRater;
+		fastRater = NULL;
+		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
 			uncomprPuz u;
 			uncompress(*h, u);
 			char buf[256];
@@ -1056,147 +1107,147 @@ public:
 		}
 		fflush(NULL);
 	}
-	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
-		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
-		v = (v & 0x33333333) + ((v >> 2) & 0x33333333);     // temp
-		return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
-	}
-	int distance(const puzzleRecord &p1, const puzzleRecord &p2) const { //get minimal hamming distance, print p2 unchanged
-		if(size > 32)
-			return -1;
-		if(ppp.numAutomorphisms > 8)
-			return -1;
-		uncomprPuz u1, u2;
-		uncompress(p1, u1);
-		uncompress(p2, u2);
-		int b1[8][9], b2[9]; //32-bit bitmaps corresponding to each given's positions in the mapped coordinate system
-		char m1[8][81];
-		//get all positional morphs of the first puzzle
-		ppp.getPosMorphs(u1.p.chars, m1[0]);
-		//accumulate the givens per digit for positional morphs of the first puzzle into bitmaps
-		for(int i = 0; i < 8; i++) {
-			for(int j = 0; j < 9; j++) {
-				b1[i][j] = 0;
-			}
-		}
-		for(int j = 0; j < ppp.numAutomorphisms; j++) {
-			for(int i = 0; i < size; i++) {
-				b1[j][m1[j][map[i]] - 1] |= Digit2Bitmap[i + 1]; //b1 is 0-based, bitmaps are 1-based
-			}
-		}
-		//for(int i = 0; i < 9; i++) {
-		//	int x = b1[0][i];
-		//	for(int j = 0; j < size; j++) {
-		//		fprintf(stderr, "%d", (x >> j) & 1);
-		//	}
-		//	fprintf(stderr, "\t%d\n", i + 1);
-		//}
-		//accumulate the givens per digit of the second puzzle into bitmaps
-		for(int i = 0; i < 9; i++) {
-			b2[i] = 0;
-		}
-		for(int i = 0; i < size; i++) {
-			b2[u2.p.chars[map[i]] - 1] |= Digit2Bitmap[i + 1];
-		}
-		int minBC = INT_MAX; //minimal bitcount = 2 * minimal hamming distance
-		int r[9]; //p1 givens relabeled to
-		for(int i = 0; i < ppp.numAutomorphisms; i++) { //iterate all positional morphs of p1
-			//do 9 nested loops (all possible relabelings of p1) finding the least distance
-			for(r[0] = 0; r[0] < 9; r[0]++) { //digit to relabel "1" in p1 to
-				int d1set = Digit2Bitmap[r[0] + 1];
-				int bc1 = popCount32(b1[i][0] ^ b2[r[0]]); //number of unmatching positions of digit (r[0] + 1) in p1 and digit 1 in p2
-				if(bc1 > minBC)
-					continue; //a better match already has been found in previous iterations
-				for(r[1] = 0; r[1] < 9; r[1]++) {
-					if(Digit2Bitmap[r[1] + 1] & d1set) // don't relabel >1 digits to the same one
-						continue;
-					int d2set = d1set | Digit2Bitmap[r[1] + 1];
-					int bc2 = bc1 + popCount32(b1[i][1] ^ b2[r[1]]);
-					if(bc2 > minBC)
-						continue;
-					for(r[2] = 0; r[2] < 9; r[2]++) {
-						if(Digit2Bitmap[r[2] + 1] & d2set)
-							continue;
-						int d3set = d2set | Digit2Bitmap[r[2] + 1];
-						int bc3 = bc2 + popCount32(b1[i][2] ^ b2[r[2]]);
-						if(bc3 > minBC)
-							continue;
-						for(r[3] = 0; r[3] < 9; r[3]++) {
-							if(Digit2Bitmap[r[3] + 1] & d3set)
-								continue;
-							int d4set = d3set | Digit2Bitmap[r[3] + 1];
-							int bc4 = bc3 + popCount32(b1[i][3] ^ b2[r[3]]);
-							if(bc4 > minBC)
-								continue;
-							for(r[4] = 0; r[4] < 9; r[4]++) {
-								if(Digit2Bitmap[r[4] + 1] & d4set)
-									continue;
-								int d5set = d4set | Digit2Bitmap[r[4] + 1];
-								int bc5 = bc4 + popCount32(b1[i][4] ^ b2[r[4]]);
-								if(bc5 > minBC)
-									continue;
-								for(r[5] = 0; r[5] < 9; r[5]++) {
-									if(Digit2Bitmap[r[5] + 1] & d5set)
-										continue;
-									int d6set = d5set | Digit2Bitmap[r[5] + 1];
-									int bc6 = bc5 + popCount32(b1[i][5] ^ b2[r[5]]);
-									if(bc6 > minBC)
-										continue;
-									for(r[6] = 0; r[6] < 9; r[6]++) {
-										if(Digit2Bitmap[r[6] + 1] & d6set)
-											continue;
-										int d7set = d6set | Digit2Bitmap[r[6] + 1];
-										int bc7 = bc6 + popCount32(b1[i][6] ^ b2[r[6]]);
-										if(bc7 > minBC)
-											continue;
-										for(r[7] = 0; r[7] < 9; r[7]++) {
-											if(Digit2Bitmap[r[7] + 1] & d7set)
-												continue;
-											int d8set = d7set | Digit2Bitmap[r[7] + 1];
-											int bc8 = bc7 + popCount32(b1[i][7] ^ b2[r[7]]);
-											if(bc8 > minBC)
-												continue;
-											for(r[8] = 0; r[8] < 9; r[8]++) {
-												if(Digit2Bitmap[r[8] + 1] & d8set)
-													continue;
-												int bc9 = bc8 + popCount32(b1[i][8] ^ b2[r[8]]);
-												if(bc9 <= minBC) { //a relabeling closer than all previous is found
-													minBC = bc9;
-													if(opt.verbose) {
-														ch81 x, z;
-														x.clear();
-														z.clear();
-														int rr[9]; //reverse relabelling
-														for(int j = 0; j < 9; j++) rr[r[j]] = j;
-														for(int j = 0; j < 9; j++) fprintf(stderr, "%d", rr[j] + 1);
-														for(int j = 0; j < size; j++) {
-															z.chars[map[j]] = m1[i][map[j]]; //p1
-															x.chars[map[j]] = 1 + rr[u2.p.chars[map[j]] - 1]; //p2
-														}
-														ch81 y;
-														z.toString(y.chars);
-														fprintf(stderr, "\n%81.81s\n", y.chars);
-														x.toString(y.chars);
-														fprintf(stderr, "%81.81s\t%d\n", y.chars, minBC / 2);
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return minBC / 2;
-	}
+//	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
+//		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
+//		v = (v & 0x33333333) + ((v >> 2) & 0x33333333);     // temp
+//		return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
+//	}
+//	int distance(const puzzleRecord &p1, const puzzleRecord &p2) const { //get minimal hamming distance, print p2 unchanged
+//		if(size > 32)
+//			return -1;
+//		if(ppp.numAutomorphisms > 8)
+//			return -1;
+//		uncomprPuz u1, u2;
+//		uncompress(p1, u1);
+//		uncompress(p2, u2);
+//		int b1[8][9], b2[9]; //32-bit bitmaps corresponding to each given's positions in the mapped coordinate system
+//		char m1[8][81];
+//		//get all positional morphs of the first puzzle
+//		ppp.getPosMorphs(u1.p.chars, m1[0]);
+//		//accumulate the givens per digit for positional morphs of the first puzzle into bitmaps
+//		for(int i = 0; i < 8; i++) {
+//			for(int j = 0; j < 9; j++) {
+//				b1[i][j] = 0;
+//			}
+//		}
+//		for(int j = 0; j < ppp.numAutomorphisms; j++) {
+//			for(int i = 0; i < size; i++) {
+//				b1[j][m1[j][map[i]] - 1] |= Digit2Bitmap[i + 1]; //b1 is 0-based, bitmaps are 1-based
+//			}
+//		}
+//		//for(int i = 0; i < 9; i++) {
+//		//	int x = b1[0][i];
+//		//	for(int j = 0; j < size; j++) {
+//		//		fprintf(stderr, "%d", (x >> j) & 1);
+//		//	}
+//		//	fprintf(stderr, "\t%d\n", i + 1);
+//		//}
+//		//accumulate the givens per digit of the second puzzle into bitmaps
+//		for(int i = 0; i < 9; i++) {
+//			b2[i] = 0;
+//		}
+//		for(int i = 0; i < size; i++) {
+//			b2[u2.p.chars[map[i]] - 1] |= Digit2Bitmap[i + 1];
+//		}
+//		int minBC = INT_MAX; //minimal bitcount = 2 * minimal hamming distance
+//		int r[9]; //p1 givens relabeled to
+//		for(int i = 0; i < ppp.numAutomorphisms; i++) { //iterate all positional morphs of p1
+//			//do 9 nested loops (all possible relabelings of p1) finding the least distance
+//			for(r[0] = 0; r[0] < 9; r[0]++) { //digit to relabel "1" in p1 to
+//				int d1set = Digit2Bitmap[r[0] + 1];
+//				int bc1 = popCount32(b1[i][0] ^ b2[r[0]]); //number of unmatching positions of digit (r[0] + 1) in p1 and digit 1 in p2
+//				if(bc1 > minBC)
+//					continue; //a better match already has been found in previous iterations
+//				for(r[1] = 0; r[1] < 9; r[1]++) {
+//					if(Digit2Bitmap[r[1] + 1] & d1set) // don't relabel >1 digits to the same one
+//						continue;
+//					int d2set = d1set | Digit2Bitmap[r[1] + 1];
+//					int bc2 = bc1 + popCount32(b1[i][1] ^ b2[r[1]]);
+//					if(bc2 > minBC)
+//						continue;
+//					for(r[2] = 0; r[2] < 9; r[2]++) {
+//						if(Digit2Bitmap[r[2] + 1] & d2set)
+//							continue;
+//						int d3set = d2set | Digit2Bitmap[r[2] + 1];
+//						int bc3 = bc2 + popCount32(b1[i][2] ^ b2[r[2]]);
+//						if(bc3 > minBC)
+//							continue;
+//						for(r[3] = 0; r[3] < 9; r[3]++) {
+//							if(Digit2Bitmap[r[3] + 1] & d3set)
+//								continue;
+//							int d4set = d3set | Digit2Bitmap[r[3] + 1];
+//							int bc4 = bc3 + popCount32(b1[i][3] ^ b2[r[3]]);
+//							if(bc4 > minBC)
+//								continue;
+//							for(r[4] = 0; r[4] < 9; r[4]++) {
+//								if(Digit2Bitmap[r[4] + 1] & d4set)
+//									continue;
+//								int d5set = d4set | Digit2Bitmap[r[4] + 1];
+//								int bc5 = bc4 + popCount32(b1[i][4] ^ b2[r[4]]);
+//								if(bc5 > minBC)
+//									continue;
+//								for(r[5] = 0; r[5] < 9; r[5]++) {
+//									if(Digit2Bitmap[r[5] + 1] & d5set)
+//										continue;
+//									int d6set = d5set | Digit2Bitmap[r[5] + 1];
+//									int bc6 = bc5 + popCount32(b1[i][5] ^ b2[r[5]]);
+//									if(bc6 > minBC)
+//										continue;
+//									for(r[6] = 0; r[6] < 9; r[6]++) {
+//										if(Digit2Bitmap[r[6] + 1] & d6set)
+//											continue;
+//										int d7set = d6set | Digit2Bitmap[r[6] + 1];
+//										int bc7 = bc6 + popCount32(b1[i][6] ^ b2[r[6]]);
+//										if(bc7 > minBC)
+//											continue;
+//										for(r[7] = 0; r[7] < 9; r[7]++) {
+//											if(Digit2Bitmap[r[7] + 1] & d7set)
+//												continue;
+//											int d8set = d7set | Digit2Bitmap[r[7] + 1];
+//											int bc8 = bc7 + popCount32(b1[i][7] ^ b2[r[7]]);
+//											if(bc8 > minBC)
+//												continue;
+//											for(r[8] = 0; r[8] < 9; r[8]++) {
+//												if(Digit2Bitmap[r[8] + 1] & d8set)
+//													continue;
+//												int bc9 = bc8 + popCount32(b1[i][8] ^ b2[r[8]]);
+//												if(bc9 <= minBC) { //a relabeling closer than all previous is found
+//													minBC = bc9;
+//													if(opt.verbose) {
+//														ch81 x, z;
+//														x.clear();
+//														z.clear();
+//														int rr[9]; //reverse relabelling
+//														for(int j = 0; j < 9; j++) rr[r[j]] = j;
+//														for(int j = 0; j < 9; j++) fprintf(stderr, "%d", rr[j] + 1);
+//														for(int j = 0; j < size; j++) {
+//															z.chars[map[j]] = m1[i][map[j]]; //p1
+//															x.chars[map[j]] = 1 + rr[u2.p.chars[map[j]] - 1]; //p2
+//														}
+//														ch81 y;
+//														z.toString(y.chars);
+//														fprintf(stderr, "\n%81.81s\n", y.chars);
+//														x.toString(y.chars);
+//														fprintf(stderr, "%81.81s\t%d\n", y.chars, minBC / 2);
+//													}
+//												}
+//											}
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//		return minBC / 2;
+//	}
 	void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
 		inputFilter iFilter(0, 12, 120, 12, 120, 12, 120, 0, 2, 2); //ER>0 && EP>0 && ED>0 && minimal
 		//compose array of best puzzles for each final ER
 		uncomprPuz best_records[256];
-		for(pgContainer::iterator h = theList.begin(); h != theList.end(); h++) {
+		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
 			puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
 			if(iFilter.matchesRateFinal(*hh)) {
 				rating_t test_ER = hh->getRateFinalER();
@@ -1328,6 +1379,16 @@ int gotchiPass(const char *cmd) {
 		scanCollection(cmd + 1); // --patterns --pg s<puzzle> < collection.txt > found.txt
 		return 0;
 	}
+	pgGotchi g;
+	g.load();
+//	if(*cmd == 'd') {
+//		const puzzleRecord *p2 = &(*g.theList.begin());
+//		for(pgGotchi::pgContainer::iterator h = std::next(g.theList.begin()); h != g.theList.end(); h++) {
+//			const puzzleRecord* p1 = const_cast<puzzleRecord*>(&(*h));
+//			g.distance(*p1, *p2);
+//		}
+//		return 0;
+//	}
 	unsigned int maxRel = 1;
 	unsigned int minED = 0;
 	unsigned int maxED = 255;
@@ -1339,21 +1400,10 @@ int gotchiPass(const char *cmd) {
 	unsigned int noSingles = 0;
 	unsigned int onlyMinimals = 0; // 01=non-minimal; 10=minimal
 	sscanf(cmd, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u", &maxRel, &minER, &maxER, &minEP, &maxEP, &minED, &maxED, &maxPasses, &noSingles, &onlyMinimals);
-	pgGotchi g;
-	g.load();
-	if(*cmd == 'd') {
-		const puzzleRecord *p2 = &(*g.theList.begin());
-		for(pgGotchi::pgContainer::iterator h = std::next(g.theList.begin()); h != g.theList.end(); h++) {
-			const puzzleRecord* p1 = const_cast<puzzleRecord*>(&(*h));
-			g.distance(*p1, *p2);
-		}
-		return 0;
-	}
 	g.fastRateAll();
 	if(maxRel) { //for relabel = 0 rate only
 		g.relN(maxRel, minED, maxED, minEP, maxEP, minER, maxER, maxPasses, noSingles, onlyMinimals);
 	}
-	//g.distance((*g.theList.begin()), (*g.theList.rbegin()));
 	if(opt.verbose) {
 		fprintf(stderr, "%d puzzles done\n", (int)g.theList.size());
 	}

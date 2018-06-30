@@ -7,7 +7,6 @@
 //extern "C" DLLEXPORT int __stdcall setTestMode(int ot, char * logFileName);
 //extern "C" DLLEXPORT void __stdcall ratePuzzles(int nPuzzles, char *ze, int *er, int *ep, int *ed, int *aig, int *ir);
 
-#if 1
 #include "rate.h"
 
 //skfr static lib exports
@@ -30,6 +29,7 @@ fskfr::fskfr() :
 	}
 }
 fskfr::~fskfr() {
+	//commit();
 	{
 		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
 		active = false;
@@ -40,8 +40,20 @@ fskfr::~fskfr() {
 		pump.join();
 	}
 }
-bool fskfr::isActive() const {
-	//std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+//void fskfr::activate() {
+//	{
+//		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+//		active = true;
+//	}
+//}
+//void fskfr::deactivate() {
+//	{
+//		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+//		active = false;
+//	}
+//}
+bool fskfr::isActive() {
+	std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
 	return active;
 }
 void fskfr::ratingPump(fskfr& queue) {
@@ -50,7 +62,8 @@ void fskfr::ratingPump(fskfr& queue) {
 		uint32_t *res;
 		queue.pop(p.p, &res);
 		skfr::rateOnePuzzle(p);
-		if (queue.isActive()) *res = ((*res) & 0xFF) | (p.ed << 24) | (p.ep << 16) | (p.er << 8); //don't touch the less significant 8 bits!
+		//if(p.er == 0) fprintf(stderr, "\nfskfr puzzle with er=0\n"); //debug
+		*res = ((*res) & 0xFF) | (p.ed << 24) | (p.ep << 16) | (p.er << 8); //don't touch the less significant 8 bits!
 	}
 }
 void fskfr::push(const char *p, uint32_t *rate) {
@@ -97,19 +110,9 @@ void fskfr::pop(char *p, uint32_t **rate) {
 }
 void fskfr::commit() { //block the thread until somebody else emptied the buffer
 	std::unique_lock<std::mutex> mlock(mutex_);
-	while (active && count != 0) {
+	//while (active && count != 0) {
+	while (count != 0) {
 		conditionNotFull.wait(mlock);
 	}
+	//fprintf(stderr, "\nfskfr commit, queue size = %d\n", count); //debug
 }
-//void fskfr::commit() {
-//	//skfr::rateManyPuzzles(count, puzzlesToRate);
-//#ifdef _OPENMP
-//#pragma omp parallel for schedule(dynamic, 1)
-//#endif //_OPENMP
-//	for(int i = 0; i < count; i++) {
-//		skfr::rateOnePuzzle(puzzlesToRate[i]);
-//		*res[i] = ((*res[i]) & 0xFF) | (puzzlesToRate[i].ed << 24) | (puzzlesToRate[i].ep << 16) | (puzzlesToRate[i].er << 8); //don't touch the less significant 8 bits!
-//	}
-//	count = 0;
-//}
-#endif

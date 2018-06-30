@@ -6,7 +6,7 @@
 #include <csignal>
 #include <atomic>
 
-const char *versionString = "GridChecker (Patterns Game clone) v1.34 (2018-07-15)";
+const char *versionString = "GridChecker (Patterns Game clone) v1.35 (2018-07-30)";
 
 //#define DIRTY_TEST	//in this mode function "test" is run w/o processing the command line parameters
 

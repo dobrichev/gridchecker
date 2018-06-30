@@ -1,4 +1,3 @@
-#if 1
 #include <inttypes.h>
 #include <vector>
 #include <thread>
@@ -30,8 +29,9 @@ public:
 	void pop(char *p, uint32_t **rate);
 	//rate partially populated buffer
 	void commit();
+//	void activate();
+//	void deactivate();
 	//rate single puzzle
 	//int skfr::skfrER(const char *p) const;
-	bool isActive() const;
+	bool isActive();
 };
-#endif
