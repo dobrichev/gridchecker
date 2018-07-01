@@ -809,7 +809,6 @@ struct inputFilter {
 	}
 };
 class pgGotchi {
-	//for 16+4+4 there is 3550103402/83=42772330 puzzles capacity
 public:
 	struct uncomprPuz {
 		ch81 p;
@@ -854,7 +853,15 @@ public:
 //		puzzleRecord* theArray;
 //		set<puzzleRecord> theSet;
 //	};
-	class pgAllPuzzles : public set<puzzleRecord> {};
+	class pgAllPuzzles : public set<puzzleRecord> {
+		puzzleRecord* exists(puzzleRecord& puz) {
+			auto foundIterator = this->find(puz);
+			if(foundIterator != this->end()) {
+				return const_cast<puzzleRecord*>(&(*foundIterator));
+			}
+			return NULL;
+		}
+	};
 	pgAllPuzzles theList;
 	int size; //max 33
 	//pat ppp;
@@ -862,6 +869,7 @@ private:
 	canonicalizerPreservingPattern canonicalizer;
 	fskfr* fastRater;
 	int map[34]; //compressed to real position
+	bool initialized = false;
 	mutable std::shared_mutex mutex_;
 	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, rating_t depth) {
 		rating_t newMask = depth & puzzleRecord::depthMask;
@@ -936,20 +944,21 @@ private:
 		//ppp.morphs.clear();
 		//ppp.morphIndex.clear();
 		fastRater = new fskfr;
+		initialized = true;
 	}
 public:
-	void load() {
+	void bootstrapFromTextFile() {
 		char buf[1000];
-		int first = 1;
 		while(fgets(buf, sizeof(buf), stdin)) {
-			if(first) {
+			if(!initialized) {
 				init(buf);
-				first = 0;
+				if(opt.verbose) {
+					fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
+				}
 			}
 			add(buf);
 		}
 		if(opt.verbose) {
-			fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
 			fprintf(stderr, "%d puzzles loaded\n", (int)theList.size());
 		}
 	}
@@ -964,6 +973,11 @@ public:
 		}
 		fastRater->commit();
 	}
+//	class insertOptions {
+//		bool ignoreNonMinimals;
+//		bool ignoreSingles;
+//		bool untrustedSource;
+//	};
 	void add(const char* p) { //
 		uncomprPuz u;
 		puzzleRecord c;
@@ -1061,13 +1075,6 @@ public:
 	//this is called by solverRelabel on any puzzle candidate
 	//which a) has single completion, and b) conforms the noSingles filter
 	//but minimality is still to be checked
-//	static int relCallBackLocal_unused(const char *puz, void *context) {
-//		puzzleSet *pFound = static_cast< puzzleSet * > (context);
-//		ch81 p;
-//		p.toString(puz, p.chars);
-//		pFound->insert(p);
-//		return 0;
-//	}
 	static int relCallBackLocal(const char *puz, void *context) {
 		pgGotchi *this_ = static_cast< pgGotchi * > (context);
 		ch81 p;
@@ -1076,28 +1083,10 @@ public:
 		return 0;
 	}
 
-//	//this is called by solverRelabel on any puzzle candidate
-//	//which a) has single completion, and b) conforms the noSingles filter
-//	//but minimality is still to be checked
-//	static int relCallBack(const char *puz, const void *context) {
-//		ch81 pText;
-//		pgGotchi *pg = static_cast< pgGotchi* > (const_cast<void*>(context));
-//		pText.toString(puz, pText.chars);
-//		char buf[88];
-//		memcpy(buf, pText.chars, 81);
-//		buf[81] = 0;
-//		//sprintf(buf, "%81.81s\n", pText.chars);
-////#ifdef _OPENMP
-////		//TODO: move the critical section after the minimality check loop if possible
-////#pragma omp critical
-////#endif
-//		pg->add(buf, 0, 1);
-//		return 0;
-//	}
-	void dump() {
+	void dumpToFlatText() {
 		delete fastRater;
 		fastRater = NULL;
-		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
+		for(auto h = theList.cbegin(); h != theList.cend(); h++) {
 			uncomprPuz u;
 			uncompress(*h, u);
 			char buf[256];
@@ -1380,7 +1369,7 @@ int gotchiPass(const char *cmd) {
 		return 0;
 	}
 	pgGotchi g;
-	g.load();
+	g.bootstrapFromTextFile();
 //	if(*cmd == 'd') {
 //		const puzzleRecord *p2 = &(*g.theList.begin());
 //		for(pgGotchi::pgContainer::iterator h = std::next(g.theList.begin()); h != g.theList.end(); h++) {
@@ -1407,7 +1396,7 @@ int gotchiPass(const char *cmd) {
 	if(opt.verbose) {
 		fprintf(stderr, "%d puzzles done\n", (int)g.theList.size());
 	}
-	g.dump();
+	g.dumpToFlatText();
 	return 0;
 }
 //class task {
@@ -1431,20 +1420,20 @@ class pgDb {
 public:
 	pgGotchi g;
 public:
-	void load(const char *cmd) {
+	void bootstrap(const char *cmd) {
 		//parse the command-line parameters
 		sscanf(cmd, "%31[^:]:%31[^@]@%100[^:]:%d", username, password, listeningAddress, &listeningPort);
 		if(opt.verbose) {
 			fprintf(stderr, "Starting server with\nUsername=%s\nPassword=%s\nAddress=%s\nPort=%u\n", username, password, listeningAddress, listeningPort);
 		}
 		//load the puzzles (part of) file
-		g.load();
+		g.bootstrapFromTextFile();
 		if(opt.verbose) {
 			fprintf(stderr, "Running the listener. Press Ctrl-C to shutdown...\n");
 		}
 	}
 	void dump() {
-		g.dump();
+		g.dumpToFlatText();
 	}
 	void serve() {
 		while (!gExiting) { //this should be unnecessary
@@ -1457,7 +1446,7 @@ public:
 pgDb* Db = NULL; //use dirty global var (to postpone separation of the above class declarations from implementations)
 int pgServer(const char *cmd) {
 	Db = new pgDb();
-	Db->load(cmd);
+	Db->bootstrap(cmd);
 	Db->serve(); //blocks until Ctrl-C
 	Db->dump();
 	return 0;
@@ -1468,6 +1457,7 @@ int pgServer(const char *cmd) {
 /// API functions
 void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
 	Db->g.getPlayablePuzzles(puzzletList);
+	//Db->g.relN();
 }
 
 /////////////////////
