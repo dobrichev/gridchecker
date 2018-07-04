@@ -57,10 +57,10 @@ bool fskfr::isActive() {
 	return active;
 }
 void fskfr::ratingPump(fskfr& queue) {
-	for(; queue.isActive();) {
-		skfr::puzzleToRate p;
-		uint32_t *res;
-		queue.pop(p.p, &res);
+	skfr::puzzleToRate p;
+	uint32_t *res;
+	while(0 == queue.pop(p.p, &res)) {
+		//fprintf(stderr, "\nratingPump start rating puzzle %81.81s\n", p.p); //debug
 		skfr::rateOnePuzzle(p);
 		//if(p.er == 0) fprintf(stderr, "\nfskfr puzzle with er=0\n"); //debug
 		*res = ((*res) & 0xFF) | (p.ed << 24) | (p.ep << 16) | (p.er << 8); //don't touch the less significant 8 bits!
@@ -88,13 +88,14 @@ void fskfr::push(const char *p, uint32_t *rate) {
 	//cond_.notify_one(); //not sure whether a burst of pushes would notify more than one thread. Safely notify all.
 	conditionNotEmpty.notify_all(); //notify all waiting threads that the buffer isn't empty
 }
-void fskfr::pop(char *p, uint32_t **rate) {
+int fskfr::pop(char *p, uint32_t **rate) {
 	{
 		//do the job
 		std::unique_lock<std::mutex> mlock(mutex_);
 		while (count == 0 && active) {
 			conditionNotEmpty.wait(mlock);
 		}
+		if(!active) return 1; //error
 		for (int i = 0; i < 81; i++) {
 			p[i] = puzzlesToRate[tail].p[i];
 		}
@@ -107,6 +108,7 @@ void fskfr::pop(char *p, uint32_t **rate) {
 		//mlock.unlock();
 	}
 	conditionNotFull.notify_all(); //notify all waiting threads that the buffer isn't full
+	return 0;
 }
 void fskfr::commit() { //block the thread until somebody else emptied the buffer
 	std::unique_lock<std::mutex> mlock(mutex_);

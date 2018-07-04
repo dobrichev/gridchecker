@@ -3,6 +3,7 @@
 #include "solver.h"
 #include "options.h"
 #include "rate.h"
+#include "api/api.h"
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -1083,9 +1084,19 @@ public:
 		return 0;
 	}
 
+	int dumpToFlatText(std::ofstream& outStream) {
+		int numRecords = 0;
+		for(auto h = theList.cbegin(); h != theList.cend(); h++) {
+			uncomprPuz u;
+			uncompress(*h, u);
+			char buf[256];
+			u.toString(buf); //TODO
+			outStream << buf;
+			numRecords++;
+		}
+		return numRecords;
+	}
 	void dumpToFlatText() {
-		delete fastRater;
-		fastRater = NULL;
 		for(auto h = theList.cbegin(); h != theList.cend(); h++) {
 			uncomprPuz u;
 			uncompress(*h, u);
@@ -1095,6 +1106,11 @@ public:
 			//fflush(NULL);
 		}
 		fflush(NULL);
+	}
+	void finalize() {
+		delete fastRater;
+		fastRater = NULL;
+		dumpToFlatText();
 	}
 //	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
 //		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
@@ -1396,7 +1412,7 @@ int gotchiPass(const char *cmd) {
 	if(opt.verbose) {
 		fprintf(stderr, "%d puzzles done\n", (int)g.theList.size());
 	}
-	g.dumpToFlatText();
+	g.finalize();
 	return 0;
 }
 //class task {
@@ -1432,14 +1448,25 @@ public:
 			fprintf(stderr, "Running the listener. Press Ctrl-C to shutdown...\n");
 		}
 	}
-	void dump() {
-		g.dumpToFlatText();
+	void finalize() {
+		g.finalize();
 	}
+//	void serve() { //for the older api interface that uses the master thread
+//		pgApi apiListener;
+//		while (!gExiting) { //this should be unnecessary
+//			apiListener.listen(listeningAddress, listeningPort);
+//			//std::this_thread::sleep_for(std::chrono::seconds(1));
+//		}
+//	}
 	void serve() {
-		while (!gExiting) { //this should be unnecessary
-			apiListen(listeningAddress, listeningPort);
-			//std::this_thread::sleep_for(std::chrono::seconds(1));
+		pgApi apiListener;
+		apiListener.listen(listeningAddress, listeningPort);
+		while(!gExiting) {
+			std::this_thread::sleep_for(std::chrono::seconds(10));
 		}
+		fprintf(stderr, "Shutting down the listener...\n");
+		apiListener.shutdown();
+		fprintf(stderr, "Listener is shutdown...\n");
 	}
 };
 
@@ -1448,7 +1475,7 @@ int pgServer(const char *cmd) {
 	Db = new pgDb();
 	Db->bootstrap(cmd);
 	Db->serve(); //blocks until Ctrl-C
-	Db->dump();
+	Db->finalize();
 	return 0;
 }
 
@@ -1457,7 +1484,14 @@ int pgServer(const char *cmd) {
 /// API functions
 void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
 	Db->g.getPlayablePuzzles(puzzletList);
-	//Db->g.relN();
+}
+bool dumpToFlatText(const std::string& filename, int& numSavedRecords) {
+	std::ofstream outStream(filename);
+	if(!outStream) {
+		return true;
+	}
+	numSavedRecords = Db->g.dumpToFlatText(outStream);
+	return false;
 }
 
 /////////////////////

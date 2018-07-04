@@ -7,7 +7,7 @@
 
 class fskfr {
 	//buffers
-	static const int bufSize = 128 * 6;
+	static const int bufSize = 128;
 	skfr::puzzleToRate puzzlesToRate[bufSize];
 	uint32_t *res[bufSize]; //where the compressed result goes (ED,EP,ER,0)
 	int count;
@@ -26,7 +26,7 @@ public:
 	//add to buffer
 	void push(const char *p, uint32_t *res);
 	//read from buffer
-	void pop(char *p, uint32_t **rate);
+	int pop(char *p, uint32_t **rate); //returns 0 on success
 	//rate partially populated buffer
 	void commit();
 //	void activate();
