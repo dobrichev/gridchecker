@@ -4,6 +4,9 @@
 #include "options.h"
 #include "rate.h"
 #include "api/api.h"
+#include <iostream>
+#include <string>
+#include <iterator>
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -694,248 +697,415 @@ int enumerate(const char* pattern, const char* fixclues) {
 
 	return err;
 }
-struct puzzleRecord {
-	uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
-	rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
-	rating_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
-	//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
-	static const rating_t rateMask = 0xFFFFFF00;
-	static const rating_t depthMask = 0x07;
-	static const rating_t minimalityMask = 0x18;
-	static const rating_t ERmask = 0xFF00;
-	static const rating_t EPmask = 0xFF0000;
-	static const rating_t EDmask = 0xFF000000;
-	bool operator< (const puzzleRecord & other) const {
-		return(memcmp(this, &other, 16) < 0);
-	}
-	bool operator== (const puzzleRecord & other) const {
-		return(memcmp(this, &other, 16) == 0);
-	}
-	bool isMinimal () const {
-		return((rateFast & minimalityMask) == (2 << 3));
-	}
-	puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
-		if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
-		if((other.rateFast & depthMask) > (this->rateFast & depthMask)) this->rateFast = ((this->rateFast & (~depthMask)) | (other.rateFast & depthMask)); //the greater depth
-		if((other.rateFast & minimalityMask) > (this->rateFast & minimalityMask)) this->rateFast = ((this->rateFast & (~minimalityMask)) | (other.rateFast & minimalityMask)); //the greater minimality (just following convention)
-		if((other.rateFinal & rateMask) > (this->rateFinal & rateMask)) this->rateFinal = ((this->rateFinal & (~rateMask)) | (other.rateFinal & rateMask)); //the greater rating
-		if((other.rateFinal & depthMask) > (this->rateFinal & depthMask)) this->rateFinal = ((this->rateFinal & (~depthMask)) | (other.rateFinal & depthMask)); //the greater nosingles depth
-		return *this;
-	}
-	puzzleRecord& updateMinimality(const rating_t minimality) {
-		if(0 == (this->rateFast & minimalityMask)) {
-			this->rateFast = ((this->rateFast & (~minimalityMask)) | ((minimality << 3) & minimalityMask));
-		}
-		return *this;
-	}
 
-	rating_t getRateFinalER() const {
-		return (this->rateFinal & ERmask) >> 8;
-	}
-	rating_t getRateFinalEP() const {
-		return (this->rateFinal & EPmask) >> 16;
-	}
-	rating_t getRateFinalED() const {
-		return (this->rateFinal & EDmask) >> 24;
-	}
-};
-typedef std::set<puzzleRecord*> puzzleRecordset;
+/////////////////// source from http://rextester.com/MEUMG68174
+//template < typename T > struct as_bits
+//{
+//    static_assert( std::is_trivially_copyable<T>::value, "T must be a TriviallyCopyable type" ) ;
+//    static_assert( std::is_default_constructible<T>::value, "T must be a DefaultConstructible type" ) ;
+//
+//    as_bits( const T& v = {} ) : value(v) {}
+//    operator T() const { return value ; }
+//    T value ;
+//
+//    friend std::istream& operator>> ( std::istream& stm, as_bits<T>& bits )
+//    { return stm.read( reinterpret_cast<char*>( std::addressof(bits.value) ), sizeof(bits.value) ) ; }
+//
+//    friend std::ostream& operator<< ( std::ostream& stm, const as_bits<T>& bits )
+//    { return stm.write( reinterpret_cast< const char* >( std::addressof(bits.value) ), sizeof(bits.value) ) ; }
+//};
+//
+//template < typename T >
+//using binary_istream_iterator = std::istream_iterator< as_bits<T> > ;
+//
+//template < typename T >
+//using binary_ostream_iterator = std::ostream_iterator< as_bits<T> > ;
+//////////////////// end source from http://rextester.com/MEUMG68174
 
-struct inputFilter {
-	rating_t minus;
-	rating_t minED;
-	rating_t maxED;
-	rating_t minEP;
-	rating_t maxEP;
-	rating_t minER;
-	rating_t maxER;
-	bool noSingles;
-	rating_t minMinimality;
-	rating_t maxMinimality;
-	inputFilter(rating_t n, rating_t minED_, rating_t maxED_, rating_t minEP_, rating_t maxEP_, rating_t minER_, rating_t maxER_,
-			rating_t noSingles_, rating_t minMinimality_ = 0, rating_t maxMinimality_ = 3) :
-		minus(n & puzzleRecord::depthMask),
-		minED((minED_ << 24) & puzzleRecord::EDmask), maxED((maxED_ << 24) & puzzleRecord::EDmask),
-		minEP((minEP_ << 16) & puzzleRecord::EPmask), maxEP((maxEP_ << 16) & puzzleRecord::EPmask),
-		minER((minER_ << 8) & puzzleRecord::ERmask), maxER((maxER_ << 8) & puzzleRecord::ERmask),
-		noSingles(noSingles_), minMinimality((minMinimality_ << 3) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 3) & puzzleRecord::minimalityMask) {}
-	bool matches(const puzzleRecord& rec) const {
-		if(noSingles) {
-			if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth unconditionally
-				&& ((rec.rateFinal & puzzleRecord::depthMask) < minus) //not relabeled to this depth ignoring puzzles solved by singles
-				&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
-				&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
-				&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
-				&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
-				&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
-				&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
-			{
-				return true;
-			}
-		}
-		else {
-			if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth
-				&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
-				&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
-				&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
-				&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
-				&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
-				&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-	bool matchesRateFinal(const puzzleRecord& rec) const {
-		//here we don't care about depth but care about minimality
-		if(
-				   ((rec.rateFinal & puzzleRecord::EDmask) >= minED)
-				&& ((rec.rateFinal & puzzleRecord::EDmask) <= maxED)
-				&& ((rec.rateFinal & puzzleRecord::EPmask) >= minEP)
-				&& ((rec.rateFinal & puzzleRecord::EPmask) <= maxEP)
-				&& ((rec.rateFinal & puzzleRecord::ERmask) >= minER)
-				&& ((rec.rateFinal & puzzleRecord::ERmask) <= maxER)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-				&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality)
-			)
-		{
-			return true;
-		}
-		return false;
-	}
-};
 class pgGotchi {
 public:
-	struct uncomprPuz {
-		ch81 p;
-		uint32_t rateFastED;
-		uint32_t rateFastEP;
-		uint32_t rateFastER;
-		uint32_t rateFinalED;
-		uint32_t rateFinalEP;
-		uint32_t rateFinalER;
-		uint32_t specTransformedUpTo;
-		uint32_t transformedUpTo;
-		uint32_t minimality;
-		void toString(char *s) const {
-			p.toString(s);
-			sprintf(s + 81, " ED=%u.%1.1u/%u.%1.1u/%u.%1.1u %u %u %u ED=%u.%1.1d/%u.%1.1u/%u.%1.1u\n",
-				rateFastER / 10, rateFastER % 10, rateFastEP / 10, rateFastEP % 10, rateFastED / 10, rateFastED % 10,
-				specTransformedUpTo, transformedUpTo, minimality,
-				rateFinalER / 10, rateFinalER % 10, rateFinalEP / 10, rateFinalEP % 10, rateFinalED / 10, rateFinalED % 10);
-		}
-		int fromString(const char *s) {
-			unsigned int rateFastERh = 0, rateFastERl = 0, rateFastEPh = 0, rateFastEPl = 0, rateFastEDh = 0, rateFastEDl = 0,
-				rateFinalERh = 0, rateFinalERl = 0, rateFinalEPh = 0, rateFinalEPl = 0, rateFinalEDh = 0, rateFinalEDl = 0;
+	static int patternSize; //max 33
+	static int map[34]; //compressed to real position
+	class pgAllPuzzles { //the table of the known puzzles
+	public:
+		struct puzzleRecord {
+			uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
+			rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
+			rating_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
+			//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
+			static const rating_t rateMask = 0xFFFFFF00;
+			static const rating_t depthMask = 0x07;
+			static const rating_t minimalityMask = 0x18;
+			static const rating_t ERmask = 0xFF00;
+			static const rating_t EPmask = 0xFF0000;
+			static const rating_t EDmask = 0xFF000000;
+			struct uncomprPuz {
+				//static const int size = 33;
+				ch81 p;
+				uint32_t rateFastED;
+				uint32_t rateFastEP;
+				uint32_t rateFastER;
+				uint32_t rateFinalED;
+				uint32_t rateFinalEP;
+				uint32_t rateFinalER;
+				uint32_t specTransformedUpTo;
+				uint32_t transformedUpTo;
+				uint32_t minimality;
+				uncomprPuz() = default;
+				uncomprPuz(const uncomprPuz&) = default;
+				uncomprPuz(const std::string s) {
+					*this = uncomprPuz(s.c_str());
+				}
+				uncomprPuz(const char *s, int* size = NULL) {
+					unsigned int rateFastERh = 0, rateFastERl = 0, rateFastEPh = 0, rateFastEPl = 0, rateFastEDh = 0, rateFastEDl = 0,
+						rateFinalERh = 0, rateFinalERl = 0, rateFinalEPh = 0, rateFinalEPl = 0, rateFinalEDh = 0, rateFinalEDl = 0;
 
-			int ret = p.fromString(s);
-			specTransformedUpTo = 0;
-			transformedUpTo = 0;
-			minimality = 0;
-			sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%u.%u",
-				&rateFastERh, &rateFastERl, &rateFastEPh, &rateFastEPl, &rateFastEDh, &rateFastEDl,
-				&specTransformedUpTo, &transformedUpTo, &minimality,
-				&rateFinalERh, &rateFinalERl, &rateFinalEPh, &rateFinalEPl, &rateFinalEDh, &rateFinalEDl);
-			rateFastER = 10 * rateFastERh + rateFastERl;
-			rateFastEP = 10 * rateFastEPh + rateFastEPl;
-			rateFastED = 10 * rateFastEDh + rateFastEDl;
-			rateFinalER = 10 * rateFinalERh + rateFinalERl;
-			rateFinalEP = 10 * rateFinalEPh + rateFinalEPl;
-			rateFinalED = 10 * rateFinalEDh + rateFinalEDl;
-			return ret;
-		}
-	};
-//	class pgAllPuzzles : public set<puzzleRecord> {
-//		puzzleRecord* theArray;
-//		set<puzzleRecord> theSet;
-//	};
-	class pgAllPuzzles : public set<puzzleRecord> {
-		puzzleRecord* exists(puzzleRecord& puz) {
-			auto foundIterator = this->find(puz);
-			if(foundIterator != this->end()) {
-				return const_cast<puzzleRecord*>(&(*foundIterator));
+					int numGivens = p.fromString(s);
+					specTransformedUpTo = 0;
+					transformedUpTo = 0;
+					minimality = 0;
+					sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%u.%u",
+						&rateFastERh, &rateFastERl, &rateFastEPh, &rateFastEPl, &rateFastEDh, &rateFastEDl,
+						&specTransformedUpTo, &transformedUpTo, &minimality,
+						&rateFinalERh, &rateFinalERl, &rateFinalEPh, &rateFinalEPl, &rateFinalEDh, &rateFinalEDl);
+					rateFastER = 10 * rateFastERh + rateFastERl;
+					rateFastEP = 10 * rateFastEPh + rateFastEPl;
+					rateFastED = 10 * rateFastEDh + rateFastEDl;
+					rateFinalER = 10 * rateFinalERh + rateFinalERl;
+					rateFinalEP = 10 * rateFinalEPh + rateFinalEPl;
+					rateFinalED = 10 * rateFinalEDh + rateFinalEDl;
+					if(size) *size = numGivens;
+				}
+				operator std::string() const {
+					char s[250];
+					p.toString(s);
+					sprintf(s + 81, " ED=%u.%1.1u/%u.%1.1u/%u.%1.1u %u %u %u ED=%u.%1.1d/%u.%1.1u/%u.%1.1u\n",
+						rateFastER / 10, rateFastER % 10, rateFastEP / 10, rateFastEP % 10, rateFastED / 10, rateFastED % 10,
+						specTransformedUpTo, transformedUpTo, minimality,
+						rateFinalER / 10, rateFinalER % 10, rateFinalEP / 10, rateFinalEP % 10, rateFinalED / 10, rateFinalED % 10);
+					return std::string(s);
+				}
+				void compress(puzzleRecord &c) const {
+					for(int i = 0; i < 16; i++)
+						c.key[i] = 0;
+					if(0 == (pgGotchi::patternSize & 1)) { //half-byte
+						c.key[pgGotchi::patternSize / 2 - 1] = p.chars[pgGotchi::map[pgGotchi::patternSize - 1]]; //store the last given
+					}
+					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
+						c.key[j] = p.chars[pgGotchi::pgGotchi::map[i]] | (p.chars[pgGotchi::map[i + 1]] << 4);
+					}
+					c.rateFast = (((((rateFastED << 8) | rateFastEP) << 8) | rateFastER) << 8) | (specTransformedUpTo & puzzleRecord::depthMask) | ((minimality << 3) & puzzleRecord::minimalityMask);
+					c.rateFinal = (((((rateFinalED << 8) | rateFinalEP) << 8) | rateFinalER) << 8) | (transformedUpTo & puzzleRecord::depthMask);
+				}
+				uncomprPuz(const puzzleRecord &c) {
+					p.clear();
+					p.chars[pgGotchi::map[0]] = 1;
+					if(0 == (pgGotchi::patternSize & 1)) { //half-byte
+						p.chars[pgGotchi::map[patternSize - 1]] = c.key[pgGotchi::patternSize / 2 - 1]; //store the last given
+					}
+					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
+						p.chars[pgGotchi::map[i]] = c.key[j] & 0x0F;
+						p.chars[pgGotchi::map[i + 1]] = c.key[j] >> 4;
+					}
+					specTransformedUpTo = c.rateFast & puzzleRecord::depthMask;
+					minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
+					rating_t t = c.rateFast >> 8;
+					rateFastER = t & 0xFF;
+					t >>= 8;
+					rateFastEP = t & 0xFF;
+					rateFastED = t >> 8;
+					transformedUpTo = c.rateFinal & 0xFF;
+					t = c.rateFinal >> 8;
+					rateFinalER = t & 0xFF;
+					t >>= 8;
+					rateFinalEP = t & 0xFF;
+					rateFinalED = t >> 8;
+				}
+			    friend std::ostream & operator <<(std::ostream& out, const uncomprPuz& data) {
+		    		out << std::string(data);
+			    	return out;
+			    }
+			    friend std::istream & operator >>(std::istream& in, uncomprPuz& data) {
+			    	char buf[200];
+			    	in.getline(buf, sizeof(buf));
+			    	data = uncomprPuz(buf);
+			    	return in;
+			    }
+			}; //uncomprPuz
+			bool operator< (const puzzleRecord & other) const {
+				return(memcmp(this, &other, 16) < 0);
 			}
-			return NULL;
+			bool operator== (const puzzleRecord & other) const {
+				return(memcmp(this, &other, 16) == 0);
+			}
+			bool isMinimal () const {
+				return((rateFast & minimalityMask) == (2 << 3));
+			}
+			puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
+				if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
+				if((other.rateFast & depthMask) > (this->rateFast & depthMask)) this->rateFast = ((this->rateFast & (~depthMask)) | (other.rateFast & depthMask)); //the greater depth
+				if((other.rateFast & minimalityMask) > (this->rateFast & minimalityMask)) this->rateFast = ((this->rateFast & (~minimalityMask)) | (other.rateFast & minimalityMask)); //the greater minimality (just following convention)
+				if((other.rateFinal & rateMask) > (this->rateFinal & rateMask)) this->rateFinal = ((this->rateFinal & (~rateMask)) | (other.rateFinal & rateMask)); //the greater rating
+				if((other.rateFinal & depthMask) > (this->rateFinal & depthMask)) this->rateFinal = ((this->rateFinal & (~depthMask)) | (other.rateFinal & depthMask)); //the greater nosingles depth
+				return *this;
+			}
+			puzzleRecord& updateMinimality(const rating_t minimality) {
+				if(0 == (this->rateFast & minimalityMask)) {
+					this->rateFast = ((this->rateFast & (~minimalityMask)) | ((minimality << 3) & minimalityMask));
+				}
+				return *this;
+			}
+
+			rating_t getRateFinalER() const {
+				return (this->rateFinal & ERmask) >> 8;
+			}
+			rating_t getRateFinalEP() const {
+				return (this->rateFinal & EPmask) >> 16;
+			}
+			rating_t getRateFinalED() const {
+				return (this->rateFinal & EDmask) >> 24;
+			}
+		    friend std::ostream & operator <<(std::ostream& out, const puzzleRecord& data) {
+	    		out << std::string(data); //for text output
+				//out.write(reinterpret_cast< const char* >(std::addressof(data)), sizeof(data)); //for binary output
+		    	return out;
+		    }
+			friend std::istream & operator >>(std::istream& in, puzzleRecord& data) {
+				uncomprPuz u;
+				in >> u;
+				u.compress(data);
+				//in.read( reinterpret_cast<char*>( std::addressof(data)), sizeof(data)); //for binary input
+				return in;
+			}
+		    operator std::string() const {
+					uncomprPuz u(*this);
+		    		return std::string(u);
+		    }
+		}; //puzzleRecord
+		typedef std::set<puzzleRecord*> puzzleRecordset;
+		struct inputFilter {
+			rating_t minus;
+			rating_t minED;
+			rating_t maxED;
+			rating_t minEP;
+			rating_t maxEP;
+			rating_t minER;
+			rating_t maxER;
+			bool noSingles;
+			rating_t minMinimality;
+			rating_t maxMinimality;
+			inputFilter(rating_t n, rating_t minED_, rating_t maxED_, rating_t minEP_, rating_t maxEP_, rating_t minER_, rating_t maxER_,
+					rating_t noSingles_, rating_t minMinimality_ = 0, rating_t maxMinimality_ = 3) :
+				minus(n & puzzleRecord::depthMask),
+				minED((minED_ << 24) & puzzleRecord::EDmask), maxED((maxED_ << 24) & puzzleRecord::EDmask),
+				minEP((minEP_ << 16) & puzzleRecord::EPmask), maxEP((maxEP_ << 16) & puzzleRecord::EPmask),
+				minER((minER_ << 8) & puzzleRecord::ERmask), maxER((maxER_ << 8) & puzzleRecord::ERmask),
+				noSingles(noSingles_), minMinimality((minMinimality_ << 3) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 3) & puzzleRecord::minimalityMask) {}
+			bool operator()(const puzzleRecord& rec) const {
+				return matches(rec);
+			}
+			bool operator()(const puzzleRecord* rec) const {
+				return matches(*rec);
+			}
+			bool matches(const puzzleRecord& rec) const {
+				if(noSingles) {
+					if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth unconditionally
+						&& ((rec.rateFinal & puzzleRecord::depthMask) < minus) //not relabeled to this depth ignoring puzzles solved by singles
+						&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
+						&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
+						&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
+						&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
+						&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
+						&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
+					{
+						return true;
+					}
+				}
+				else {
+					if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth
+						&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
+						&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
+						&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
+						&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
+						&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
+						&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+			bool matchesRateFinal(const puzzleRecord& rec) const {
+				//here we don't care about depth but care about minimality
+				if(
+						   ((rec.rateFinal & puzzleRecord::EDmask) >= minED)
+						&& ((rec.rateFinal & puzzleRecord::EDmask) <= maxED)
+						&& ((rec.rateFinal & puzzleRecord::EPmask) >= minEP)
+						&& ((rec.rateFinal & puzzleRecord::EPmask) <= maxEP)
+						&& ((rec.rateFinal & puzzleRecord::ERmask) >= minER)
+						&& ((rec.rateFinal & puzzleRecord::ERmask) <= maxER)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
+						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality)
+					)
+				{
+					return true;
+				}
+				return false;
+			}
+		}; //inputFilter
+//		void getOrderedRecords(std::ostream& res) {
+//			std::ostream_iterator<puzzleRecord> outIterator(res);
+//			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
+//		}
+		void getOrderedRecords(std::ostream_iterator<pgAllPuzzles::puzzleRecord>& outIterator) {
+			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
+		}
+//		void getOrderedRecords(binary_ostream_iterator<puzzleRecord>& outIterator) {
+//			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
+//		}
+		class unorderedIterator : public std::iterator<std::forward_iterator_tag, puzzleRecord> {
+		public:
+	        explicit unorderedIterator(const pgAllPuzzles& container_) :
+	        	inTheSet(true), setIterator(set<puzzleRecord>::const_iterator()), arrayIterator(NULL), container(container_)
+	        {}
+	        static unorderedIterator unorderedIteratorBegin(const pgAllPuzzles& container_) {
+	        	unorderedIterator ret = unorderedIterator(container_);
+				if(ret.container.theSet.size()) {
+					ret.setIterator = ret.container.theSet.begin();
+				}
+				else {
+					ret.arrayIterator = ret.container.theArray;
+					ret.inTheSet = false;
+				}
+				return ret;
+	        }
+	        static unorderedIterator unorderedIteratorEnd(const pgAllPuzzles& container_) {
+	        	unorderedIterator ret = unorderedIterator(container_);
+				ret.arrayIterator = &(ret.container.theArray[ret.container.theArraySize]);
+				ret.inTheSet = false;
+				return ret;
+	        }
+			const puzzleRecord& operator*() const {
+				return std::cref(inTheSet ? *setIterator : *arrayIterator);
+			}
+			const puzzleRecord* operator->() const {
+				return inTheSet ? &(*setIterator) : arrayIterator;
+			}
+			unorderedIterator& operator++() {
+				if(inTheSet) {
+					auto setEnd = container.theSet.end();
+					if(setIterator != setEnd) {
+						++setIterator;
+					}
+					if(!(setIterator != setEnd)) { //instead of container.theSet.end() return container.theArray.begin() or container.theArray.end()
+						arrayIterator = container.theArray; //possibly unnecessary
+						inTheSet = false;
+						//at this point if the container.theArraySize==0 then the iterator automatically points to container.end()
+					}
+				}
+				else {
+					if(arrayIterator != &(container.theArray[container.theArraySize])) {
+						++arrayIterator;
+					}
+					else {
+						//past-the-end iterator, do nothing
+					}
+				}
+				return *this;
+			}
+			unorderedIterator operator++(int) {
+				unorderedIterator ret(*this);
+				++*this;
+				return ret;
+			}
+			bool operator!=(const unorderedIterator & rhs) const {
+			   return std::addressof(**this) != std::addressof(*rhs);
+			}
+			bool operator!=(const puzzleRecord* rhs) const {
+			   return std::addressof(**this) != rhs;
+			}
+		private:
+			bool inTheSet = true;
+			set<puzzleRecord>::const_iterator setIterator; //use this until theSet.end() is reached, later use arrayIterator
+			puzzleRecord* arrayIterator;
+			const pgAllPuzzles& container;
+		};
+	private:
+		puzzleRecord* theArray;
+		set<puzzleRecord> theSet;
+		std::size_t theArraySize = 0;
+		bool theSetHoldsSmallest = false; //having no deletions, once a record smaller than the first record in the array record is inserted, the set will always hold the smallest element
+		bool theSetHoldsLargest = false; //similar to theSetHoldsSmallest
+		unorderedIterator undorderedEndIterator = unorderedIterator::unorderedIteratorEnd(*this); //take care to re-initialize this after allocation of theArray
+//		puzzleRecord* exists(puzzleRecord& puz) {
+//			auto foundIterator = this->find(puz);
+//			if(foundIterator != this->end()) {
+//				return const_cast<puzzleRecord*>(&(*foundIterator));
+//			}
+//			return NULL;
+//		}
+	public:
+		std::pair<puzzleRecord*,bool> insert(const puzzleRecord& value) {
+			{
+				auto p = std::equal_range(theArray, theArray + theArraySize, value);
+				if(p.first != p.second) { //found in the array
+					return std::pair<puzzleRecord*,bool>(&(*(p.first)), false);
+				}
+			}
+			auto p = theSet.insert(value);
+			if(p.first != theSet.end()) {
+				return std::pair<puzzleRecord*,bool>(const_cast<puzzleRecord*>(&(*(p.first))), (p.second));
+			}
+			return std::pair<puzzleRecord*,bool>(theArray + theArraySize, false); //unsuccessful; returns (end(),false)
+		}
+		std::size_t size() const {
+			return theSet.size() + theArraySize;
+		}
+		const unorderedIterator cbegin() const {
+        	return unorderedIterator::unorderedIteratorBegin(*this);
+		}
+		const unorderedIterator cend() {
+			return undorderedEndIterator;
+        	//return unorderedIterator::unorderedIteratorEnd(*this);
 		}
 	};
 	pgAllPuzzles theList;
-	int size; //max 33
-	//pat ppp;
 private:
 	canonicalizerPreservingPattern canonicalizer;
 	fskfr* fastRater;
-	int map[34]; //compressed to real position
 	bool initialized = false;
 	mutable std::shared_mutex mutex_;
-	void updateRelabelDepthNoLock(puzzleRecord* hh, bool noSingles, rating_t depth) {
-		rating_t newMask = depth & puzzleRecord::depthMask;
-		if((hh->rateFinal & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
-			hh->rateFinal = (hh->rateFinal & (~puzzleRecord::depthMask)) | newMask;
+	void updateRelabelDepthNoLock(pgAllPuzzles::puzzleRecord* hh, bool noSingles, rating_t depth) {
+		rating_t newMask = depth & pgAllPuzzles::puzzleRecord::depthMask;
+		if((hh->rateFinal & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
+			hh->rateFinal = (hh->rateFinal & (~pgAllPuzzles::puzzleRecord::depthMask)) | newMask;
 		}
 		if(!noSingles) {
-			if((hh->rateFast & puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (only when not ignoring the singles)
-				hh->rateFast = (hh->rateFast & (~puzzleRecord::depthMask)) | newMask;
+			if((hh->rateFast & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (only when not ignoring the singles)
+				hh->rateFast = (hh->rateFast & (~pgAllPuzzles::puzzleRecord::depthMask)) | newMask;
 			}
 		}
 	}
-	void updateRelabelDepth(puzzleRecord* hh, bool noSingles, rating_t depth) {
+	void updateRelabelDepth(pgAllPuzzles::puzzleRecord* hh, bool noSingles, rating_t depth) {
 		std::unique_lock<std::shared_mutex> lock(mutex_);
 		updateRelabelDepthNoLock(hh, noSingles, depth);
 	}
-	void updateRelabelDepth(puzzleRecordset& src, bool noSingles, rating_t depth) {
+	void updateRelabelDepth(pgAllPuzzles::puzzleRecordset& src, bool noSingles, rating_t depth) {
 		std::unique_lock<std::shared_mutex> lock(mutex_);
-		for(puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
-			puzzleRecord* hh = *i;
+		for(pgAllPuzzles::puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
+			pgAllPuzzles::puzzleRecord* hh = *i;
 			updateRelabelDepthNoLock(hh, noSingles, depth);
 		}
 	}
-	void compress(const uncomprPuz &u, puzzleRecord &c) const {
-		for(int i = 0; i < 16; i++)
-			c.key[i] = 0;
-		if(0 == (size & 1)) { //half-byte
-			c.key[size / 2 - 1] = u.p.chars[map[size - 1]]; //store the last given
-		}
-		for(int i = 1, j = 0; i < size - 1; j++, i += 2) { //start from the second given, the first is always "1"
-			c.key[j] = u.p.chars[map[i]] | (u.p.chars[map[i + 1]] << 4);
-		}
-		c.rateFast = (((((u.rateFastED << 8) | u.rateFastEP) << 8) | u.rateFastER) << 8) | (u.specTransformedUpTo & puzzleRecord::depthMask) | ((u.minimality << 3) & puzzleRecord::minimalityMask);
-		c.rateFinal = (((((u.rateFinalED << 8) | u.rateFinalEP) << 8) | u.rateFinalER) << 8) | (u.transformedUpTo & puzzleRecord::depthMask);
-	}
-	void uncompress(const puzzleRecord &c, uncomprPuz &u) const {
-		u.p.clear();
-		u.p.chars[map[0]] = 1;
-		if(0 == (size & 1)) { //half-byte
-			u.p.chars[map[size - 1]] = c.key[size / 2 - 1]; //store the last given
-		}
-		for(int i = 1, j = 0; i < size - 1; j++, i += 2) { //start from the second given, the first is always "1"
-			u.p.chars[map[i]] = c.key[j] & 0x0F;
-			u.p.chars[map[i + 1]] = c.key[j] >> 4;
-		}
-		u.specTransformedUpTo = c.rateFast & puzzleRecord::depthMask;
-		u.minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
-		rating_t t = c.rateFast >> 8;
-		u.rateFastER = t & 0xFF;
-		t >>= 8;
-		u.rateFastEP = t & 0xFF;
-		u.rateFastED = t >> 8;
-		u.transformedUpTo = c.rateFinal & 0xFF;
-		t = c.rateFinal >> 8;
-		u.rateFinalER = t & 0xFF;
-		t >>= 8;
-		u.rateFinalEP = t & 0xFF;
-		u.rateFinalED = t >> 8;
-	}
 	void init(const char *exemplar) {
-		uncomprPuz u;
-		size = u.fromString(exemplar);
-		if(size < 17 || size > 33)
+		pgAllPuzzles::puzzleRecord::uncomprPuz u(exemplar, &patternSize);
+		if(patternSize < 17 || patternSize > 33)
 			return; //error, invalid pattern size
-		for(int i = 0, j = 0; i < size; j++) {
+		for(int i = 0, j = 0; i < patternSize; j++) {
 			if(u.p.chars[j]) {
 				map[i++] = j;
 			}
@@ -964,11 +1134,10 @@ public:
 		}
 	}
 	void fastRateAll() {
-		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
+		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
 			if((h->rateFast & 0xFF00) == 0) { //ER was not set
-				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-				uncomprPuz u;
-				uncompress(*hh, u);
+				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
+				pgAllPuzzles::puzzleRecord::uncomprPuz u(*hh);
 				fastRater->push(u.p.chars, &(hh->rateFast));
 			}
 		}
@@ -980,50 +1149,50 @@ public:
 //		bool untrustedSource;
 //	};
 	void add(const char* p) { //
-		uncomprPuz u;
-		puzzleRecord c;
-		u.fromString(p);
+		pgAllPuzzles::puzzleRecord::uncomprPuz u(p);
+		pgAllPuzzles::puzzleRecord c;
 		//test for pattern validity
-		for(int i = 0; i < size; i++) {
-			if(u.p.chars[map[i]] < 1 || u.p.chars[map[i]] > 9)
+		for(int i = 0; i < patternSize; i++) {
+			if(u.p.chars[pgGotchi::map[i]] < 1 || u.p.chars[map[i]] > 9)
 				return;
 		}
 		//canonicalize the source
 		canonicalizer.canonicalize(u.p);
-		compress(u, c);
+		u.compress(c);
 		auto insertResult = theList.insert(c);
 		//at this moment we have a stored puzzle with possibly unknown minimality
-		puzzleRecord* hh = const_cast<puzzleRecord*>(&(*insertResult.first));
+		pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*insertResult.first));
 		if(insertResult.second) { //successfully inserted
 			if(0 == u.minimality) {
 				//test for redundancy and update the record
 				hh->updateMinimality(solverIsIrreducibleByProbing(u.p.chars) ? 2 : 1);
 			}
 		}
-		else if(insertResult.first != theList.end()) { //found
+		else if(theList.cend() != insertResult.first) { //found
 			hh->merge(c);
 		}
 		else { //failed for some reason => just ignore
 			return;
 		}
-		if((hh->rateFast & puzzleRecord::rateMask) == 0) { //queue the record for approximate rating
+		if((hh->rateFast & pgAllPuzzles::puzzleRecord::rateMask) == 0) { //queue the record for approximate rating
 			fastRater->push(u.p.chars, &(hh->rateFast));
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
 		//static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
-		inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3);
+		pgAllPuzzles::inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3);
 		int resCount;
 		//const pgContainer::size_type max_batch_size = max_batch_sizes[n];
 		if(maxPasses == 0) maxPasses = 1;
 		do {
 			//get puzzles passing filter and not relabeled up to n (if any)
-			puzzleRecordset src;
+			pgAllPuzzles::puzzleRecordset src;
 			resCount = 0;
 			int redundantCount = 0;
-			for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
-				puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
-				if(iFilter.matches(*hh)) {
+			for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
+				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
+				//if(iFilter.matches(*hh)) {
+				if(iFilter(hh)) {
 					src.insert(hh);
 					resCount++;
 					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
@@ -1037,20 +1206,14 @@ public:
 			if(opt.verbose) {
 				fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
 			}
+			//std::copy_if(theList.cbegin(), theList.cend(), iFilter, std::insert_iterator<pgAllPuzzles::puzzleRecordset>(src, src.end())); //can't copy from object to object*
 			//relabel & insert
 			size_t percentage = 0;
 			size_t resNum = 0;
-			for(puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
+			for(pgAllPuzzles::puzzleRecordset::iterator i = src.begin(); i != src.end(); i++) {
 				if(gExiting) continue;
-				puzzleRecord* hh = *i;
-				uncomprPuz u;
-				uncompress(*hh, u);
-//				puzzleSet found;
-//				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal_unused, &found); //checking for minimality here is slower
-//				for(puzzleSet::const_iterator lc = found.begin(); lc != found.end(); lc++) {
-//					//add(lc->chars, 0, 1);
-//					add(lc->chars, 0);
-//				}
+				pgAllPuzzles::puzzleRecord* hh = *i;
+				pgAllPuzzles::puzzleRecord::uncomprPuz u(*hh);
 				solverRelabel(u.p.chars, n, false, true, noSingles, relCallBackLocal, this); //checking for minimality here is slower
 				updateRelabelDepth(hh, noSingles, n);
 				if(opt.verbose) {
@@ -1083,34 +1246,39 @@ public:
 		this_->add(p.chars);
 		return 0;
 	}
+	int dumpToFlatText(std::ostream& outStream) {
+		std::ostream_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
+		theList.getOrderedRecords(outIterator);
+		return (int)theList.size();
+	}
+//	int dumpToBinary(std::ostream& outStream) {
+//		std::ostreambuf_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
+//		theList.getOrderedRecords(outIterator);
+//		return (int)theList.size();
+//	}
 
-	int dumpToFlatText(std::ofstream& outStream) {
-		int numRecords = 0;
-		for(auto h = theList.cbegin(); h != theList.cend(); h++) {
-			uncomprPuz u;
-			uncompress(*h, u);
-			char buf[256];
-			u.toString(buf); //TODO
-			outStream << buf;
-			numRecords++;
-		}
-		return numRecords;
-	}
-	void dumpToFlatText() {
-		for(auto h = theList.cbegin(); h != theList.cend(); h++) {
-			uncomprPuz u;
-			uncompress(*h, u);
-			char buf[256];
-			u.toString(buf);
-			printf("%s", buf);
-			//fflush(NULL);
-		}
-		fflush(NULL);
-	}
+//	int dumpToBinary(std::ostream& outStream) {
+//		binary_ostream_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
+//		theList.getOrderedRecords(outIterator);
+//		return (int)theList.size();
+//	}
+
+//	int dumpToFlatText(std::ostream& outStream) {//std::ostreambuf_iterator
+//		int numRecords = 0;
+//		for(auto h = theList.cbegin(); h != theList.cend(); ++h) {
+//			uncomprPuz u;
+//			uncompress(*h, u);
+//			char buf[256];
+//			u.toString(buf); //TODO
+//			outStream << buf;
+//			numRecords++;
+//		}
+//		return numRecords;
+//	}
 	void finalize() {
 		delete fastRater;
 		fastRater = NULL;
-		dumpToFlatText();
+		dumpToFlatText(cout);
 	}
 //	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
 //		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
@@ -1249,11 +1417,11 @@ public:
 //		return minBC / 2;
 //	}
 	void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
-		inputFilter iFilter(0, 12, 120, 12, 120, 12, 120, 0, 2, 2); //ER>0 && EP>0 && ED>0 && minimal
+		pgAllPuzzles::inputFilter iFilter(0, 12, 120, 12, 120, 12, 120, 0, 2, 2); //ER>0 && EP>0 && ED>0 && minimal
 		//compose array of best puzzles for each final ER
-		uncomprPuz best_records[256];
-		for(pgAllPuzzles::iterator h = theList.begin(); h != theList.end(); h++) {
-			puzzleRecord* hh = const_cast<puzzleRecord*>(&(*h));
+		pgAllPuzzles::puzzleRecord::uncomprPuz best_records[256];
+		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
+			pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
 			if(iFilter.matchesRateFinal(*hh)) {
 				rating_t test_ER = hh->getRateFinalER();
 				if(test_ER > 120) continue; //bug???
@@ -1262,21 +1430,19 @@ public:
 						||
 						(best_records[test_ER].rateFinalEP == hh->getRateFinalEP() && best_records[test_ER].rateFinalED < hh->getRateFinalED()) //better due to ED
 					) {
-					uncomprPuz best_puzzle;
-					uncompress(*hh, best_puzzle);
-					best_records[test_ER] = best_puzzle;
+					best_records[test_ER] = pgAllPuzzles::puzzleRecord::uncomprPuz(*hh);
 				}
 			}
 		}
 		// copy the best puzzles to the output
-		char buf[1000];
 		for(int i = 120; i >= 0; i--) {
 			if(0 == best_records[i].rateFastEP) continue; //no puzzles for this ER
-			best_records[i].toString(buf);
-			puzzletList.push_back(buf);
+			puzzletList.push_back(string(best_records[i]));
 		}
 	}
-};
+}; // pgGotchi
+int pgGotchi::patternSize; //max 33
+int pgGotchi::map[34]; //compressed to real position
 
 int probe_map_callback (void *context, const char *puz, char *m, const morph &theMorph) {
 	(void)puz; (void)theMorph; //suppress compiler warnings
@@ -1427,7 +1593,6 @@ int gotchiPass(const char *cmd) {
 //	std::chrono::steady_clock::time_point sentTime;
 //	//sentTime = std::chrono::steady_clock::now();
 //};
-int apiListen(const char *host, int port);
 class pgDb {
 	char username[32];
 	char password[32];
