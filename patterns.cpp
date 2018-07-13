@@ -5,6 +5,7 @@
 #include "rate.h"
 #include "api/api.h"
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <iterator>
 #include <vector>
@@ -18,6 +19,7 @@
 #include <thread>
 #include <inttypes.h>
 #include <chrono>
+#include "genericOutputIterator.h"
 
 typedef uint32_t rating_t;
 
@@ -339,6 +341,34 @@ public:
 		ch81 res;
 		minlex(p.chars, res.chars);
 		p = res; //structure copy
+	}
+	std::ostream& serialize(std::ostream& outStream, bool binaryMode) {
+		//save the header
+		if(binaryMode) {
+			outStream.write(reinterpret_cast<char*>(&numAutomorphisms_), sizeof(numAutomorphisms_));
+			for(int i = 0; i < numAutomorphisms_; i++) { //automorphic transformation maps
+				outStream.write(reinterpret_cast<char*>(&maps[i]), sizeof(maps[0]));
+			}
+		}
+		else {
+			//don't write the number of puzzles in text mode
+		}
+		return outStream;
+	}
+	std::istream& deserialize(std::istream& in) {
+		//read the header
+		in.read(reinterpret_cast<char*>(&numAutomorphisms_), sizeof(numAutomorphisms_));
+		if(numAutomorphisms_ > 8 || numAutomorphisms_ < 0) exit(1);
+		for(int i = 0; i < numAutomorphisms_; i++) { //automorphic transformation maps
+			in.read(reinterpret_cast<char*>(&maps[i]), sizeof(maps[0]));
+			for(int pos = 0; pos < 81; pos++) {
+				if(maps[i].chars[pos] < 0 || maps[i].chars[pos] > 80) exit(1);
+			}
+		}
+		if(opt.verbose) {
+			fprintf(stderr, "Canonicalizer is initialized\n");
+		}
+		return in;
 	}
 };
 
@@ -698,30 +728,6 @@ int enumerate(const char* pattern, const char* fixclues) {
 	return err;
 }
 
-/////////////////// source from http://rextester.com/MEUMG68174
-//template < typename T > struct as_bits
-//{
-//    static_assert( std::is_trivially_copyable<T>::value, "T must be a TriviallyCopyable type" ) ;
-//    static_assert( std::is_default_constructible<T>::value, "T must be a DefaultConstructible type" ) ;
-//
-//    as_bits( const T& v = {} ) : value(v) {}
-//    operator T() const { return value ; }
-//    T value ;
-//
-//    friend std::istream& operator>> ( std::istream& stm, as_bits<T>& bits )
-//    { return stm.read( reinterpret_cast<char*>( std::addressof(bits.value) ), sizeof(bits.value) ) ; }
-//
-//    friend std::ostream& operator<< ( std::ostream& stm, const as_bits<T>& bits )
-//    { return stm.write( reinterpret_cast< const char* >( std::addressof(bits.value) ), sizeof(bits.value) ) ; }
-//};
-//
-//template < typename T >
-//using binary_istream_iterator = std::istream_iterator< as_bits<T> > ;
-//
-//template < typename T >
-//using binary_ostream_iterator = std::ostream_iterator< as_bits<T> > ;
-//////////////////// end source from http://rextester.com/MEUMG68174
-
 class pgGotchi {
 public:
 	static int patternSize; //max 33
@@ -740,7 +746,6 @@ public:
 			static const rating_t EPmask = 0xFF0000;
 			static const rating_t EDmask = 0xFF000000;
 			struct uncomprPuz {
-				//static const int size = 33;
 				ch81 p;
 				uint32_t rateFastED;
 				uint32_t rateFastEP;
@@ -866,15 +871,15 @@ public:
 				return (this->rateFinal & EDmask) >> 24;
 			}
 		    friend std::ostream & operator <<(std::ostream& out, const puzzleRecord& data) {
-	    		out << std::string(data); //for text output
-				//out.write(reinterpret_cast< const char* >(std::addressof(data)), sizeof(data)); //for binary output
+	    		//out << std::string(data); //for text output
+				out.write(reinterpret_cast< const char* >(std::addressof(data)), sizeof(data)); //for binary output
 		    	return out;
 		    }
 			friend std::istream & operator >>(std::istream& in, puzzleRecord& data) {
-				uncomprPuz u;
-				in >> u;
-				u.compress(data);
-				//in.read( reinterpret_cast<char*>( std::addressof(data)), sizeof(data)); //for binary input
+//				uncomprPuz u;
+//				in >> u;
+//				u.compress(data);
+				in.read( reinterpret_cast<char*>( std::addressof(data)), sizeof(data)); //for binary input
 				return in;
 			}
 		    operator std::string() const {
@@ -882,7 +887,6 @@ public:
 		    		return std::string(u);
 		    }
 		}; //puzzleRecord
-		typedef std::set<puzzleRecord*> puzzleRecordset;
 		struct inputFilter {
 			rating_t minus;
 			rating_t minED;
@@ -957,21 +961,58 @@ public:
 				return false;
 			}
 		}; //inputFilter
-//		void getOrderedRecords(std::ostream& res) {
-//			std::ostream_iterator<puzzleRecord> outIterator(res);
-//			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
-//		}
-		void getOrderedRecords(std::ostream_iterator<pgAllPuzzles::puzzleRecord>& outIterator) {
-			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
-		}
-//		void getOrderedRecords(binary_ostream_iterator<puzzleRecord>& outIterator) {
-//			std::set_union(theSet.begin(), theSet.end(), theArray, theArray + theArraySize, outIterator);
-//		}
+		class saveToStream {
+		public:
+			saveToStream(pgAllPuzzles& container, std::ostream& outStream, bool isBinary) : outStream_(outStream), isBinary_(isBinary) {
+				genericOutputIterator<puzzleRecord, saveToStream>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::set_union(container.theSet.begin(), container.theSet.end(), container.theArray, container.theArray + container.theArraySize, outGenericIterator); //make an ordered pass over all puzzles calling operator(puzzleRecord&)
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord& p) { //a record is sent for processing
+				if(isBinary_) {
+					outStream_ << p;
+				}
+				else {
+					outStream_ << pgAllPuzzles::puzzleRecord::uncomprPuz(p);
+				}
+			}
+		private:
+			std::ostream& outStream_;
+			bool isBinary_;
+		}; //saveToStream
+		//typedef std::set<puzzleRecord*> puzzleRecordset;
+		class puzzleRecordset : public std::vector<puzzleRecord*> { //vector of pointers to puzzles
+		public:
+			puzzleRecordset(pgAllPuzzles& container, inputFilter& filter) : filter_(filter) { //initialize from the global container
+				genericOutputIterator<puzzleRecord, puzzleRecordset>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.theSet.cbegin(), container.theSet.cend(), outGenericIterator); //part 1
+				std::copy(container.theArray, container.theArray + container.theArraySize, outGenericIterator); //part 2
+			}
+			puzzleRecordset(puzzleRecordset& container, inputFilter& filter) : filter_(filter) { //initialize from other puzzleRecordset
+				genericOutputIterator<puzzleRecord*, puzzleRecordset>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.cbegin(), container.cend(), outGenericIterator);
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord& p) { //a record is sent for processing
+			//void operator()(pgAllPuzzles::puzzleRecord* const & p) { //process global container record
+				if(filter_(p)) {
+					push_back(const_cast<puzzleRecord*>(&p));
+				}
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord* p) { //process puzzleRecordset record
+				if(filter_(*p)) {
+					push_back(const_cast<puzzleRecord*>(p));
+				}
+			}
+//			void insert(puzzleRecord* p) { //for compatibility with std:set
+//				push_back(p);
+//			}
+		private:
+			inputFilter& filter_; //initial filter for initialization of the records
+		};
 		class unorderedIterator : public std::iterator<std::forward_iterator_tag, puzzleRecord> {
 		public:
 	        explicit unorderedIterator(const pgAllPuzzles& container_) :
-	        	inTheSet(true), setIterator(set<puzzleRecord>::const_iterator()), arrayIterator(NULL), container(container_)
-	        {}
+	        	inTheSet(true), setIterator(set<puzzleRecord>::const_iterator()), arrayIterator(NULL), container(container_) {}
+	        //constexpr unorderedIterator(const unorderedIterator&&) = default;
 	        static unorderedIterator unorderedIteratorBegin(const pgAllPuzzles& container_) {
 	        	unorderedIterator ret = unorderedIterator(container_);
 				if(ret.container.theSet.size()) {
@@ -1035,12 +1076,12 @@ public:
 			const pgAllPuzzles& container;
 		};
 	private:
-		puzzleRecord* theArray;
+		puzzleRecord* theArray = NULL;
 		set<puzzleRecord> theSet;
 		std::size_t theArraySize = 0;
 		bool theSetHoldsSmallest = false; //having no deletions, once a record smaller than the first record in the array record is inserted, the set will always hold the smallest element
 		bool theSetHoldsLargest = false; //similar to theSetHoldsSmallest
-		unorderedIterator undorderedEndIterator = unorderedIterator::unorderedIteratorEnd(*this); //take care to re-initialize this after allocation of theArray
+		//unorderedIterator undorderedEndIterator = unorderedIterator::unorderedIteratorEnd(*this); //take care to re-initialize this after allocation of theArray
 //		puzzleRecord* exists(puzzleRecord& puz) {
 //			auto foundIterator = this->find(puz);
 //			if(foundIterator != this->end()) {
@@ -1049,6 +1090,9 @@ public:
 //			return NULL;
 //		}
 	public:
+		~pgAllPuzzles() {
+			delete[] theArray;
+		}
 		std::pair<puzzleRecord*,bool> insert(const puzzleRecord& value) {
 			{
 				auto p = std::equal_range(theArray, theArray + theArraySize, value);
@@ -1069,16 +1113,60 @@ public:
         	return unorderedIterator::unorderedIteratorBegin(*this);
 		}
 		const unorderedIterator cend() {
-			return undorderedEndIterator;
-        	//return unorderedIterator::unorderedIteratorEnd(*this);
+			//return undorderedEndIterator;
+        	return unorderedIterator::unorderedIteratorEnd(*this);
 		}
-	};
+//	    friend std::ostream & operator <<(std::ostream& out, const pgAllPuzzles& data) {
+//    		//out << std::string(data); //for text output
+//			out.write(reinterpret_cast< const char* >(std::addressof(data)), sizeof(data)); //for binary output
+//	    	return out;
+//	    }
+//		friend std::istream & operator >>(std::istream& in, pgAllPuzzles& data) {
+//			uncomprPuz u;
+//			in >> u;
+//			u.compress(data);
+//			//in.read( reinterpret_cast<char*>( std::addressof(data)), sizeof(data)); //for binary input
+//			return in;
+//		}
+		std::ostream& serialize(std::ostream& outStream, bool binaryMode) {
+			//save the header
+			auto numPuzzles(size());
+			if(binaryMode) {
+				outStream.write(reinterpret_cast<char*>(&numPuzzles), sizeof(numPuzzles));
+			}
+			else {
+				//don't write the number of puzzles in text mode
+			}
+			//save the puzzles ordered by key
+			pgAllPuzzles::saveToStream saver(*this, outStream, binaryMode);
+			return outStream;
+		}
+		std::istream& deserialize(std::istream& in) {
+			//read the header
+			in.read(reinterpret_cast<char*>(&theArraySize), sizeof(theArraySize));
+			if(theArraySize > 300000000) exit(1); //debug, don't accept > 300M puzzles
+			//undorderedEndIterator = unorderedIterator::unorderedIteratorEnd(*this); //update the cached end() iterator
+			//allocate theArray
+			theArray = new (std::nothrow) puzzleRecord[theArraySize];
+			if(theArray == NULL) exit(1); //out of memory
+			//read puzzle records
+			for(std::size_t i = 0; (!!in) && i < theArraySize; i++) { //each puzzle
+				in >> theArray[i];
+			}
+			if(!std::is_sorted(theArray, theArray + theArraySize)) {
+				exit(1);
+				//std::is_sorted(theArray, theArray + theArraySize); //this is recoverable but unexpected
+			}
+			return in;
+		}
+	}; //pgAllPuzzles
 	pgAllPuzzles theList;
 private:
 	canonicalizerPreservingPattern canonicalizer;
-	fskfr* fastRater;
+	fskfr* fastRater = NULL;
 	bool initialized = false;
 	mutable std::shared_mutex mutex_;
+	static constexpr const char* fileSignature = "PatternsGameDB"; //a text placed at begining of a binary file for automatical determination of the file type (alternative of flat text puzzles list)
 	void updateRelabelDepthNoLock(pgAllPuzzles::puzzleRecord* hh, bool noSingles, rating_t depth) {
 		rating_t newMask = depth & pgAllPuzzles::puzzleRecord::depthMask;
 		if((hh->rateFinal & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
@@ -1117,11 +1205,107 @@ private:
 		fastRater = new fskfr;
 		initialized = true;
 	}
+	std::ostream& serialize(std::ostream& outStream, bool binaryMode) {
+		//save the signature
+		if(binaryMode) {
+			outStream.write(fileSignature, std::strlen(fileSignature)); //signature
+			outStream.write("\n", 1); //signature + the terminating null character
+			//outStream.write(fileSignature, sizeof fileSignature); //signature + the terminating null character
+		}
+		else {
+			//don't write the number of puzzles in text mode
+		}
+		//save the header
+		if(binaryMode) {
+			outStream.write(reinterpret_cast<char*>(&patternSize), sizeof(patternSize)); //number of givens in the pattern
+			for(int i = 0; i < patternSize; i++) { //givens' positions
+				outStream.write(reinterpret_cast<char*>(&map[i]), sizeof(map[0])); //positions of the givens in the pattern
+			}
+		}
+		else {
+			//don't write the number of puzzles in text mode
+		}
+		//save the canonicalizer
+		canonicalizer.serialize(outStream, binaryMode);
+		//save the puzzles table
+		theList.serialize(outStream, binaryMode);
+		return outStream;
+	}
 public:
 	void bootstrapFromTextFile() {
+		if(opt.verbose) {
+			fprintf(stderr, "Bootstrapping...\n");
+		}
+		(void) !std::freopen(nullptr, "rb", stdin);
+		if(!cin) {
+			if(opt.verbose) {
+				fprintf(stderr, "Error in switching stdin to binary mode\n");
+			}
+			exit(1);
+		}
+		bootstrapFromStream(cin); //5 times slower than fgets for text mode!!!
+		return;
+
+//		char buf[1000];
+//		while(fgets(buf, sizeof(buf), stdin)) {
+//			if(!initialized) {
+//				init(buf);
+//				if(opt.verbose) {
+//					fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
+//				}
+//			}
+//			add(buf);
+//		}
+//		if(opt.verbose) {
+//			fprintf(stderr, "%d puzzles loaded\n", (int)theList.size());
+//		}
+	}
+	std::istream& deserialize(std::istream& in) {
+		//signarure is read
+
+		//read the header
+		in.read(reinterpret_cast<char*>(&patternSize), sizeof(patternSize));
+		if(patternSize > 33 || patternSize < 17) exit(1);
+		if(opt.verbose) {
+			fprintf(stderr, "Pattern size = %d\n", patternSize);
+		}
+		for(int i = 0; i < patternSize; i++) { //givens' positions
+			in.read(reinterpret_cast<char*>(&map[i]), sizeof(map[0])); //positions of the givens in the pattern
+			if(map[i] < 0 || map[i] > 80) exit(1);
+		}
+		if(opt.verbose) {
+			fprintf(stderr, "Positions = ");
+			for(int i = 0; i < patternSize; i++) { //givens' positions
+				fprintf(stderr, "%d ",map[i]);
+			}
+			fprintf(stderr, "\n");
+		}
+		//read the canonicalizer
+		canonicalizer.deserialize(in);
+		//read the puzzles table
+		theList.deserialize(in);
+
+		return in;
+	}
+	void bootstrapFromStream(std::istream& in) {
 		char buf[1000];
-		while(fgets(buf, sizeof(buf), stdin)) {
+		while(!!in) {
+			in.getline(buf, sizeof(buf));
 			if(!initialized) {
+				if(0 == std::strncmp(buf, fileSignature, sizeof(buf))) {
+					//binary input
+					if(opt.verbose) {
+						fprintf(stderr, "Binaly input detected, signatute=[%s]\n", buf);
+					}
+					deserialize(in);
+					fastRater = new fskfr;
+					initialized = true;
+					break;
+				}
+				if(opt.verbose) {
+					fprintf(stderr, "Textual input detected, signatute=[%s]\n", buf);
+					//fprintf(stderr, "Textual input detected\n");
+				}
 				init(buf);
 				if(opt.verbose) {
 					fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
@@ -1134,13 +1318,32 @@ public:
 		}
 	}
 	void fastRateAll() {
-		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
-			if((h->rateFast & 0xFF00) == 0) { //ER was not set
-				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
-				pgAllPuzzles::puzzleRecord::uncomprPuz u(*hh);
-				fastRater->push(u.p.chars, &(hh->rateFast));
-			}
+		pgAllPuzzles::inputFilter emptyFastRating(7,0,0,0,0,0,0,0,0,3);
+		pgAllPuzzles::puzzleRecordset emptyFastRated(theList, emptyFastRating);
+		if(opt.verbose) {
+			fprintf(stderr, "fastRateAll: rating %d puzzles ...", (int)emptyFastRated.size());
 		}
+		for(pgAllPuzzles::puzzleRecord* p : emptyFastRated) {
+			pgAllPuzzles::puzzleRecord::uncomprPuz u(*p);
+			fastRater->push(u.p.chars, &((p)->rateFast));
+		}
+		if(opt.verbose) {
+			fprintf(stderr, " done\n");
+		}
+//		int n = 0, r = 0;
+//		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
+//			n++;
+//			if((h->rateFast & 0xFF00) == 0) { //ER was not set
+//				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
+//				pgAllPuzzles::puzzleRecord::uncomprPuz u(*hh);
+//				fastRater->push(u.p.chars, &(hh->rateFast));
+//				r++;
+//			}
+//		}
+//		if(opt.verbose) {
+//			fprintf(stderr, "fastRateAll: rated %d out of %d puzzles, total %d puzzles\n", r, n, (int)theList.size());
+//			sleep(5);
+//		}
 		fastRater->commit();
 	}
 //	class insertOptions {
@@ -1186,25 +1389,27 @@ public:
 		if(maxPasses == 0) maxPasses = 1;
 		do {
 			//get puzzles passing filter and not relabeled up to n (if any)
-			pgAllPuzzles::puzzleRecordset src;
-			resCount = 0;
-			int redundantCount = 0;
-			for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
-				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
-				//if(iFilter.matches(*hh)) {
-				if(iFilter(hh)) {
-					src.insert(hh);
-					resCount++;
-					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
-					if(! onlyMinimals) {
-						if(!hh->isMinimal()) {
-							redundantCount++;
-						}
-					}
-				}
-			}
+			pgAllPuzzles::puzzleRecordset src(theList, iFilter);
+//			resCount = 0;
+//			int redundantCount = 0;
+//			for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
+//				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
+//				//if(iFilter.matches(*hh)) {
+//				if(iFilter(hh)) {
+//					src.insert(hh);
+//					resCount++;
+//					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
+//					if(! onlyMinimals) {
+//						if(!hh->isMinimal()) {
+//							redundantCount++;
+//						}
+//					}
+//				}
+//			}
+			resCount = (int)src.size();
 			if(opt.verbose) {
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
+				//fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
 			}
 			//std::copy_if(theList.cbegin(), theList.cend(), iFilter, std::insert_iterator<pgAllPuzzles::puzzleRecordset>(src, src.end())); //can't copy from object to object*
 			//relabel & insert
@@ -1247,38 +1452,18 @@ public:
 		return 0;
 	}
 	int dumpToFlatText(std::ostream& outStream) {
-		std::ostream_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
-		theList.getOrderedRecords(outIterator);
-		return (int)theList.size();
+		serialize(outStream, false);
+		return theList.size();
 	}
-//	int dumpToBinary(std::ostream& outStream) {
-//		std::ostreambuf_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
-//		theList.getOrderedRecords(outIterator);
-//		return (int)theList.size();
-//	}
-
-//	int dumpToBinary(std::ostream& outStream) {
-//		binary_ostream_iterator<pgAllPuzzles::puzzleRecord> outIterator(outStream);
-//		theList.getOrderedRecords(outIterator);
-//		return (int)theList.size();
-//	}
-
-//	int dumpToFlatText(std::ostream& outStream) {//std::ostreambuf_iterator
-//		int numRecords = 0;
-//		for(auto h = theList.cbegin(); h != theList.cend(); ++h) {
-//			uncomprPuz u;
-//			uncompress(*h, u);
-//			char buf[256];
-//			u.toString(buf); //TODO
-//			outStream << buf;
-//			numRecords++;
-//		}
-//		return numRecords;
-//	}
+	int dumpToBinary(std::ostream& outStream) {
+		serialize(outStream, true);
+		return theList.size();
+	}
 	void finalize() {
 		delete fastRater;
 		fastRater = NULL;
-		dumpToFlatText(cout);
+		//dumpToFlatText(cout);
+		dumpToBinary(cout);
 	}
 //	static inline unsigned int popCount32(unsigned int v) { // count bits set in this (32-bit value)
 //		v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
