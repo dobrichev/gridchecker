@@ -9,6 +9,7 @@
 #include <string>
 #include <iterator>
 #include <vector>
+#include <list>
 #include <map>
 #include <algorithm>
 #include <functional>
@@ -762,8 +763,18 @@ public:
 					*this = uncomprPuz(s.c_str());
 				}
 				uncomprPuz(const char *s, int* size = NULL) {
-					unsigned int rateFastERh = 0, rateFastERl = 0, rateFastEPh = 0, rateFastEPl = 0, rateFastEDh = 0, rateFastEDl = 0,
-						rateFinalERh = 0, rateFinalERl = 0, rateFinalEPh = 0, rateFinalEPl = 0, rateFinalEDh = 0, rateFinalEDl = 0;
+					unsigned int rateFastERh = 0;
+					unsigned int rateFastERl = 0;
+					unsigned int rateFastEPh = 0;
+					unsigned int rateFastEPl = 0;
+					unsigned int rateFastEDh = 0;
+					unsigned int rateFastEDl = 0;
+					unsigned int rateFinalERh = 0;
+					unsigned int rateFinalERl = 0;
+					unsigned int rateFinalEPh = 0;
+					unsigned int rateFinalEPl = 0;
+					unsigned int rateFinalEDh = 0;
+					unsigned int rateFinalEDl = 0;
 
 					int numGivens = p.fromString(s);
 					specTransformedUpTo = 0;
@@ -771,7 +782,7 @@ public:
 					minimality = 0;
 					sscanf(s + 81, " ED=%u.%u/%u.%u/%u.%u %u %u %u ED=%u.%u/%u.%u/%u.%u",
 						&rateFastERh, &rateFastERl, &rateFastEPh, &rateFastEPl, &rateFastEDh, &rateFastEDl,
-						&specTransformedUpTo, &transformedUpTo, &minimality,
+						&transformedUpTo, &specTransformedUpTo, &minimality,
 						&rateFinalERh, &rateFinalERl, &rateFinalEPh, &rateFinalEPl, &rateFinalEDh, &rateFinalEDl);
 					rateFastER = 10 * rateFastERh + rateFastERl;
 					rateFastEP = 10 * rateFastEPh + rateFastEPl;
@@ -786,7 +797,7 @@ public:
 					p.toString(s);
 					sprintf(s + 81, " ED=%u.%1.1u/%u.%1.1u/%u.%1.1u %u %u %u ED=%u.%1.1d/%u.%1.1u/%u.%1.1u\n",
 						rateFastER / 10, rateFastER % 10, rateFastEP / 10, rateFastEP % 10, rateFastED / 10, rateFastED % 10,
-						specTransformedUpTo, transformedUpTo, minimality,
+						transformedUpTo, specTransformedUpTo, minimality,
 						rateFinalER / 10, rateFinalER % 10, rateFinalEP / 10, rateFinalEP % 10, rateFinalED / 10, rateFinalED % 10);
 					return std::string(s);
 				}
@@ -799,8 +810,8 @@ public:
 					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
 						c.key[j] = p.chars[pgGotchi::pgGotchi::map[i]] | (p.chars[pgGotchi::map[i + 1]] << 4);
 					}
-					c.rateFast = (((((rateFastED << 8) | rateFastEP) << 8) | rateFastER) << 8) | (specTransformedUpTo & puzzleRecord::depthMask) | ((minimality << 3) & puzzleRecord::minimalityMask);
-					c.rateFinal = (((((rateFinalED << 8) | rateFinalEP) << 8) | rateFinalER) << 8) | (transformedUpTo & puzzleRecord::depthMask);
+					c.rateFast = (((((rateFastED << 8) | rateFastEP) << 8) | rateFastER) << 8) | (transformedUpTo & puzzleRecord::depthMask) | ((minimality << 3) & puzzleRecord::minimalityMask);
+					c.rateFinal = (((((rateFinalED << 8) | rateFinalEP) << 8) | rateFinalER) << 8) | (specTransformedUpTo & puzzleRecord::depthMask);
 				}
 				uncomprPuz(const puzzleRecord &c) {
 					p.clear();
@@ -812,14 +823,14 @@ public:
 						p.chars[pgGotchi::map[i]] = c.key[j] & 0x0F;
 						p.chars[pgGotchi::map[i + 1]] = c.key[j] >> 4;
 					}
-					specTransformedUpTo = c.rateFast & puzzleRecord::depthMask;
+					transformedUpTo = c.rateFast & puzzleRecord::depthMask;
 					minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
 					rating_t t = c.rateFast >> 8;
 					rateFastER = t & 0xFF;
 					t >>= 8;
 					rateFastEP = t & 0xFF;
 					rateFastED = t >> 8;
-					transformedUpTo = c.rateFinal & 0xFF;
+					specTransformedUpTo = c.rateFinal & 0xFF;
 					t = c.rateFinal >> 8;
 					rateFinalER = t & 0xFF;
 					t >>= 8;
@@ -843,9 +854,9 @@ public:
 			bool operator== (const puzzleRecord & other) const {
 				return(memcmp(this, &other, 16) == 0);
 			}
-			bool isMinimal () const {
-				return((rateFast & minimalityMask) == (2 << 3));
-			}
+//			bool isMinimal () const {
+//				return((rateFast & minimalityMask) == (2 << 3));
+//			}
 			puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
 				if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
 				if((other.rateFast & depthMask) > (this->rateFast & depthMask)) this->rateFast = ((this->rateFast & (~depthMask)) | (other.rateFast & depthMask)); //the greater depth
@@ -859,6 +870,30 @@ public:
 					this->rateFast = ((this->rateFast & (~minimalityMask)) | ((minimality << 3) & minimalityMask));
 				}
 				return *this;
+			}
+
+			//rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
+			//rating_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
+			//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
+
+			rating_t getDepth() const {
+				return (this->rateFast & depthMask) >> 0;
+			}
+			rating_t getNoSinglesDepth() const {
+				return (this->rateFinal & depthMask) >> 0;
+			}
+			rating_t getMinimality() const {
+				return (this->rateFast & minimalityMask) >> 3;
+			}
+
+			rating_t getRateFastER() const {
+				return (this->rateFast & ERmask) >> 8;
+			}
+			rating_t getRateFastEP() const {
+				return (this->rateFast & EPmask) >> 16;
+			}
+			rating_t getRateFastED() const {
+				return (this->rateFast & EDmask) >> 24;
 			}
 
 			rating_t getRateFinalER() const {
@@ -887,24 +922,242 @@ public:
 		    		return std::string(u);
 		    }
 		}; //puzzleRecord
+		class filterClause {
+		public:
+			enum clauseTypes {
+				//atomic clauses, use atomicClauseValue or nothing
+				fastRateDiamond,	//fastRateER == fastRateEP == fastRateED > 0
+				fastRatePerl,		//fastRateER == fastRateEP > 0
+				fastRateUnrated,	//fastRateER == 0 || fastRateEP == 0 || fastRateED == 0
+				finalRateDiamond,
+				finalRatePerl,
+				finalRateUnrated,	//(finalRateER == 0 || finalRateEP == 0 || finalRateED == 0) && minimal
+				finalRateNonEmpty,	//finalRateER != 0 && finalRateEP != 0 || finalRateED != 0 && minimal
+				fastRateErGe,		//fastRateEr >= atomicClauseValue
+				fastRateErLe,
+				fastRateEpGe,
+				fastRateEpLe,
+				fastRateEdGe,
+				fastRateEdLe,
+				finalRateErGe,
+				finalRateErLe,
+				finalRateEpGe,
+				finalRateEpLe,
+				finalRateEdGe,
+				finalRateEdLe,
+				noSinglesDepthLt,	//noSinglesDepth < atomicClauseValue
+				depthLt,			//depthLt < atomicClauseValue
+				minimalityUnknown,	//minimality == 0
+				nonMinimal,			//minimality == 1
+				minimal,			//minimality == 2
+				alwaysTrue,			//debug
+				alwaysFalse,		//debug
+				//complex clauses, use complexClauseContent
+				complexOr,
+				complexAnd
+			};
+		private:
+			clauseTypes clauseType_ = alwaysFalse;
+			rating_t atomicClauseValue_;
+			std::vector<filterClause> complexClauseContent_;
+		public:
+			//filterClause() = delete;
+			filterClause(clauseTypes atomicClauseType, rating_t atomicClauseValue = 0) : clauseType_(atomicClauseType), atomicClauseValue_(atomicClauseValue) {}
+			filterClause(clauseTypes complexClauseType, filterClause& other) : clauseType_(complexClauseType), atomicClauseValue_(0) {
+				switch(complexClauseType) {
+					case complexOr:
+					case complexAnd:
+						complexClauseContent_.insert(complexClauseContent_.end(), other);
+						break;
+					default:
+						//invalid complex clause results to alwaysFalse filter
+						clauseType_ = alwaysFalse;
+				}
+			}
+			void append(filterClause& other) {
+				switch(clauseType_) {
+					case complexOr:
+					case complexAnd:
+						complexClauseContent_.insert(complexClauseContent_.end(), other);
+						break;
+					default:
+						//invalid complex clause results to alwaysFalse filter
+						clauseType_ = alwaysFalse;
+				}
+			}
+			void append(clauseTypes atomicClauseType, rating_t atomicClauseValue = 0) {
+				switch(clauseType_) {
+					case complexOr:
+					case complexAnd:
+						complexClauseContent_.insert(complexClauseContent_.end(), filterClause(atomicClauseType, atomicClauseValue));
+						break;
+					default:
+						//invalid complex clause results to alwaysFalse filter
+						clauseType_ = alwaysFalse;
+				}
+			}
+			bool applyClause(const puzzleRecord& rec) const {
+				switch (clauseType_) {
+					case fastRateDiamond:
+						return rec.getRateFastER() == rec.getRateFastEP() && rec.getRateFastER() == rec.getRateFastED() && rec.getRateFastER() > 0;
+						break;
+					case fastRatePerl:
+						return rec.getRateFastER() == rec.getRateFastEP() && rec.getRateFastER() > 0;
+						break;
+					case fastRateUnrated:
+						return rec.getRateFastER() == 0 || rec.getRateFastEP() == 0 || rec.getRateFastER() == 0;
+						break;
+					case finalRateDiamond:
+						return rec.getRateFinalER() == rec.getRateFinalEP() && rec.getRateFinalER() == rec.getRateFinalED() && rec.getRateFinalER() > 0;
+						break;
+					case finalRatePerl:
+						return rec.getRateFinalER() == rec.getRateFinalEP() && rec.getRateFinalER() > 0;
+						break;
+					case finalRateUnrated:
+						return (rec.getRateFinalER() == 0 || rec.getRateFinalEP() == 0 || rec.getRateFinalER() == 0) && rec.getMinimality() == 2;
+						break;
+					case finalRateNonEmpty:
+						return rec.getRateFinalER() != 0 && rec.getRateFinalEP() != 0 && rec.getRateFinalER() != 0 && rec.getMinimality() == 2;
+						break;
+					case fastRateErGe:
+						return rec.getRateFastER() >= atomicClauseValue_;
+						break;
+					case fastRateErLe:
+						return rec.getRateFastER() <= atomicClauseValue_;
+						break;
+					case fastRateEpGe:
+						return rec.getRateFastEP() >= atomicClauseValue_;
+						break;
+					case fastRateEpLe:
+						return rec.getRateFastEP() <= atomicClauseValue_;
+						break;
+					case fastRateEdGe:
+						return rec.getRateFastED() >= atomicClauseValue_;
+						break;
+					case fastRateEdLe:
+						return rec.getRateFastED() <= atomicClauseValue_;
+						break;
+					case finalRateErGe:
+						return rec.getRateFinalER() >= atomicClauseValue_;
+						break;
+					case finalRateErLe:
+						return rec.getRateFinalER() <= atomicClauseValue_;
+						break;
+					case finalRateEpGe:
+						return rec.getRateFinalEP() >= atomicClauseValue_;
+						break;
+					case finalRateEpLe:
+						return rec.getRateFinalEP() <= atomicClauseValue_;
+						break;
+					case finalRateEdGe:
+						return rec.getRateFinalED() >= atomicClauseValue_;
+						break;
+					case finalRateEdLe:
+						return rec.getRateFinalED() <= atomicClauseValue_;
+						break;
+					case noSinglesDepthLt:
+						return rec.getNoSinglesDepth() < atomicClauseValue_;
+						break;
+					case depthLt:
+						return rec.getDepth() < atomicClauseValue_;
+						break;
+					case minimalityUnknown:
+						return rec.getMinimality() == 0;
+						break;
+					case nonMinimal:
+						return rec.getMinimality() == 1;
+						break;
+					case minimal:
+						return rec.getMinimality() == 2;
+						break;
+					case alwaysTrue:
+						return true;
+						break;
+					case alwaysFalse:
+						return false;
+						break;
+					case complexOr:
+						for(auto subClause : complexClauseContent_) {
+							//return first true
+							if(subClause.applyClause(rec)) return true;
+						}
+						return false;
+						break;
+					case complexAnd:
+						for(auto subClause : complexClauseContent_) {
+							//return first false
+							if(!subClause.applyClause(rec)) return false;
+						}
+						return true;
+						break;
+					default:
+						return false;	//wrong clause
+				}
+			}
+		};
 		struct inputFilter {
-			rating_t minus;
-			rating_t minED;
-			rating_t maxED;
-			rating_t minEP;
-			rating_t maxEP;
-			rating_t minER;
-			rating_t maxER;
-			bool noSingles;
-			rating_t minMinimality;
-			rating_t maxMinimality;
+			filterClause clause;
+			static inputFilter emptyFastRating() {
+				return inputFilter(filterClause(filterClause::fastRateUnrated));
+			}
+			inputFilter(filterClause clause_) : clause(clause_) {}
 			inputFilter(rating_t n, rating_t minED_, rating_t maxED_, rating_t minEP_, rating_t maxEP_, rating_t minER_, rating_t maxER_,
 					rating_t noSingles_, rating_t minMinimality_ = 0, rating_t maxMinimality_ = 3) :
-				minus(n & puzzleRecord::depthMask),
-				minED((minED_ << 24) & puzzleRecord::EDmask), maxED((maxED_ << 24) & puzzleRecord::EDmask),
-				minEP((minEP_ << 16) & puzzleRecord::EPmask), maxEP((maxEP_ << 16) & puzzleRecord::EPmask),
-				minER((minER_ << 8) & puzzleRecord::ERmask), maxER((maxER_ << 8) & puzzleRecord::ERmask),
-				noSingles(noSingles_), minMinimality((minMinimality_ << 3) & puzzleRecord::minimalityMask), maxMinimality((maxMinimality_ << 3) & puzzleRecord::minimalityMask) {}
+				clause(filterClause::clauseTypes::complexAnd) {
+				if(noSingles_) {
+					clause.append(filterClause::clauseTypes::noSinglesDepthLt, n);
+				}
+				else {
+					clause.append(filterClause::clauseTypes::depthLt, n);
+				}
+				if(minED_ != 0) clause.append(filterClause::clauseTypes::fastRateEdGe, minED_);
+				if(maxED_ != 120) clause.append(filterClause::clauseTypes::fastRateEdLe, maxED_);
+				if(minEP_ != 0) clause.append(filterClause::clauseTypes::fastRateEpGe, minEP_);
+				if(maxEP_ != 120) clause.append(filterClause::clauseTypes::fastRateEpLe, maxEP_);
+				if(minER_ != 0) clause.append(filterClause::clauseTypes::fastRateErGe, minER_);
+				if(maxER_ != 120) clause.append(filterClause::clauseTypes::fastRateErLe, maxER_);
+				switch(minMinimality_) {
+					case 0:
+						switch(maxMinimality_) {
+							case 0:
+								clause.append(filterClause::clauseTypes::minimalityUnknown);
+								break;
+							case 1:
+								clause.append(filterClause::clauseTypes::nonMinimal);
+								break;
+							default:
+								break;
+						}
+						break;
+					case 1:
+						switch(maxMinimality_) {
+							case 0:
+								clause.append(filterClause::clauseTypes::alwaysFalse);
+								break;
+							case 1:
+								clause.append(filterClause::clauseTypes::nonMinimal);
+								break;
+							default:
+								break;
+						}
+						break;
+					case 2:
+						switch(maxMinimality_) {
+							case 0:
+							case 1:
+								clause.append(filterClause::clauseTypes::alwaysFalse);
+								break;
+							case 2:
+							default:
+								clause.append(filterClause::clauseTypes::minimal);
+								break;
+						}
+						break;
+					default:
+						clause.append(filterClause::clauseTypes::alwaysFalse);
+						break;
+				}
+			}
 			bool operator()(const puzzleRecord& rec) const {
 				return matches(rec);
 			}
@@ -912,53 +1165,7 @@ public:
 				return matches(*rec);
 			}
 			bool matches(const puzzleRecord& rec) const {
-				if(noSingles) {
-					if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth unconditionally
-						&& ((rec.rateFinal & puzzleRecord::depthMask) < minus) //not relabeled to this depth ignoring puzzles solved by singles
-						&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
-						&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
-						&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
-						&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
-						&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
-						&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
-					{
-						return true;
-					}
-				}
-				else {
-					if(((rec.rateFast & puzzleRecord::depthMask) < minus) //not relabeled to this depth
-						&& ((rec.rateFast & puzzleRecord::EDmask) >= minED)
-						&& ((rec.rateFast & puzzleRecord::EDmask) <= maxED)
-						&& ((rec.rateFast & puzzleRecord::EPmask) >= minEP)
-						&& ((rec.rateFast & puzzleRecord::EPmask) <= maxEP)
-						&& ((rec.rateFast & puzzleRecord::ERmask) >= minER)
-						&& ((rec.rateFast & puzzleRecord::ERmask) <= maxER)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality))
-					{
-						return true;
-					}
-				}
-				return false;
-			}
-			bool matchesRateFinal(const puzzleRecord& rec) const {
-				//here we don't care about depth but care about minimality
-				if(
-						   ((rec.rateFinal & puzzleRecord::EDmask) >= minED)
-						&& ((rec.rateFinal & puzzleRecord::EDmask) <= maxED)
-						&& ((rec.rateFinal & puzzleRecord::EPmask) >= minEP)
-						&& ((rec.rateFinal & puzzleRecord::EPmask) <= maxEP)
-						&& ((rec.rateFinal & puzzleRecord::ERmask) >= minER)
-						&& ((rec.rateFinal & puzzleRecord::ERmask) <= maxER)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) >= minMinimality)
-						&& ((rec.rateFast & puzzleRecord::minimalityMask) <= maxMinimality)
-					)
-				{
-					return true;
-				}
-				return false;
+				return clause.applyClause(rec);
 			}
 		}; //inputFilter
 		class saveToStream {
@@ -1079,16 +1286,6 @@ public:
 		puzzleRecord* theArray = NULL;
 		set<puzzleRecord> theSet;
 		std::size_t theArraySize = 0;
-		bool theSetHoldsSmallest = false; //having no deletions, once a record smaller than the first record in the array record is inserted, the set will always hold the smallest element
-		bool theSetHoldsLargest = false; //similar to theSetHoldsSmallest
-		//unorderedIterator undorderedEndIterator = unorderedIterator::unorderedIteratorEnd(*this); //take care to re-initialize this after allocation of theArray
-//		puzzleRecord* exists(puzzleRecord& puz) {
-//			auto foundIterator = this->find(puz);
-//			if(foundIterator != this->end()) {
-//				return const_cast<puzzleRecord*>(&(*foundIterator));
-//			}
-//			return NULL;
-//		}
 	public:
 		~pgAllPuzzles() {
 			delete[] theArray;
@@ -1116,18 +1313,6 @@ public:
 			//return undorderedEndIterator;
         	return unorderedIterator::unorderedIteratorEnd(*this);
 		}
-//	    friend std::ostream & operator <<(std::ostream& out, const pgAllPuzzles& data) {
-//    		//out << std::string(data); //for text output
-//			out.write(reinterpret_cast< const char* >(std::addressof(data)), sizeof(data)); //for binary output
-//	    	return out;
-//	    }
-//		friend std::istream & operator >>(std::istream& in, pgAllPuzzles& data) {
-//			uncomprPuz u;
-//			in >> u;
-//			u.compress(data);
-//			//in.read( reinterpret_cast<char*>( std::addressof(data)), sizeof(data)); //for binary input
-//			return in;
-//		}
 		std::ostream& serialize(std::ostream& outStream, bool binaryMode) {
 			//save the header
 			auto numPuzzles(size());
@@ -1169,9 +1354,11 @@ private:
 	static constexpr const char* fileSignature = "PatternsGameDB"; //a text placed at begining of a binary file for automatical determination of the file type (alternative of flat text puzzles list)
 	void updateRelabelDepthNoLock(pgAllPuzzles::puzzleRecord* hh, bool noSingles, rating_t depth) {
 		rating_t newMask = depth & pgAllPuzzles::puzzleRecord::depthMask;
-		if((hh->rateFinal & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally)
+		//the noSinglesDepth record
+		if((hh->rateFinal & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (unconditionally, for both "noSingles" and "all" mode)
 			hh->rateFinal = (hh->rateFinal & (~pgAllPuzzles::puzzleRecord::depthMask)) | newMask;
 		}
+		//the depth record
 		if(!noSingles) {
 			if((hh->rateFast & pgAllPuzzles::puzzleRecord::depthMask) < newMask) { //LSB = n = relabeled up to depth n (only when not ignoring the singles)
 				hh->rateFast = (hh->rateFast & (~pgAllPuzzles::puzzleRecord::depthMask)) | newMask;
@@ -1243,22 +1430,8 @@ public:
 			}
 			exit(1);
 		}
-		bootstrapFromStream(cin); //5 times slower than fgets for text mode!!!
+		bootstrapFromStream(cin);
 		return;
-
-//		char buf[1000];
-//		while(fgets(buf, sizeof(buf), stdin)) {
-//			if(!initialized) {
-//				init(buf);
-//				if(opt.verbose) {
-//					fprintf(stderr, "Number of symmetries %d\n", canonicalizer.numAutomorphisms());
-//				}
-//			}
-//			add(buf);
-//		}
-//		if(opt.verbose) {
-//			fprintf(stderr, "%d puzzles loaded\n", (int)theList.size());
-//		}
 	}
 	std::istream& deserialize(std::istream& in) {
 		//signarure is read
@@ -1318,7 +1491,7 @@ public:
 		}
 	}
 	void fastRateAll() {
-		pgAllPuzzles::inputFilter emptyFastRating(7,0,0,0,0,0,0,0,0,3);
+		pgAllPuzzles::inputFilter emptyFastRating(pgAllPuzzles::inputFilter::emptyFastRating());
 		pgAllPuzzles::puzzleRecordset emptyFastRated(theList, emptyFastRating);
 		if(opt.verbose) {
 			fprintf(stderr, "fastRateAll: rating %d puzzles ...", (int)emptyFastRated.size());
@@ -1330,20 +1503,6 @@ public:
 		if(opt.verbose) {
 			fprintf(stderr, " done\n");
 		}
-//		int n = 0, r = 0;
-//		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
-//			n++;
-//			if((h->rateFast & 0xFF00) == 0) { //ER was not set
-//				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
-//				pgAllPuzzles::puzzleRecord::uncomprPuz u(*hh);
-//				fastRater->push(u.p.chars, &(hh->rateFast));
-//				r++;
-//			}
-//		}
-//		if(opt.verbose) {
-//			fprintf(stderr, "fastRateAll: rated %d out of %d puzzles, total %d puzzles\n", r, n, (int)theList.size());
-//			sleep(5);
-//		}
 		fastRater->commit();
 	}
 //	class insertOptions {
@@ -1384,34 +1543,25 @@ public:
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
 		//static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
 		pgAllPuzzles::inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3);
-		int resCount;
 		//const pgContainer::size_type max_batch_size = max_batch_sizes[n];
+		int resCount;
 		if(maxPasses == 0) maxPasses = 1;
 		do {
+			int redundantCount = 0;
 			//get puzzles passing filter and not relabeled up to n (if any)
 			pgAllPuzzles::puzzleRecordset src(theList, iFilter);
-//			resCount = 0;
-//			int redundantCount = 0;
-//			for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
-//				pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
-//				//if(iFilter.matches(*hh)) {
-//				if(iFilter(hh)) {
-//					src.insert(hh);
-//					resCount++;
-//					//if(resCount >= max_batch_size) break; //limit to some reasonable batch size
-//					if(! onlyMinimals) {
-//						if(!hh->isMinimal()) {
-//							redundantCount++;
-//						}
-//					}
-//				}
-//			}
 			resCount = (int)src.size();
 			if(opt.verbose) {
-				//fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
-				fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
+				pgAllPuzzles::inputFilter nonMinimalsFilter(pgAllPuzzles::filterClause::nonMinimal);
+				pgAllPuzzles::puzzleRecordset non_minimals(src, nonMinimalsFilter);
+				redundantCount = non_minimals.size();
+				fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
+				//fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
 			}
-			//std::copy_if(theList.cbegin(), theList.cend(), iFilter, std::insert_iterator<pgAllPuzzles::puzzleRecordset>(src, src.end())); //can't copy from object to object*
+			//continue; //debug: timings
+			//original filter: time ~/git/gridchecker/Release/pg  --verbose --pattern --pg 1,0,120,92,120,0,120,500,1,1 < 85.bin.2 > 85.bin.3 #4m48.150s processing 243170 items 90933155 puzzles Total time 297.174 seconds.
+			//generic filter: 27m46.950s, 1656.475 seconds. => 6 times slower, 3 seconds per scan of 100M puzzles is acceptable
+
 			//relabel & insert
 			size_t percentage = 0;
 			size_t resNum = 0;
@@ -1431,10 +1581,6 @@ public:
 				}
 			}
 			fastRater->commit();
-//			//This pass is done. Mark the seed as used at appropriate depth.
-//			if(!gExiting) {
-//				updateRelabelDepth(src, noSingles, n);
-//			}
 			if(opt.verbose) {
 				fprintf(stderr, "\n");
 			}
@@ -1602,27 +1748,26 @@ public:
 //		return minBC / 2;
 //	}
 	void getPlayablePuzzles(std::vector<std::string>& puzzletList) {
-		pgAllPuzzles::inputFilter iFilter(0, 12, 120, 12, 120, 12, 120, 0, 2, 2); //ER>0 && EP>0 && ED>0 && minimal
+		pgAllPuzzles::inputFilter iFilter(pgAllPuzzles::filterClause(pgAllPuzzles::filterClause::finalRateNonEmpty)); //ER>0 || EP>0 || ED>0 && minimal
+		//get all rated puzzles
+		pgAllPuzzles::puzzleRecordset src(theList, iFilter);
 		//compose array of best puzzles for each final ER
-		pgAllPuzzles::puzzleRecord::uncomprPuz best_records[256];
-		for(pgAllPuzzles::unorderedIterator h = theList.cbegin(); h != theList.cend(); ++h) {
-			pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*h));
-			if(iFilter.matchesRateFinal(*hh)) {
-				rating_t test_ER = hh->getRateFinalER();
-				if(test_ER > 120) continue; //bug???
-				if(
-						(best_records[test_ER].rateFinalEP < hh->getRateFinalEP()) //better due to EP
-						||
-						(best_records[test_ER].rateFinalEP == hh->getRateFinalEP() && best_records[test_ER].rateFinalED < hh->getRateFinalED()) //better due to ED
-					) {
-					best_records[test_ER] = pgAllPuzzles::puzzleRecord::uncomprPuz(*hh);
-				}
+		pgAllPuzzles::puzzleRecord* best_records[256];
+		for(pgAllPuzzles::puzzleRecord* hh : src) {
+			rating_t test_ER = hh->getRateFinalER();
+			if(test_ER > 120) continue; //bug???
+			if(
+					(best_records[test_ER]->getRateFinalEP() < hh->getRateFinalEP()) //better due to EP
+					||
+					(best_records[test_ER]->getRateFinalEP() == hh->getRateFinalEP() && best_records[test_ER]->getRateFinalED() < hh->getRateFinalED()) //better due to ED
+				) {
+				best_records[test_ER] = hh;
 			}
 		}
 		// copy the best puzzles to the output
 		for(int i = 120; i >= 0; i--) {
-			if(0 == best_records[i].rateFastEP) continue; //no puzzles for this ER
-			puzzletList.push_back(string(best_records[i]));
+			if(0 == best_records[i]->getRateFinalEP()) continue; //no puzzles for this ER
+			puzzletList.push_back(std::string(*(best_records[i])));
 		}
 	}
 }; // pgGotchi
