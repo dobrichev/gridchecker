@@ -737,7 +737,7 @@ public:
 	public:
 		struct puzzleRecord {
 			uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
-			rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr::skfrCommit()
+			rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr
 			rating_t rateFinal; // bits 0..3=nosingles depth; bit 4..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED
 			//minimal bit flags: 00=unknown; 01=non-minimal; 10=minimal
 			static const rating_t rateMask = 0xFFFFFF00;
@@ -757,7 +757,7 @@ public:
 				uint32_t specTransformedUpTo;
 				uint32_t transformedUpTo;
 				uint32_t minimality;
-				uncomprPuz() = default;
+				//uncomprPuz() = default;
 				uncomprPuz(const uncomprPuz&) = default;
 				uncomprPuz(const std::string s) {
 					*this = uncomprPuz(s.c_str());
@@ -1215,73 +1215,6 @@ public:
 		private:
 			inputFilter& filter_; //initial filter for initialization of the records
 		};
-		class unorderedIterator : public std::iterator<std::forward_iterator_tag, puzzleRecord> {
-		public:
-	        explicit unorderedIterator(const pgAllPuzzles& container_) :
-	        	inTheSet(true), setIterator(set<puzzleRecord>::const_iterator()), arrayIterator(NULL), container(container_) {}
-	        //constexpr unorderedIterator(const unorderedIterator&&) = default;
-	        static unorderedIterator unorderedIteratorBegin(const pgAllPuzzles& container_) {
-	        	unorderedIterator ret = unorderedIterator(container_);
-				if(ret.container.theSet.size()) {
-					ret.setIterator = ret.container.theSet.begin();
-				}
-				else {
-					ret.arrayIterator = ret.container.theArray;
-					ret.inTheSet = false;
-				}
-				return ret;
-	        }
-	        static unorderedIterator unorderedIteratorEnd(const pgAllPuzzles& container_) {
-	        	unorderedIterator ret = unorderedIterator(container_);
-				ret.arrayIterator = &(ret.container.theArray[ret.container.theArraySize]);
-				ret.inTheSet = false;
-				return ret;
-	        }
-			const puzzleRecord& operator*() const {
-				return std::cref(inTheSet ? *setIterator : *arrayIterator);
-			}
-			const puzzleRecord* operator->() const {
-				return inTheSet ? &(*setIterator) : arrayIterator;
-			}
-			unorderedIterator& operator++() {
-				if(inTheSet) {
-					auto setEnd = container.theSet.end();
-					if(setIterator != setEnd) {
-						++setIterator;
-					}
-					if(!(setIterator != setEnd)) { //instead of container.theSet.end() return container.theArray.begin() or container.theArray.end()
-						arrayIterator = container.theArray; //possibly unnecessary
-						inTheSet = false;
-						//at this point if the container.theArraySize==0 then the iterator automatically points to container.end()
-					}
-				}
-				else {
-					if(arrayIterator != &(container.theArray[container.theArraySize])) {
-						++arrayIterator;
-					}
-					else {
-						//past-the-end iterator, do nothing
-					}
-				}
-				return *this;
-			}
-			unorderedIterator operator++(int) {
-				unorderedIterator ret(*this);
-				++*this;
-				return ret;
-			}
-			bool operator!=(const unorderedIterator & rhs) const {
-			   return std::addressof(**this) != std::addressof(*rhs);
-			}
-			bool operator!=(const puzzleRecord* rhs) const {
-			   return std::addressof(**this) != rhs;
-			}
-		private:
-			bool inTheSet = true;
-			set<puzzleRecord>::const_iterator setIterator; //use this until theSet.end() is reached, later use arrayIterator
-			puzzleRecord* arrayIterator;
-			const pgAllPuzzles& container;
-		};
 	private:
 		puzzleRecord* theArray = NULL;
 		set<puzzleRecord> theSet;
@@ -1301,17 +1234,10 @@ public:
 			if(p.first != theSet.end()) {
 				return std::pair<puzzleRecord*,bool>(const_cast<puzzleRecord*>(&(*(p.first))), (p.second));
 			}
-			return std::pair<puzzleRecord*,bool>(theArray + theArraySize, false); //unsuccessful; returns (end(),false)
+			return std::pair<puzzleRecord*,bool>(NULL, false); //unsuccessful
 		}
 		std::size_t size() const {
 			return theSet.size() + theArraySize;
-		}
-		const unorderedIterator cbegin() const {
-        	return unorderedIterator::unorderedIteratorBegin(*this);
-		}
-		const unorderedIterator cend() {
-			//return undorderedEndIterator;
-        	return unorderedIterator::unorderedIteratorEnd(*this);
 		}
 		std::ostream& serialize(std::ostream& outStream, bool binaryMode) {
 			//save the header
@@ -1530,7 +1456,7 @@ public:
 				hh->updateMinimality(solverIsIrreducibleByProbing(u.p.chars) ? 2 : 1);
 			}
 		}
-		else if(theList.cend() != insertResult.first) { //found
+		else if(NULL != insertResult.first) { //found
 			hh->merge(c);
 		}
 		else { //failed for some reason => just ignore
@@ -1541,9 +1467,7 @@ public:
 		}
 	}
 	void relN(unsigned int n, unsigned int minED, unsigned int maxED, unsigned int minEP, unsigned int maxEP, unsigned int minER, unsigned int maxER, unsigned int maxPasses, unsigned int noSingles, unsigned int onlyMinimals) {
-		//static const pgContainer::size_type max_batch_sizes[] = {0,20000,2000,200,20,20,20,20,20,20,20}; //limit to some reasonable batch size
-		pgAllPuzzles::inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3);
-		//const pgContainer::size_type max_batch_size = max_batch_sizes[n];
+		pgAllPuzzles::inputFilter iFilter(n, minED, maxED, minEP, maxEP, minER, maxER, noSingles, onlyMinimals ? 2 : 0, 3); //a shortcut constructor used only here
 		int resCount;
 		if(maxPasses == 0) maxPasses = 1;
 		do {
