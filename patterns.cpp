@@ -2,7 +2,7 @@
 #include "ch81.h"
 #include "solver.h"
 #include "options.h"
-#include "rate.h"
+//#include "rate.h"
 #include "api/api.h"
 #include <iostream>
 #include <cstring>
@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <chrono>
 #include "genericOutputIterator.h"
+#include "skfr/ratingengine.h"
 
 typedef uint32_t rating_t;
 
@@ -814,15 +815,16 @@ public:
 					c.rateFinal = (((((rateFinalED << 8) | rateFinalEP) << 8) | rateFinalER) << 8) | (specTransformedUpTo & puzzleRecord::depthMask);
 				}
 				uncomprPuz(const puzzleRecord &c) {
-					p.clear();
-					p.chars[pgGotchi::map[0]] = 1;
-					if(0 == (pgGotchi::patternSize & 1)) { //half-byte
-						p.chars[pgGotchi::map[patternSize - 1]] = c.key[pgGotchi::patternSize / 2 - 1]; //store the last given
-					}
-					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
-						p.chars[pgGotchi::map[i]] = c.key[j] & 0x0F;
-						p.chars[pgGotchi::map[i + 1]] = c.key[j] >> 4;
-					}
+					getKey(c, &p);
+//					p.clear();
+//					p.chars[pgGotchi::map[0]] = 1;
+//					if(0 == (pgGotchi::patternSize & 1)) { //half-byte
+//						p.chars[pgGotchi::map[patternSize - 1]] = c.key[pgGotchi::patternSize / 2 - 1]; //store the last given
+//					}
+//					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
+//						p.chars[pgGotchi::map[i]] = c.key[j] & 0x0F;
+//						p.chars[pgGotchi::map[i + 1]] = c.key[j] >> 4;
+//					}
 					transformedUpTo = c.rateFast & puzzleRecord::depthMask;
 					minimality = (c.rateFast & puzzleRecord::minimalityMask) >> 3;
 					rating_t t = c.rateFast >> 8;
@@ -836,6 +838,18 @@ public:
 					t >>= 8;
 					rateFinalEP = t & 0xFF;
 					rateFinalED = t >> 8;
+				}
+				static ch81* getKey(const puzzleRecord &c, ch81* result) {
+					result->clear();
+					result->chars[pgGotchi::map[0]] = 1;
+					if(0 == (pgGotchi::patternSize & 1)) { //half-byte
+						result->chars[pgGotchi::map[patternSize - 1]] = c.key[pgGotchi::patternSize / 2 - 1]; //store the last given
+					}
+					for(int i = 1, j = 0; i < pgGotchi::patternSize - 1; j++, i += 2) { //start from the second given, the first is always "1"
+						result->chars[pgGotchi::map[i]] = c.key[j] & 0x0F;
+						result->chars[pgGotchi::map[i + 1]] = c.key[j] >> 4;
+					}
+					return result;
 				}
 			    friend std::ostream & operator <<(std::ostream& out, const uncomprPuz& data) {
 		    		out << std::string(data);
@@ -1271,6 +1285,149 @@ public:
 			return in;
 		}
 	}; //pgAllPuzzles
+	class relabelTask {
+		int maxPasses_ = 0; //o == until exhaustion
+		pgAllPuzzles::inputFilter filter_;
+		int ongoingPass_ = 0;
+	public:
+		relabelTask(pgAllPuzzles::inputFilter filter) : filter_(filter) {}
+	}; //relabelTask
+	class injectionEventHandler {
+		void* context_;
+		virtual bool notification(const pgAllPuzzles::puzzleRecord& p, void* context) const {
+			(void) p; //suppress compiler warnings
+			(void) context; //suppress compiler warnings
+			//implement logic here
+			return true; //true = remove the hook, false = remove
+		}
+	public:
+		injectionEventHandler(void* context) : context_(context) {}
+		bool operator()(const pgAllPuzzles::puzzleRecord& p) const {
+			//perform the notification here and return whether the hook should be destroyed after this notification
+			return notification(p, context_);
+		}
+	}; //injectionEventHandler
+	class injectionEventHook {
+		pgAllPuzzles::inputFilter filter_;
+		injectionEventHandler handler_;
+	public:
+		bool operator()(const pgAllPuzzles::puzzleRecord& p) const {
+			if(filter_(p)) {
+				return handler_(p);
+			}
+			return false;
+		}
+	}; //injectionEventHook
+	class injector {
+		pgGotchi& gotchi_;
+		pgAllPuzzles::inputFilter emptyFastRateFilter = pgAllPuzzles::inputFilter::emptyFastRating();
+		std::list<injectionEventHook> eventHooks_;
+		void applyHooks(const pgAllPuzzles::puzzleRecord& p) {
+			for(std::list<injectionEventHook>::iterator hook = eventHooks_.begin(); hook != eventHooks_.end();) {
+				bool destroy = hook->operator()(p);
+				hook++;
+				if(destroy) {
+					eventHooks_.erase(std::prev(hook));
+				}
+			}
+		}
+	public:
+		injector(pgGotchi& gotchi) : gotchi_(gotchi) {}
+		void registerHook(injectionEventHook hook) {
+			eventHooks_.push_back(hook);
+		}
+		void inject(const pgAllPuzzles::puzzleRecord& p) {
+			auto insertResult = gotchi_.theList.insert(p);
+			//at this moment we have a stored puzzle with possibly unknown minimality
+			pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*insertResult.first));
+			if(insertResult.second) { //successfully inserted
+				if(p.getMinimality() == 0) {
+					//test for redundancy and update the record
+					pgAllPuzzles::puzzleRecord::uncomprPuz uncompr(p);
+					hh->updateMinimality(solverIsIrreducibleByProbing(uncompr.p.chars) ? 2 : 1);
+				}
+			}
+			else if(NULL != insertResult.first) { //found
+				if(p.rateFast != hh->rateFast || p.rateFinal != hh->rateFinal) {
+					//changed or old version of the attributes is injected
+					hh->merge(p); //apply the convention what to take from every of the instances of the attributes
+					//even the 2 instances differ, it is OK new puzzle to leave the old as is.
+					//In other words, we should compare again if we want to be sure something was changed
+				}
+			}
+			else { //failed for some reason => just ignore
+				return;
+			}
+			if(emptyFastRateFilter(*hh)) {
+				ch81 key;
+				pgAllPuzzles::puzzleRecord::uncomprPuz::getKey(*hh, &key);
+				gotchi_.fastRater->push(key.chars, &(hh->rateFast)); //queue the record for approximate rating
+				applyHooks(*hh);
+			}
+		}
+	}; //injector
+	class fskfr {
+		//buffers
+		static const int bufSize = 128;
+		skfr::puzzleToRate puzzlesToRate[bufSize];
+		uint32_t *res[bufSize]; //where the compressed result goes (ED,EP,ER,0)
+		int count;
+		int head;
+		int tail;
+		bool active;
+		std::mutex mutex_;
+		std::condition_variable conditionNotEmpty;
+		std::condition_variable conditionNotFull;
+		std::vector<std::thread> pumps;
+		static void ratingPump(fskfr& queue);
+
+	public:
+		fskfr();
+		~fskfr();
+		//add to buffer
+		void push(const char *p, uint32_t *res);
+		//read from buffer
+		int pop(char *p, uint32_t **rate); //returns 0 on success
+		//rate partially populated buffer
+		void commit();
+	//	void activate();
+	//	void deactivate();
+		//rate single puzzle
+		//int skfr::skfrER(const char *p) const;
+		bool isActive();
+	}; //fskfr
+	/*
+	void add(const char* p) { //
+		pgAllPuzzles::puzzleRecord::uncomprPuz u(p);
+		pgAllPuzzles::puzzleRecord c;
+		//test for pattern validity
+		for(int i = 0; i < patternSize; i++) {
+			if(u.p.chars[pgGotchi::map[i]] < 1 || u.p.chars[map[i]] > 9)
+				return;
+		}
+		//canonicalize the source
+		canonicalizer.canonicalize(u.p);
+		u.compress(c);
+		auto insertResult = theList.insert(c);
+		//at this moment we have a stored puzzle with possibly unknown minimality
+		pgAllPuzzles::puzzleRecord* hh = const_cast<pgAllPuzzles::puzzleRecord*>(&(*insertResult.first));
+		if(insertResult.second) { //successfully inserted
+			if(0 == u.minimality) {
+				//test for redundancy and update the record
+				hh->updateMinimality(solverIsIrreducibleByProbing(u.p.chars) ? 2 : 1);
+			}
+		}
+		else if(NULL != insertResult.first) { //found
+			hh->merge(c);
+		}
+		else { //failed for some reason => just ignore
+			return;
+		}
+		if((hh->rateFast & pgAllPuzzles::puzzleRecord::rateMask) == 0) { //queue the record for approximate rating
+			fastRater->push(u.p.chars, &(hh->rateFast));
+		}
+	}
+	*/
 	pgAllPuzzles theList;
 private:
 	canonicalizerPreservingPattern canonicalizer;
@@ -1697,6 +1854,108 @@ public:
 }; // pgGotchi
 int pgGotchi::patternSize; //max 33
 int pgGotchi::map[34]; //compressed to real position
+
+
+pgGotchi::fskfr::fskfr() :
+		count(0), head(0), tail(0), active(true) {
+	int numRatingThreads = std::thread::hardware_concurrency();
+	if(numRatingThreads == 0) numRatingThreads = 1; //at least one
+	for (int i = 0; i < numRatingThreads; ++i) {
+		std::thread pump(std::bind(&ratingPump, std::ref(*this)));
+		pumps.push_back(std::move(pump));
+	}
+}
+pgGotchi::fskfr::~fskfr() {
+	//commit();
+	{
+		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+		active = false;
+	}
+	conditionNotFull.notify_all();
+	conditionNotEmpty.notify_all();
+	for (auto& pump : pumps) {
+		pump.join();
+	}
+}
+//void pgGotchi::fskfr::activate() {
+//	{
+//		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+//		active = true;
+//	}
+//}
+//void pgGotchi::fskfr::deactivate() {
+//	{
+//		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+//		active = false;
+//	}
+//}
+bool pgGotchi::fskfr::isActive() {
+	std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+	return active;
+}
+void pgGotchi::fskfr::ratingPump(fskfr& queue) {
+	skfr::puzzleToRate p;
+	uint32_t *res;
+	while(0 == queue.pop(p.p, &res)) {
+		//fprintf(stderr, "\nratingPump start rating puzzle %81.81s\n", p.p); //debug
+		skfr::rateOnePuzzle(p);
+		//if(p.er == 0) fprintf(stderr, "\nfskfr puzzle with er=0\n"); //debug
+		*res = ((*res) & 0xFF) | (p.ed << 24) | (p.ep << 16) | (p.er << 8); //don't touch the less significant 8 bits!
+	}
+}
+void pgGotchi::fskfr::push(const char *p, uint32_t *rate) {
+	{
+		//do the job
+		std::unique_lock<std::mutex> mlock(mutex_); //wait until lock is achieved
+		while (count == bufSize && active) {
+			conditionNotFull.wait(mlock);
+		}
+		for(int i = 0; i < 81; i++) {
+			puzzlesToRate[head].p[i] = p[i] + '0';
+		}
+		res[head] = rate;
+		head++;
+		count++;
+		if(head >= bufSize) {
+			head = 0;
+		}
+		//commit();
+		//mlock.unlock();
+	}
+	//cond_.notify_one(); //not sure whether a burst of pushes would notify more than one thread. Safely notify all.
+	conditionNotEmpty.notify_all(); //notify all waiting threads that the buffer isn't empty
+}
+int pgGotchi::fskfr::pop(char *p, uint32_t **rate) {
+	{
+		//do the job
+		std::unique_lock<std::mutex> mlock(mutex_);
+		while (count == 0 && active) {
+			conditionNotEmpty.wait(mlock);
+		}
+		if(!active) return 1; //error
+		for (int i = 0; i < 81; i++) {
+			p[i] = puzzlesToRate[tail].p[i];
+		}
+		*rate = res[tail];
+		tail++;
+		if (tail >= bufSize) {
+			tail = 0;
+		}
+		count--;
+		//mlock.unlock();
+	}
+	conditionNotFull.notify_all(); //notify all waiting threads that the buffer isn't full
+	return 0;
+}
+void pgGotchi::fskfr::commit() { //block the thread until somebody else emptied the buffer
+	std::unique_lock<std::mutex> mlock(mutex_);
+	//while (active && count != 0) {
+	while (count != 0) {
+		conditionNotFull.wait(mlock);
+	}
+	//fprintf(stderr, "\nfskfr commit, queue size = %d\n", count); //debug
+}
+
 
 int probe_map_callback (void *context, const char *puz, char *m, const morph &theMorph) {
 	(void)puz; (void)theMorph; //suppress compiler warnings
