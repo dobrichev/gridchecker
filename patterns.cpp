@@ -1227,8 +1227,42 @@ public:
 //				push_back(p);
 //			}
 		private:
-			inputFilter& filter_; //initial filter for initialization of the records
-		};
+			inputFilter& filter_;
+		}; //puzzleRecordset
+		class recordCounter { //scans entire table and counts records matching the filter
+		public:
+			recordCounter(pgAllPuzzles& container, inputFilter& filter) : filter_(filter) { //initialize from the global container
+				genericOutputIterator<puzzleRecord, recordCounter>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.theSet.cbegin(), container.theSet.cend(), outGenericIterator); //part 1
+				std::copy(container.theArray, container.theArray + container.theArraySize, outGenericIterator); //part 2
+			}
+			recordCounter(puzzleRecordset& container, inputFilter& filter) : filter_(filter) { //initialize from other puzzleRecordset
+				genericOutputIterator<puzzleRecord*, recordCounter>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.cbegin(), container.cend(), outGenericIterator);
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord& p) { //a record is sent for processing
+			//void operator()(pgAllPuzzles::puzzleRecord* const & p) { //process global container record
+				if(filter_(p)) {
+					count_++;
+				}
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord* p) { //process puzzleRecordset record
+				if(filter_(*p)) {
+					count_++;
+				}
+			}
+			static int getCount(pgAllPuzzles& container, inputFilter& filter) {
+				recordCounter this_(container, filter);
+				return this_.count_;
+			}
+			static int getCount(puzzleRecordset& container, inputFilter& filter) {
+				recordCounter this_(container, filter);
+				return this_.count_;
+			}
+		private:
+			inputFilter& filter_;
+			int count_ = 0;
+		}; //recordCounter
 	private:
 		puzzleRecord* theArray = NULL;
 		set<puzzleRecord> theSet;
@@ -1634,8 +1668,9 @@ public:
 			resCount = (int)src.size();
 			if(opt.verbose) {
 				pgAllPuzzles::inputFilter nonMinimalsFilter(pgAllPuzzles::filterClause::nonMinimal);
-				pgAllPuzzles::puzzleRecordset non_minimals(src, nonMinimalsFilter);
-				redundantCount = non_minimals.size();
+				//pgAllPuzzles::puzzleRecordset non_minimals(src, nonMinimalsFilter);
+				//redundantCount = non_minimals.size();
+				redundantCount = pgAllPuzzles::recordCounter::getCount(src, nonMinimalsFilter);
 				fprintf(stderr, "Relabel %d, %d passes left, processing %d + %d = %d items ", n, maxPasses, resCount - redundantCount, redundantCount, resCount);
 				//fprintf(stderr, "Relabel %d, %d passes left, processing %d items ", n, maxPasses, resCount);
 			}
