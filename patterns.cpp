@@ -736,6 +736,23 @@ public:
 	static int map[34]; //compressed to real position
 	class pgAllPuzzles { //the table of the known puzzles
 	public:
+		struct ratingTriplet { //for I/O
+			int ER = 0;
+			int EP = 0;
+			int ED = 0;
+			bool operator<(const ratingTriplet& other) const {
+				if(ER < other.ER) return true;
+				if(ER > other.ER) return false;
+				if(EP < other.EP) return true;
+				if(EP > other.EP) return false;
+				if(ED < other.ED) return true;
+				//if(ED > other.ED) return false;
+				return false;
+			}
+			bool isZero() const {
+				return !(ER | EP | ED);
+			}
+		};
 		struct puzzleRecord {
 			uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
 			rating_t rateFast; // bits 0..3=depth; bits 4..5=minimal; 6..7=reserved; 8..15=ER; 16..23=EP; 24..31=ED //also updated directly by fskfr
@@ -868,9 +885,9 @@ public:
 			bool operator== (const puzzleRecord & other) const {
 				return(memcmp(this, &other, 16) == 0);
 			}
-//			bool isMinimal () const {
-//				return((rateFast & minimalityMask) == (2 << 3));
-//			}
+			bool isMinimal () const {
+				return getMinimality() == 2;
+			}
 			puzzleRecord& merge(const puzzleRecord& other) { //combine fields from 2 input puzzles
 				if((other.rateFast & rateMask) > (this->rateFast & rateMask)) this->rateFast = ((this->rateFast & (~rateMask)) | (other.rateFast & rateMask)); //the greater rating
 				if((other.rateFast & depthMask) > (this->rateFast & depthMask)) this->rateFast = ((this->rateFast & (~depthMask)) | (other.rateFast & depthMask)); //the greater depth
@@ -918,6 +935,16 @@ public:
 			}
 			rating_t getRateFinalED() const {
 				return (this->rateFinal & EDmask) >> 24;
+			}
+			void getRateFastRating(ratingTriplet& r) const {
+				r.ER = getRateFastER();
+				r.EP = getRateFastEP();
+				r.ED = getRateFastED();
+			}
+			void getRateFinalRating(ratingTriplet& r) const {
+				r.ER = getRateFinalER();
+				r.EP = getRateFinalEP();
+				r.ED = getRateFinalED();
 			}
 		    friend std::ostream & operator <<(std::ostream& out, const puzzleRecord& data) {
 	    		//out << std::string(data); //for text output
@@ -1213,7 +1240,6 @@ public:
 				std::copy(container.cbegin(), container.cend(), outGenericIterator);
 			}
 			void operator()(const pgAllPuzzles::puzzleRecord& p) { //a record is sent for processing
-			//void operator()(pgAllPuzzles::puzzleRecord* const & p) { //process global container record
 				if(filter_(p)) {
 					push_back(const_cast<puzzleRecord*>(&p));
 				}
@@ -1263,6 +1289,84 @@ public:
 			inputFilter& filter_;
 			int count_ = 0;
 		}; //recordCounter
+		class statisticsPerRatingRecord {
+		public:
+			int numPuzzles = 0; //number of puzzles havind the key rate in the database
+			int numNonMinimals = 0; //number of non-minimal puzzles having the same key
+			int numAlternateRatingUnrated = 0; //number of puzzles having the same key and empty alternative rating
+			ratingTriplet maxAlternateRating; //the maximal alternative rating for the minimal puzzles having the same key
+			ratingTriplet minAlternateRating; //the minimal alternative rating for the minimal puzzles having the same key
+			void update(const ratingTriplet& altRating, bool isMinimal) {
+				numPuzzles++;
+				if(altRating.isZero()) numAlternateRatingUnrated++;
+				if(isMinimal) {
+					if(maxAlternateRating < altRating) maxAlternateRating = altRating; //structure copy
+					if(minAlternateRating.isZero() || altRating < minAlternateRating) minAlternateRating = altRating; //structure copy
+				}
+				else {
+					numNonMinimals++;
+				}
+			}
+		};
+		class statisticsPerRating : public std::map<ratingTriplet, statisticsPerRatingRecord> {
+		public:
+			void update(const ratingTriplet& rating, const ratingTriplet& altRating, bool isMinimal) {
+			this->operator [](rating).update(altRating, isMinimal);
+			}
+		};
+		struct statisticsPerBothRatings {
+			statisticsPerRating statisticsPerFastRating;
+			statisticsPerRating statisticsPerFinalRating;
+			void update(const puzzleRecord& p) {
+				ratingTriplet fastRating;
+				ratingTriplet finalRating;
+				bool isMinimal = p.isMinimal();
+				p.getRateFastRating(fastRating);
+				p.getRateFinalRating(finalRating);
+				statisticsPerFastRating.update(fastRating, finalRating, isMinimal);
+				statisticsPerFinalRating.update(finalRating, fastRating, isMinimal);
+			}
+		};
+		class ratingStatistics { //scans entire table and accumulate statistics
+		public:
+			statisticsPerBothRatings stats;
+			ratingStatistics(pgAllPuzzles& container) { //initialize from the global container
+				genericOutputIterator<puzzleRecord, ratingStatistics>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.theSet.cbegin(), container.theSet.cend(), outGenericIterator); //part 1
+				std::copy(container.theArray, container.theArray + container.theArraySize, outGenericIterator); //part 2
+			}
+			ratingStatistics(puzzleRecordset& container) { //initialize from other puzzleRecordset
+				genericOutputIterator<puzzleRecord*, ratingStatistics>outGenericIterator(*this); //initialize an output iterator that calls operator()
+				std::copy(container.cbegin(), container.cend(), outGenericIterator);
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord& p) { //a record is sent for processing
+				stats.update(p);
+			}
+			void operator()(const pgAllPuzzles::puzzleRecord* p) { //process puzzleRecordset record
+				stats.update(*p);
+			}
+			//
+			//serialize() ???
+			void dump() { //debug
+				for(auto s : stats.statisticsPerFastRating) {
+					fprintf(stderr, "FR=%u.%u/%u.%u/%u.%u %u %u %u minED=%u.%u/%u.%u/%u.%u maxED=%u.%u/%u.%u/%u.%u\n",
+							s.first.ER/10, s.first.ER%10, s.first.EP/10, s.first.EP%10, s.first.ED/10, s.first.ED%10,
+							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
+							s.second.minAlternateRating.ER/10, s.second.minAlternateRating.ER%10, s.second.minAlternateRating.EP/10, s.second.minAlternateRating.EP%10, s.second.minAlternateRating.ED/10, s.second.minAlternateRating.ED%10,
+							s.second.maxAlternateRating.ER/10, s.second.maxAlternateRating.ER%10, s.second.maxAlternateRating.EP/10, s.second.maxAlternateRating.EP%10, s.second.maxAlternateRating.ED/10, s.second.maxAlternateRating.ED%10
+							);
+				}
+				for(auto s : stats.statisticsPerFinalRating) {
+					fprintf(stderr, "ER=%u.%u/%u.%u/%u.%u %u %u %u minFR=%u.%u/%u.%u/%u.%u maxFR=%u.%u/%u.%u/%u.%u\n",
+							s.first.ER/10, s.first.ER%10, s.first.EP/10, s.first.EP%10, s.first.ED/10, s.first.ED%10,
+							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
+							s.second.minAlternateRating.ER/10, s.second.minAlternateRating.ER%10, s.second.minAlternateRating.EP/10, s.second.minAlternateRating.EP%10, s.second.minAlternateRating.ED/10, s.second.minAlternateRating.ED%10,
+							s.second.maxAlternateRating.ER/10, s.second.maxAlternateRating.ER%10, s.second.maxAlternateRating.EP/10, s.second.maxAlternateRating.EP%10, s.second.maxAlternateRating.ED/10, s.second.maxAlternateRating.ED%10
+							);
+				}
+			}
+		private:
+		}; //countsPerRating
 	private:
 		puzzleRecord* theArray = NULL;
 		set<puzzleRecord> theSet;
@@ -1724,6 +1828,8 @@ public:
 	void finalize() {
 		delete fastRater;
 		fastRater = NULL;
+		//pgAllPuzzles::ratingStatistics rs(theList);
+		//rs.dump();
 		//dumpToFlatText(cout);
 		dumpToBinary(cout);
 	}
