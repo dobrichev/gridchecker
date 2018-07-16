@@ -752,6 +752,11 @@ public:
 			bool isZero() const {
 				return !(ER | EP | ED);
 			}
+			operator std::string() const {
+				char res[40];
+				sprintf(res, "%u.%u/%u.%u/%u.%u", ER/10, ER%10, EP/10, EP%10, ED/10, ED%10);
+				return std::string(res);
+			}
 		};
 		struct puzzleRecord {
 			uint8_t key[16]; //32 half-bytes, first given is always "1", these are the values for givens at positions 2..33
@@ -1296,7 +1301,11 @@ public:
 			int numAlternateRatingUnrated = 0; //number of puzzles having the same key and empty alternative rating
 			ratingTriplet maxAlternateRating; //the maximal alternative rating for the minimal puzzles having the same key
 			ratingTriplet minAlternateRating; //the minimal alternative rating for the minimal puzzles having the same key
-			void update(const ratingTriplet& altRating, bool isMinimal) {
+			ch81 exemplar;
+			void update(const ratingTriplet& altRating, bool isMinimal, const puzzleRecord& p) {
+				if(numPuzzles == 0) { //creating record, store an exemplar
+					puzzleRecord::uncomprPuz::getKey(p, &exemplar);
+				}
 				numPuzzles++;
 				if(altRating.isZero()) numAlternateRatingUnrated++;
 				if(isMinimal) {
@@ -1310,8 +1319,8 @@ public:
 		};
 		class statisticsPerRating : public std::map<ratingTriplet, statisticsPerRatingRecord> {
 		public:
-			void update(const ratingTriplet& rating, const ratingTriplet& altRating, bool isMinimal) {
-			this->operator [](rating).update(altRating, isMinimal);
+			void update(const ratingTriplet& rating, const ratingTriplet& altRating, bool isMinimal, const puzzleRecord& p) {
+			this->operator [](rating).update(altRating, isMinimal, p);
 			}
 		};
 		struct statisticsPerBothRatings {
@@ -1323,8 +1332,8 @@ public:
 				bool isMinimal = p.isMinimal();
 				p.getRateFastRating(fastRating);
 				p.getRateFinalRating(finalRating);
-				statisticsPerFastRating.update(fastRating, finalRating, isMinimal);
-				statisticsPerFinalRating.update(finalRating, fastRating, isMinimal);
+				statisticsPerFastRating.update(fastRating, finalRating, isMinimal, p);
+				statisticsPerFinalRating.update(finalRating, fastRating, isMinimal, p);
 			}
 		};
 		class ratingStatistics { //scans entire table and accumulate statistics
@@ -1348,21 +1357,52 @@ public:
 			//
 			//serialize() ???
 			void dump() { //debug
+				ch81 exemplarText;
 				for(auto s : stats.statisticsPerFastRating) {
-					fprintf(stderr, "FR=%u.%u/%u.%u/%u.%u %u %u %u minED=%u.%u/%u.%u/%u.%u maxED=%u.%u/%u.%u/%u.%u\n",
-							s.first.ER/10, s.first.ER%10, s.first.EP/10, s.first.EP%10, s.first.ED/10, s.first.ED%10,
+					s.second.exemplar.toString(exemplarText.chars);
+					fprintf(stderr, "FD=%s %u %u %u minED=%s maxED=%s %81.81s\n",
+							std::string(s.first).c_str(),
 							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
-							s.second.minAlternateRating.ER/10, s.second.minAlternateRating.ER%10, s.second.minAlternateRating.EP/10, s.second.minAlternateRating.EP%10, s.second.minAlternateRating.ED/10, s.second.minAlternateRating.ED%10,
-							s.second.maxAlternateRating.ER/10, s.second.maxAlternateRating.ER%10, s.second.maxAlternateRating.EP/10, s.second.maxAlternateRating.EP%10, s.second.maxAlternateRating.ED/10, s.second.maxAlternateRating.ED%10
+							std::string(s.second.minAlternateRating).c_str(),
+							std::string(s.second.maxAlternateRating).c_str(),
+							exemplarText.chars
 							);
 				}
 				for(auto s : stats.statisticsPerFinalRating) {
-					fprintf(stderr, "ER=%u.%u/%u.%u/%u.%u %u %u %u minFR=%u.%u/%u.%u/%u.%u maxFR=%u.%u/%u.%u/%u.%u\n",
-							s.first.ER/10, s.first.ER%10, s.first.EP/10, s.first.EP%10, s.first.ED/10, s.first.ED%10,
+					s.second.exemplar.toString(exemplarText.chars);
+					fprintf(stderr, "ED=%s %u %u %u minFD=%s maxFD=%s %81.81s\n",
+							std::string(s.first).c_str(),
 							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
-							s.second.minAlternateRating.ER/10, s.second.minAlternateRating.ER%10, s.second.minAlternateRating.EP/10, s.second.minAlternateRating.EP%10, s.second.minAlternateRating.ED/10, s.second.minAlternateRating.ED%10,
-							s.second.maxAlternateRating.ER/10, s.second.maxAlternateRating.ER%10, s.second.maxAlternateRating.EP/10, s.second.maxAlternateRating.EP%10, s.second.maxAlternateRating.ED/10, s.second.maxAlternateRating.ED%10
+							std::string(s.second.minAlternateRating).c_str(),
+							std::string(s.second.maxAlternateRating).c_str(),
+							exemplarText.chars
 							);
+				}
+			}
+			void dump(std::vector<std::string>& ratingRecords) {
+				char resRow[200];
+				ch81 exemplarText;
+				for(auto s : stats.statisticsPerFastRating) {
+					s.second.exemplar.toString(exemplarText.chars);
+					sprintf(resRow, "FD=%s %u %u %u minED=%s maxED=%s %81.81s\n",
+							std::string(s.first).c_str(),
+							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
+							std::string(s.second.minAlternateRating).c_str(),
+							std::string(s.second.maxAlternateRating).c_str(),
+							exemplarText.chars
+							);
+					ratingRecords.push_back(resRow);
+				}
+				for(auto s : stats.statisticsPerFinalRating) {
+					s.second.exemplar.toString(exemplarText.chars);
+					sprintf(resRow, "ED=%s %u %u %u minFD=%s maxFD=%s %81.81s\n",
+							std::string(s.first).c_str(),
+							s.second.numPuzzles, s.second.numNonMinimals, s.second.numAlternateRatingUnrated,
+							std::string(s.second.minAlternateRating).c_str(),
+							std::string(s.second.maxAlternateRating).c_str(),
+							exemplarText.chars
+							);
+					ratingRecords.push_back(resRow);
 				}
 			}
 		private:
@@ -1974,23 +2014,30 @@ public:
 		//get all rated puzzles
 		pgAllPuzzles::puzzleRecordset src(theList, iFilter);
 		//compose array of best puzzles for each final ER
-		pgAllPuzzles::puzzleRecord* best_records[256];
+		pgAllPuzzles::puzzleRecord* best_records[256] = {NULL};
 		for(pgAllPuzzles::puzzleRecord* hh : src) {
 			rating_t test_ER = hh->getRateFinalER();
 			if(test_ER > 120) continue; //bug???
-			if(
+			if(best_records[test_ER] == NULL) {
+				best_records[test_ER] = hh; //initial assignment
+			}
+			else if(
 					(best_records[test_ER]->getRateFinalEP() < hh->getRateFinalEP()) //better due to EP
 					||
 					(best_records[test_ER]->getRateFinalEP() == hh->getRateFinalEP() && best_records[test_ER]->getRateFinalED() < hh->getRateFinalED()) //better due to ED
 				) {
-				best_records[test_ER] = hh;
+				best_records[test_ER] = hh; //update
 			}
 		}
 		// copy the best puzzles to the output
 		for(int i = 120; i >= 0; i--) {
-			if(0 == best_records[i]->getRateFinalEP()) continue; //no puzzles for this ER
+			if(NULL == best_records[i]) continue; //no puzzles for this ER
 			puzzletList.push_back(std::string(*(best_records[i])));
 		}
+	}
+	void getRatingStatistics(std::vector<std::string>& ratingRecords) {
+		pgAllPuzzles::ratingStatistics rs(theList);
+		rs.dump(ratingRecords);
 	}
 }; // pgGotchi
 int pgGotchi::patternSize; //max 33
@@ -2311,6 +2358,9 @@ bool dumpToFlatText(const std::string& filename, int& numSavedRecords) {
 	}
 	numSavedRecords = Db->g.dumpToFlatText(outStream);
 	return false;
+}
+void getRatingStatistics(std::vector<std::string>& ratingRecords) {
+	Db->g.getRatingStatistics(ratingRecords);
 }
 
 /////////////////////

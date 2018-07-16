@@ -5,10 +5,11 @@
 #include "api.h" //non-gSoap related header
 
 //////
-///  used globals
+///  used global vars and functions
 extern const char *versionString;
-void getPlayablePuzzles(std::vector<std::string>& puzzletList);
+void getPlayablePuzzles(std::vector<std::string>& puzzleList);
 bool dumpToFlatText(const std::string& filename, int& numStoredRecords);
+void getRatingStatistics(std::vector<std::string>& puzzleList);
 
 ////////////////////////
 /// API multithreading framework
@@ -178,5 +179,10 @@ int pgServerService::getPlayablePuzzles(std::vector<std::string>& puzzleList) {
 
 int pgServerService::dumpToFlatText(const std::string& filename, int& numStoredRecords) {
 	if(::dumpToFlatText(filename, numStoredRecords)) return SOAP_ERR;
+	return SOAP_OK;
+}
+
+int pgServerService::getRatingStatistics(std::vector<std::string>& ratingRecords) {
+	::getRatingStatistics(ratingRecords);
 	return SOAP_OK;
 }

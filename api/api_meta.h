@@ -32,3 +32,6 @@ int pg__getPlayablePuzzles(std::vector<std::string>& puzzleList);
 //gsoap pg service method: dumpToFlatText		Save a snapshot of the database
 int pg__dumpToFlatText(std::string filename, int& numStoredRecords);
 
+//g...soap ns2  service method-protocol:      getRatingStatistics SOAP
+//gsoap pg service method: getRatingStatistics Query for exemplars of all ratings
+int pg__getRatingStatistics(std::vector<std::string>& ratingRecords);
