@@ -1455,6 +1455,12 @@ public:
 			//read puzzle records
 			for(std::size_t i = 0; (!!in) && i < theArraySize; i++) { //each puzzle
 				in >> theArray[i];
+//				//debug
+//				ch81 d;
+//				puzzleRecord::uncomprPuz::getKey(theArray[i], &d);
+//				if(isDifficultD(d.chars)) {
+//					fprintf(stderr, "hard: %s\n", std::string(theArray[i]).c_str());
+//				}
 			}
 			if(!std::is_sorted(theArray, theArray + theArraySize)) {
 				exit(1);

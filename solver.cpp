@@ -1032,6 +1032,60 @@ unsigned long long checkNoSingles(const char* in)
 	return 1; //remove to make this function universal. Currently it is called after obtaining the only solution.
 }
 
+extern bool isDifficultD(const char *puzzle) { //return whether any given constrains any non-given
+	char puz[81];
+	memcpy(puz, puzzle, 81);
+	char sol[81];
+	if(1 != solve(puz, 1, sol))
+		return false; //invalid puzzle
+	//if a given can be replaced with another given and that lead to valid solution(s) then it is not redundant
+	for(int testGivenPosition = 0; testGivenPosition < 81; testGivenPosition++) { //loop over givens
+		//reduce the givens by one and compose partially solved puzzle with given at testGivenPosition removed
+		if(puzzle[testGivenPosition] == 0)
+			continue; //not a given
+		puz[testGivenPosition] = 0; //remove the given
+		game g = defaultGame; //start from a copy of the empty game
+		g.maxSolutions = 1;
+		init(g, puz); //set all known digits
+		if(g.mode & MODE_STOP_PROCESSING) //invalid or solved by direct eliminations
+			return false; //puzzle solves even with this given removed
+		fastEliminations(g);
+		if(g.mode & MODE_STOP_PROCESSING) //invalid or solved by singles
+			return false; //puzzle solves even with this given removed
+		if(0 == g.cellPossibilities[testGivenPosition] & ~Digit2Bitmap[(int)puzzle[testGivenPosition]])
+			return false; //the removed given is solved (i.e. it is redundant)
+		//test whether some of the non-givens is resolved
+		for(int testNonGivenCell = 0; testNonGivenCell < 81; testNonGivenCell++) { //loop over non-given cells
+			if(puzzle[testNonGivenCell] != 0)
+				continue; //not a non-given
+			if(0 == g.cellPossibilities[testNonGivenCell]) //a solved cell from the non-givens
+				return false;
+		}
+		//test whether alternative solution exists for each of the non-givens
+		for(int testNonGivenCell = 0; testNonGivenCell < 81; testNonGivenCell++) { //loop over non-given cells
+			if(puzzle[testNonGivenCell] != 0)
+				continue; //not a non-given
+			game gg = g; //clone the game
+			gg.cellPossibilities[testNonGivenCell] &= ~Digit2Bitmap[(int)sol[testNonGivenCell]]; //remove the known solution possibility
+			if(1 == BitCount[gg.cellPossibilities[testNonGivenCell]]) {
+				//after removal of the known solution possibility, only one other remains
+				setDigit(gg, testNonGivenCell, gg.cellPossibilities[testNonGivenCell]);
+			}
+			if((gg.mode & MODE_STOP_PROCESSING) == 0) {
+				attempt(gg); //check for any solution
+			}
+			if(0 == gg.nSolutions) {
+				//with removed given at position testGivenPosition, a solution with value at position testNonGivenCell different than the original solution doesn't exist. Filter doesn't match.
+				return false;
+			}
+			//the removed given constrains the tested cell, even indirectly. Continue with next cell.
+		}
+		puz[testGivenPosition] = puzzle[testGivenPosition]; //restore the given
+	}
+	//for any given removed, any of the non-givens could be resolved to alternative value. Filter matches.
+	return true;
+}
+
 extern int solverIsIrreducibleByProbing(char *puz) { //return nSol for irreducible puzzles, else 0
 	//if a given can be replaced with another given and that lead to valid solution(s) then it is not redundant
 	for(int red = 0; red < 81; red++) {
