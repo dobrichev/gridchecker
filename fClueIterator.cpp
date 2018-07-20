@@ -944,7 +944,7 @@ fastClueIterator::fastClueIterator(grid &g) :
 				0), fua5ActualSize(0)/*, fua6ActualSize(0)*/, uaActualSize(0), ua2ActualSize(
 				0), ua3ActualSize(0), ua4ActualSize(0), ua5ActualSize(0)/*, ua6ActualSize(
 				0)*/, clueNumber(0), nClues(opt.scanOpt->nClues), nPuzzles(0), nChecked(
-				0), g(g), actualInitialUa(0) {
+				0), actualInitialUa(0), g(g) {
 	//nClues = 16;
 }
 

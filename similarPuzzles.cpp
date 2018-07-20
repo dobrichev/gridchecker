@@ -549,7 +549,7 @@ void doPlusMinimalUnique(puzzleSet &puzzles, const int depth) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 1)
 #endif //_OPENMP
-	for(int i = 0; i < nPuzzles; i++) {
+	for(unsigned int i = 0; i < nPuzzles; i++) {
 		char p1[81 * 81 * 9];
 		subCanoner sc;
 		//int p1Size = solverPlus1(index[i]->chars, p1, true, false);
