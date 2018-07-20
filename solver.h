@@ -23,6 +23,8 @@ extern int solverPlus1(const char* in, char* out, bool redundancyCheck = true, b
 extern int solverPlus2(char* in, char* out);
 extern int solverPlus1Unique(char* in, char* out);
 
+extern bool isDifficultD(const char *puzzle); //return whether any given constrains any non-given
+
 extern unsigned long long solverIsIrreducibleBySolCount(char *puz);
 extern int solverIsIrreducibleByProbing(char *puz);
 extern int solverIsIrreducible(char *puz);
