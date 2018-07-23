@@ -28,6 +28,7 @@ extern int groupBySolution(const bool noPuz, const bool verbose);
 extern int doSimilarPuzzles();
 extern int processPatterns();
 extern int processTemplate();
+extern int processCatalog();
 
 struct scanOptions;
 struct solveOptions;
@@ -36,6 +37,7 @@ struct uaOptions;
 struct similarOptions;
 struct patternOptions;
 struct templateOptions;
+struct catalogOptions;
 
 class options {
 	AnyOption anyopt;
@@ -48,6 +50,7 @@ public:
 	similarOptions *similarOpt;
 	patternOptions *patternOpt;
 	templateOptions *templateOpt;
+	catalogOptions *catalogOpt;
 	bool verbose;
 	options();
 	bool read(int argc, char* argv[]);
@@ -659,6 +662,28 @@ struct templateOptions {
 		r4tot4 = opt.getFlag("r4tot4");
 		r4tot5 = opt.getFlag("r4tot5");
 		return processTemplate();
+	}
+};
+
+struct catalogOptions {
+	bool binary;
+	bool extract;
+	unsigned long long rangeBegin;
+	unsigned long long rangeEnd;
+	catalogOptions() { //set defaults for all catalog options
+		binary = false;
+		extract = false;
+		rangeBegin = 0;
+		rangeEnd = ULONG_MAX;
+	}
+	int go() { //collect all options and do the job
+		binary = opt.getFlag("binary");
+		extract = opt.getFlag("extract");
+		const char* textRange = opt.getValue("range");
+		if(textRange) { //range is given, parse it
+			sscanf(textRange, "%llu-%llu", &rangeBegin, &rangeEnd);
+		}
+		return processCatalog();
 	}
 };
 

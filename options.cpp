@@ -243,19 +243,28 @@ options::options() {
 	anyopt.addUsage("   --pg s<pattern> < grids.txt > puzzles.txt          Scans grids for puzzles having the given pattern");
 	anyopt.setOption("pg");
 
-	anyopt.addUsage(" --template              Template/rookery related commands");
+	anyopt.addUsage(" --template          Template/rookery related commands");
 	anyopt.setCommandFlag("template");
-	anyopt.addUsage("   --get2templates           Prints identity for all 181 2-tepmplate classes (not impl.)");
+	anyopt.addUsage("   --get2templates       Prints identity for all 181 2-tepmplate classes (not impl.)");
 	anyopt.setFlag("get2templates");
-	anyopt.addUsage("   --get2rookeries           Prints identity for all 170 2-rookery classes (not impl.)");
+	anyopt.addUsage("   --get2rookeries       Prints identity for all 170 2-rookery classes (not impl.)");
 	anyopt.setFlag("get2rookeries");
-	anyopt.addUsage("   --get999911110            Prints all ED puzzles having 999911110 symbols distribution");
+	anyopt.addUsage("   --get999911110        Prints all ED puzzles having 999911110 symbols distribution");
 	anyopt.setFlag("get999911110");
-	anyopt.addUsage("   --r4tot4                  Prints all 4-templates for a given list of 4-rookeries");
+	anyopt.addUsage("   --r4tot4              Prints all 4-templates for a given list of 4-rookeries");
 	anyopt.setFlag("r4tot4");
-	anyopt.addUsage("   --r4tot5                  Prints all 5-templates for a given list of 4-rookeries");
+	anyopt.addUsage("   --r4tot5              Prints all 5-templates for a given list of 4-rookeries");
 	anyopt.setFlag("r4tot5");
 	anyopt.addUsage("");
+
+	anyopt.addUsage(" --catalog           Builds or extracts from a grids catalog");
+	anyopt.setCommandFlag("catalog");
+	anyopt.addUsage("   --extract             Extract all or range of grids");
+	anyopt.setFlag("extract");
+	anyopt.addUsage("     --range                 Zero-based range of positions <min>-<max>");
+	anyopt.setOption("range");
+	anyopt.addUsage("     --binary                Use binary representation");
+	anyopt.setFlag("binary");
 
 	//by default all  options  will be checked on the command line and from option/resource file
 	//anyopt.setFlag("help", 'h');   //a flag (takes no argument), supporting long and short form 
@@ -347,6 +356,11 @@ int options::execCommand() {
 	if(anyopt.getFlag("template")) {
 		templateOptions so;
 		templateOpt = &so;
+		return so.go();
+	}
+	if(anyopt.getFlag("catalog")) {
+		catalogOptions so;
+		catalogOpt = &so;
 		return so.go();
 	}
 	cout << "Error: No command specified." << endl;
