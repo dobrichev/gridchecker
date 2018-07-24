@@ -13,6 +13,7 @@ options::options() {
 	similarOpt = NULL;
 	patternOpt = NULL;
 	templateOpt = NULL;
+	catalogOpt = NULL;
 	verbose = false;
 
 	//SET PREFERENCES
@@ -255,7 +256,8 @@ options::options() {
 	anyopt.setFlag("r4tot4");
 	anyopt.addUsage("   --r4tot5              Prints all 5-templates for a given list of 4-rookeries");
 	anyopt.setFlag("r4tot5");
-	anyopt.addUsage("");
+	anyopt.addUsage("   --countmax333         Counts maximal number of clues paritioning the input grid to 3+3+3 templates");
+	anyopt.setFlag("countmax333");
 
 	anyopt.addUsage(" --catalog           Builds or extracts from a grids catalog");
 	anyopt.setCommandFlag("catalog");
@@ -265,6 +267,7 @@ options::options() {
 	anyopt.setOption("range");
 	anyopt.addUsage("     --binary                Use binary representation");
 	anyopt.setFlag("binary");
+	anyopt.addUsage("");
 
 	//by default all  options  will be checked on the command line and from option/resource file
 	//anyopt.setFlag("help", 'h');   //a flag (takes no argument), supporting long and short form 

@@ -66,6 +66,101 @@ using namespace std;
 //	fprintf(stderr, "\nDone: %d templates form %d rookeries\n", n, r4.size());
 //}
 //
+
+void countGridMax333TemplatesCompletions() {
+	puzzleSetTagInt t3;
+	t3.loadFromFile("t3clues.txt", false);
+
+	bm128 dTemplates[9];
+	bm128 templates3[84];
+	ch81 tCan3[84];
+	int compl3[84];
+	ch81 puz;
+	unsigned long long distribution[20] = {0};
+	unsigned long long done = 0;
+	const unsigned long long interimUpdateStep = 100000;
+	unsigned long long nextInterimUpdate = interimUpdateStep;
+
+	puzzleSetTagInt canonicalizationCache;
+	unsigned long long cacheHits = 0;
+	unsigned long long cacheMisses = 0;
+
+	char buf[2000];
+	while(fgets(buf, sizeof(buf), stdin)) {
+		ch81 sol;
+		//int puzSize = sol.fromString(buf);
+		sol.fromString(buf);
+
+		//find all 1-templates
+		for(int i = 0; i < 9; i++) {
+			dTemplates[i].clear();
+		}
+		for(int i = 0; i < 81; i++) {
+			dTemplates[sol.chars[i] - 1].setBit(i);
+		}
+		//find all 84 3-templates
+		for(int i = 0; i < 84; i++) {
+			templates3[i] = dTemplates[choice3of9[i][0]] | dTemplates[choice3of9[i][1]];
+			templates3[i] |= dTemplates[choice3of9[i][2]];
+			puz.clear();
+			for(int p = 0; p < 81; p++) {
+				if(templates3[i].isBitSet(p))
+					puz.chars[p] = sol.chars[p];
+			}
+			puzzleSetTagInt::const_iterator cacheHit = canonicalizationCache.find(puz);
+			if(cacheHit != canonicalizationCache.end()) {
+				cacheHits++;
+				compl3[i] = cacheHit->second;
+			}
+			else {
+				cacheMisses++;
+				patminlex rml(puz.chars, tCan3[i].chars);
+				compl3[i] = t3.find(tCan3[i])->second;
+				if(canonicalizationCache.size() > 500000) {
+					canonicalizationCache.clear();
+				}
+				canonicalizationCache[puz] = compl3[i];
+			}
+		}
+
+		int max333 = 0;
+
+		for(int i = 0; i < 280; i++) {
+			int c = compl3[choice333of9[i][0]] + compl3[choice333of9[i][1]] + compl3[choice333of9[i][2]];
+			if(max333 < c)
+				max333 = c;
+		}
+		distribution[max333]++;
+		done++;
+		if(opt.verbose) {
+			if(max333 <= 8) {
+				printf("%81.81s\t%d\n", buf, max333);
+			}
+			if(done == nextInterimUpdate) {
+				fprintf(stderr, "Distribution at grid #%llu (", done);
+				for(int i = 6; i < 19; i++) {
+					fprintf(stderr, " %llu", distribution[i]);
+				}
+				fprintf(stderr, " ) Cache Hits=%llu, Misses=%llu\n", cacheHits, cacheMisses);
+				nextInterimUpdate += interimUpdateStep;
+			}
+		}
+		//printf("%81.81s\t%d\t%d\t%5.3f\t%d\t%d\t%5.3f\n", buf, min2223, max2223, sum2223 / 1260.0, min333, max333, sum333 / 280.0);
+
+		//extern const int choice2223of9[1260][4];
+		//extern const int choice333of9[280][3];
+		//typedef pair <ch81, int> Ch81_Int_Pair;
+		//struct puzzleSetTagInt : public map<ch81, int> {
+
+		//find all disjoint a(2)+b(2)+c(2)+t(3) templates
+	}
+	fprintf(stderr, "Distribution at grid #%llu (", done);
+	for(int i = 6; i < 19; i++) {
+		fprintf(stderr, " %llu", distribution[i]);
+	}
+	fprintf(stderr, " )\n");
+}
+
 void getGrid23Templates() {
 	puzzleSetTagInt t2;
 	puzzleSetTagInt t3;
@@ -103,7 +198,8 @@ void getGrid23Templates() {
 				if(templates2[i].isBitSet(p))
 					puz.chars[p] = sol.chars[p];
 			}
-			subcanon(puz.chars, tCan2[i].chars);
+			patminlex rml(puz.chars, tCan2[i].chars);
+			//subcanon(puz.chars, tCan2[i].chars);
 			compl2[i] = t2.find(tCan2[i])->second;
 		}
 		//find all 84 3-templates
@@ -115,7 +211,8 @@ void getGrid23Templates() {
 				if(templates3[i].isBitSet(p))
 					puz.chars[p] = sol.chars[p];
 			}
-			subcanon(puz.chars, tCan3[i].chars);
+			patminlex rml(puz.chars, tCan3[i].chars);
+			//subcanon(puz.chars, tCan3[i].chars);
 			compl3[i] = t3.find(tCan3[i])->second;
 		}
 
@@ -2608,6 +2705,9 @@ extern int processTemplate() {
 				}
 			}
 		}
+	}
+	else if(opt.templateOpt->countmax333) {
+		countGridMax333TemplatesCompletions();
 	}
 	else {
 		fprintf(stderr, "Unknown/missing template sub-command,\n");
