@@ -132,10 +132,11 @@ void countGridMax333TemplatesCompletions() {
 		}
 		distribution[max333]++;
 		done++;
+		if(max333 <= 8) {
+			printf("%81.81s\t%d\n", buf, max333);
+			fflush(NULL);
+		}
 		if(opt.verbose) {
-			if(max333 <= 8) {
-				printf("%81.81s\t%d\n", buf, max333);
-			}
 			if(done == nextInterimUpdate) {
 				fprintf(stderr, "Distribution at grid #%llu (", done);
 				for(int i = 6; i < 19; i++) {
@@ -154,10 +155,13 @@ void countGridMax333TemplatesCompletions() {
 
 		//find all disjoint a(2)+b(2)+c(2)+t(3) templates
 	}
+	printf("Distribution at grid #%llu (", done);
 	fprintf(stderr, "Distribution at grid #%llu (", done);
 	for(int i = 6; i < 19; i++) {
+		printf(" %llu", distribution[i]);
 		fprintf(stderr, " %llu", distribution[i]);
 	}
+	printf(" )\n");
 	fprintf(stderr, " )\n");
 }
 
