@@ -159,8 +159,13 @@ options::options() {
 	anyopt.setFlag("minus1");
 	anyopt.addUsage("     --findvalency           Find also the maximal valency");
 	anyopt.setFlag("findvalency");
-	anyopt.addUsage("   --count               Count UA of selected types for each grid from stdin");
+	anyopt.addUsage("   --count               Count UA4 or selected type for each grid from stdin");
 	//anyopt.setFlag("count");
+	anyopt.addUsage("     --unav4                 Count up to 4-digits UA");
+	anyopt.addUsage("     --unav5                 Count up to 5-digits UA");
+	anyopt.addUsage("     --unav12                Count up to 12-cells UA");
+	anyopt.addUsage("     --unav6c                Count separately the 4 types of 6-cell UA");
+	anyopt.setFlag("unav6c");
 
 	anyopt.addUsage(" --similar           Find similar puzzles");
 	anyopt.setCommandFlag("similar");

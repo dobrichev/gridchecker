@@ -69,6 +69,7 @@ public:
 	void findUA2digits();
 	void findUA4cells();
 	void findUA6cells();
+	void getUA6counts(int* fourCounts) const;
 	unsigned long long findUaBySolving(const unsigned char *unknowns, const int unknownsSize);
 	//void unused_findComplementaryUA();
 	void findUA4digits();

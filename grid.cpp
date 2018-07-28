@@ -852,6 +852,317 @@ void grid::findUA6cells() {
 	//	}
 	//}
 }
+void grid::getUA6counts(int* fourCounts) const {
+	typedef unsigned short uabm;
+	static const uabm val2bm[10] =	{0,1,2,4,8,16,32,64,128,256};
+	static const int adjacent[9] = {1,2,0,4,5,3,7,8,6};
+	static const int band[9] = {0,0,0,1,1,1,2,2,2};
+	static const int gr6_3unav[27][3] = //compare each of the 27 triplets to downside(rightside) box triplets (box modulo 3)
+	{
+		{ 9,12,15},{10,13,16},{11,14,17},{ 9,12,15},{10,13,16},{11,14,17},{ 9,12,15},{10,13,16},{11,14,17},
+		{18,21,24},{19,22,25},{20,23,26},{18,21,24},{19,22,25},{20,23,26},{18,21,24},{19,22,25},{20,23,26},
+		{ 0, 3, 6},{ 1, 4, 7},{ 2, 5, 8},{ 0, 3, 6},{ 1, 4, 7},{ 2, 5, 8},{ 0, 3, 6},{ 1, 4, 7},{ 2, 5, 8}
+	};
+	static const int gr6_3y[27] = //transposed triplets base
+	{
+		 0,27,54, 1,28,55, 2,29,56, 3,30,57, 4,31,58, 5,32,59, 6,33,60, 7,34,61, 8,35,62
+	};
+	static const int gr6_1unav[27][6] = //compare each of the 27 duets in band 1 to the downside(rightside) two boxes
+	{
+		{27,36,45,54,63,72},{28,37,46,55,64,73},{29,38,47,56,65,74},{30,39,48,57,66,75},{31,40,49,58,67,76},{32,41,50,59,68,77},{33,42,51,60,69,78},{34,43,52,61,70,79},{35,44,53,62,71,80},
+		{27,36,45,54,63,72},{28,37,46,55,64,73},{29,38,47,56,65,74},{30,39,48,57,66,75},{31,40,49,58,67,76},{32,41,50,59,68,77},{33,42,51,60,69,78},{34,43,52,61,70,79},{35,44,53,62,71,80},
+		{27,36,45,54,63,72},{28,37,46,55,64,73},{29,38,47,56,65,74},{30,39,48,57,66,75},{31,40,49,58,67,76},{32,41,50,59,68,77},{33,42,51,60,69,78},{34,43,52,61,70,79},{35,44,53,62,71,80}
+	};
+	static const int gr6_2unav[27][12] = //if a duet from band 1 matches a duet from band 2 ([0..2] or [3..5]),
+										 //check if it matches a duet in respective column in band3 ([6..8] or [9..11])
+	{
+		{28,37,46,29,38,47,56,65,74,55,64,73},{27,36,45,29,38,47,56,65,74,54,63,72},{27,36,45,28,37,46,55,64,73,54,63,72},
+		{31,40,49,32,41,50,59,68,77,58,67,76},{30,39,48,32,41,50,59,68,77,57,66,75},{30,39,48,31,40,49,58,67,76,57,66,75},
+		{34,43,52,35,44,53,62,71,80,61,70,79},{33,42,51,35,44,53,62,71,80,60,69,78},{33,42,51,34,43,52,61,70,79,60,69,78},
+		{28,37,46,29,38,47,56,65,74,55,64,73},{27,36,45,29,38,47,56,65,74,54,63,72},{27,36,45,28,37,46,55,64,73,54,63,72},
+		{31,40,49,32,41,50,59,68,77,58,67,76},{30,39,48,32,41,50,59,68,77,57,66,75},{30,39,48,31,40,49,58,67,76,57,66,75},
+		{34,43,52,35,44,53,62,71,80,61,70,79},{33,42,51,35,44,53,62,71,80,60,69,78},{33,42,51,34,43,52,61,70,79,60,69,78},
+		{28,37,46,29,38,47,56,65,74,55,64,73},{27,36,45,29,38,47,56,65,74,54,63,72},{27,36,45,28,37,46,55,64,73,54,63,72},
+		{31,40,49,32,41,50,59,68,77,58,67,76},{30,39,48,32,41,50,59,68,77,57,66,75},{30,39,48,31,40,49,58,67,76,57,66,75},
+		{34,43,52,35,44,53,62,71,80,61,70,79},{33,42,51,35,44,53,62,71,80,60,69,78},{33,42,51,34,43,52,61,70,79,60,69,78}
+	};
+
+	uabm bm[81];
+	uabm triplets_x[27];
+	uabm triplets_y[27];
+	uabm duets_x[81];
+	uabm duets_y[81];
+	uabm c;
+	uabm cc;
+	int i, j, k;
+	int n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+
+	char const (*m)[9][9];
+	m = (const char (*)[9][9])digits;
+
+	for(i = 0; i < 81; i++) {
+		bm[i] = val2bm[(int)digits[i]];
+	}
+	for(i = j = k = 0; i < 27; i++, j += 3) {
+		k = gr6_3y[i];
+		triplets_x[i] = bm[j] | bm[j + 1] | bm[j + 2];	//3 triplets per row
+		triplets_y[i] = bm[k] | bm[k + 9] | bm[k + 18];	//3 triplets per column
+		duets_x[j] = bm[j] | bm[j + 1];					//3 duets per row per stack
+		duets_x[j + 1] = bm[j + 1] | bm[j + 2];
+		duets_x[j + 2] = bm[j] | bm[j + 2];
+		duets_y[j] = bm[k] | bm[k + 9];					//3 duets per column per band
+		duets_y[j + 1] = bm[k + 9] | bm[k + 18];
+		duets_y[j + 2] = bm[k] | bm[k + 18];
+	}
+
+	//in the next loop i is the triplet index [0..26]
+	//col search  row search
+	//00 01 02    00 03 06 09 12 15 18 21 24
+	//03 04 05    01 04 07 10 13 16 19 22 25
+	//06 07 08    02 05 08 11 14 17 20 23 26
+	//09 10 11
+	//12 13 14
+	//15 16 17
+	//18 19 20
+	//21 22 23
+	//24 25 26
+	for(i = 0; i < 27; i++) {
+		//=== first by columns ===
+		//type 3
+		// ABC *** ***
+		// *** *** ***
+		// *** *** ***
+		//
+		// BCA *** ***
+		// *** *** ***
+		// *** *** ***
+		//
+		// *** *** ***
+		// *** *** ***
+		// *** *** ***
+		c = triplets_x[i];
+		if(c == triplets_x[gr6_3unav[i][0]]) {
+			n3++;
+		}
+		if(c == triplets_x[gr6_3unav[i][1]]) {
+			n3++;
+		}
+		if(c == triplets_x[gr6_3unav[i][2]]) {
+			n3++;
+		}
+		//type 1
+		// AB* *** ***
+		// *** *** ***
+		// *** *** ***
+		//
+		// BC* *** ***
+		// *** *** *** or AB,CA,BC
+		// *** *** ***
+		//
+		// CA* *** ***
+		// *** *** ***
+		// *** *** ***
+		c = duets_x[i];
+		if(BitCount[cc = c | duets_x[gr6_1unav[i][0]]] == 3) {
+			if(cc == (c | duets_x[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][5]])) { n1++;}
+		}
+		if(BitCount[cc = c | duets_x[gr6_1unav[i][1]]] == 3) {
+			if(cc == (c | duets_x[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][5]])) { n1++;}
+		}
+		if(BitCount[cc = c | duets_x[gr6_1unav[i][2]]] == 3) {
+			if(cc == (c | duets_x[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_x[gr6_1unav[i][5]])) { n1++;}
+		}
+		//type 2
+		// AB* *** ***
+		// *** *** ***
+		// *** *** ***
+		//
+		// B*A *** ***
+		// *** *** ***
+		// *** *** ***
+		//
+		// *AB *** ***
+		// *** *** ***
+		// *** *** ***
+		if(c == duets_x[gr6_2unav[i][0]]) { //compare [0,1,2] to [6,7,8]
+			if(c == duets_x[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_x[gr6_2unav[i][1]]) {
+			if(c == duets_x[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_x[gr6_2unav[i][2]]) {
+			if(c == duets_x[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_x[gr6_2unav[i][3]]) { //compare [3,4,5] to [9,10,11]
+			if(c == duets_x[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][11]])
+				n2++;
+		}
+		else if(c == duets_x[gr6_2unav[i][4]]) {
+			if(c == duets_x[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][11]])
+				n2++;
+		}
+		else if(c == duets_x[gr6_2unav[i][5]]) {
+			if(c == duets_x[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_x[gr6_2unav[i][11]])
+				n2++;
+		}
+
+		//=== then by rows ===
+		//a copy/paste of the code by columns, only _x is replaced with _y
+		//type 3
+		c = triplets_y[i];
+		if(c == triplets_y[gr6_3unav[i][0]]) {
+			n3++;
+		}
+		if(c == triplets_y[gr6_3unav[i][1]]) {
+			n3++;
+		}
+		if(c == triplets_y[gr6_3unav[i][2]]) {
+			n3++;
+		}
+		//type 1
+		c = duets_y[i];
+		if(BitCount[cc = c | duets_y[gr6_1unav[i][0]]] == 3) {
+			if(cc == (c | duets_y[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][5]])) { n1++;}
+		}
+		if(BitCount[cc = c | duets_y[gr6_1unav[i][1]]] == 3) {
+			if(cc == (c | duets_y[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][5]])) { n1++;}
+		}
+		if(BitCount[cc = c | duets_y[gr6_1unav[i][2]]] == 3) {
+			if(cc == (c | duets_y[gr6_1unav[i][3]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][4]])) { n1++;}
+			else if(cc == (c | duets_y[gr6_1unav[i][5]])) { n1++;}
+		}
+		//type 2
+		if(c == duets_y[gr6_2unav[i][0]]) {
+			if(c == duets_y[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_y[gr6_2unav[i][1]]) {
+			if(c == duets_y[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_y[gr6_2unav[i][2]]) {
+			if(c == duets_y[gr6_2unav[i][6]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][7]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][8]])
+				n2++;
+		}
+		else if(c == duets_y[gr6_2unav[i][3]]) {
+			if(c == duets_y[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][11]])
+				n2++;
+		}
+		else if(c == duets_y[gr6_2unav[i][4]]) {
+			if(c == duets_y[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][11]])
+				n2++;
+		}
+		else if(c == duets_y[gr6_2unav[i][5]]) {
+			if(c == duets_y[gr6_2unav[i][9]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][10]])
+				n2++;
+			else if(c == duets_y[gr6_2unav[i][11]])
+				n2++;
+		}
+	}
+	//type 4
+	// AB* *** ***
+	// *** *** ***
+	// *** *** ***
+	//
+	// B** A** ***
+	// *A* B** ***
+	// *** *** ***
+	//
+	// *** *** ***
+	// *** *** ***
+	// *** *** ***
+	char digitRow[9][9], digitCol[9][9];
+	int row, col, col2, col3, row2, row3, rowband;
+	char a, b;
+	for(row = 0; row < 9; row++) {
+		for(col = 0; col < 9; col++) {
+			a = (*m)[row][col] - 1;
+			digitRow[a][col] = row;
+			digitCol[a][row] = col;
+		}
+	}
+	for(row = 0; row < 9; row++) {
+		rowband = band[row];
+		for(col = 0; col < 9; col++) {
+			a = (*m)[row][col] - 1;
+			b = (*m)[row][col2 = adjacent[col]] - 1;
+			row2 = digitRow[a][col2];
+			col3 = digitCol[b][row2];
+			if(band[col3] != band[col]) {
+				row3 = digitRow[a][col3];
+				if(row3 == digitRow[b][col]) {
+					if(band[row2] == band[row3]) {
+						n4++;
+					}
+				}
+			}
+		}
+	}
+	fourCounts[0] = n1;
+	fourCounts[1] = n2;
+	fourCounts[2] = n3;
+	fourCounts[3] = n4;
+}
 
 //// Return whether first element is greater than the second
 //bool isBm128Smaller(const bm128 elem1, const bm128 elem2)
@@ -2031,30 +2342,60 @@ void singleClueSpecialUA(char *puz, const char *sol, const int nClues) {
 	fflush(NULL);
 }
 int processUA() {
-	if(opt.uaOpt->count) { // --unav --count [--unav4 | --unav5 | --unav12] < grids > count
-		char buf[3000];
-		std::map<int,unsigned long long> statistics;
-		while(fgets(buf, sizeof(buf), stdin)) {
-			grid g;
-			g.fromString(buf);
-			if(opt.uaOpt->digit5Search)
-				g.findUA5digits();
-			else if(opt.uaOpt->digit4Search)
-				g.findUA4digits();
-			else if(opt.uaOpt->unav12)
-				g.findUA12();
-			else {
-				g.findUA4cells();
+	if(opt.uaOpt->count) { // --unav --count [--unav4 | --unav5 | --unav12 | --unav6c] < grids > count
+		if(opt.uaOpt->unav6c) {
+			char buf[3000];
+			std::map<int,unsigned long long> statistics[5]; //for types 1,2,3,4 and for total
+			int gridCounts[5];
+			static const char* counterTitles[5] = {"UA6.1", "UA6.2", "UA6.3", "UA6.4", "UA6"};
+			while(fgets(buf, sizeof(buf), stdin)) {
+				grid g;
+				g.fromString(buf);
+				g.getUA6counts(gridCounts);
+				gridCounts[4] = gridCounts[0] + gridCounts[1] + gridCounts[2] + gridCounts[3];
+				for(int counter = 0; counter < 5; counter++) {
+					statistics[counter][gridCounts[counter]]++;
+				}
+				if(opt.verbose) {
+					printf("%81.81s", buf);
+					for(int counter = 0; counter < 5; counter++) {
+						printf("\t%d", gridCounts[counter]);
+					}
+					printf("\n");
+				}
 			}
-			int res = static_cast<int>(g.usetsBySize.size());
-			statistics[res]++;
-			if(opt.verbose) {
-				printf("%81.81s\t%d\n", buf, res);
+			for(int counter = 0; counter < 5; counter++) {
+				printf("%s\tGrids\n", counterTitles[counter]);
+				for(auto c : statistics[counter]) {
+					printf("%d\t%llu\n", c.first, c.second);
+				}
 			}
 		}
-		printf("UA\tGrids\n");
-		for(auto c : statistics) {
-			printf("%d\t%llu\n", c.first, c.second);
+		else {
+			char buf[3000];
+			std::map<int,unsigned long long> statistics;
+			while(fgets(buf, sizeof(buf), stdin)) {
+				grid g;
+				g.fromString(buf);
+				if(opt.uaOpt->digit5Search)
+					g.findUA5digits();
+				else if(opt.uaOpt->digit4Search)
+					g.findUA4digits();
+				else if(opt.uaOpt->unav12)
+					g.findUA12();
+				else {
+					g.findUA4cells();
+				}
+				int res = static_cast<int>(g.usetsBySize.size());
+				statistics[res]++;
+				if(opt.verbose) {
+					printf("%81.81s\t%d\n", buf, res);
+				}
+			}
+			printf("UA\tGrids\n");
+			for(auto c : statistics) {
+				printf("%d\t%llu\n", c.first, c.second);
+			}
 		}
 		return 0;
 	}
