@@ -2031,6 +2031,33 @@ void singleClueSpecialUA(char *puz, const char *sol, const int nClues) {
 	fflush(NULL);
 }
 int processUA() {
+	if(opt.uaOpt->count) { // --unav --count [--unav4 | --unav5 | --unav12] < grids > count
+		char buf[3000];
+		std::map<int,unsigned long long> statistics;
+		while(fgets(buf, sizeof(buf), stdin)) {
+			grid g;
+			g.fromString(buf);
+			if(opt.uaOpt->digit5Search)
+				g.findUA5digits();
+			else if(opt.uaOpt->digit4Search)
+				g.findUA4digits();
+			else if(opt.uaOpt->unav12)
+				g.findUA12();
+			else {
+				g.findUA4cells();
+			}
+			int res = static_cast<int>(g.usetsBySize.size());
+			statistics[res]++;
+			if(opt.verbose) {
+				printf("%81.81s\t%d\n", buf, res);
+			}
+		}
+		printf("UA\tGrids\n");
+		for(auto c : statistics) {
+			printf("%d\t%llu\n", c.first, c.second);
+		}
+		return 0;
+	}
 	grid g;
 	int ret;
 	g.fname = opt.uaOpt->gridFileName;

@@ -370,6 +370,7 @@ struct uaOptions {
 	bool minus1;
 	bool subcanon;
 	bool findvalency;
+	bool count;
 	const char *gridFileName;
 	const char *mspuzzles;
 	uaOptions() { //set defaults for all ua manipulation options
@@ -389,6 +390,7 @@ struct uaOptions {
 		minus1 = false;
 		subcanon = false;
 		findvalency = false;
+		count = false;
 		gridFileName = NULL;
 		mspuzzles = NULL;
 	}
@@ -403,6 +405,7 @@ struct uaOptions {
 		minus1 = opt.getFlag("minus1");
 		subcanon = opt.getFlag("subcanon");
 		findvalency = opt.getFlag("findvalency");
+		count = opt.getFlag("count");
 		const char* v = opt.getValue("mcnuasizelimit");
 		if(v) {
 			mcnUaSizeLimit = atoi(v);

@@ -159,6 +159,8 @@ options::options() {
 	anyopt.setFlag("minus1");
 	anyopt.addUsage("     --findvalency           Find also the maximal valency");
 	anyopt.setFlag("findvalency");
+	anyopt.addUsage("   --count               Count UA of selected types for each grid from stdin");
+	//anyopt.setFlag("count");
 
 	anyopt.addUsage(" --similar           Find similar puzzles");
 	anyopt.setCommandFlag("similar");
