@@ -199,7 +199,7 @@ public:
 	dead_clues_type setClues_initial;
 
 	dead_clues_type *passedFinalUA_ptr;
-	dead_clues_type passedFinalUA[200000];
+	dead_clues_type passedFinalUA[200000]; //123456789456789123798132564275813496381964257964527318539671842617248935842395671 kills 200000
 	//incomplete_puzzle_t *passedFinalUAIncomplete_ptr;
 	//incomplete_puzzle_t passedFinalUAIncomplete[10000];
 
@@ -230,6 +230,7 @@ public:
 	starters starter;
 	int mapIteratorToGrid[81];
 	//unsigned long long deadCount;
+	int fertile9;
 
 	fastClueIterator(grid &g);
 	void iterate();
@@ -272,8 +273,19 @@ void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const
 				dead_clues_type setClues0(setClues1);
 				setClues0.setBit(cluePosition0);
 				*passedFinalUA_ptr = setClues0;
-				//if(passedFinalUA_ptr < passedFinalUA + sizeof(passedFinalUA) / sizeof(passedFinalUA[0]) - 1) passedFinalUA_ptr++;
-				passedFinalUA_ptr++;
+				if(passedFinalUA_ptr < passedFinalUA + sizeof(passedFinalUA) / sizeof(passedFinalUA[0]) - 1) {
+					passedFinalUA_ptr++;
+				}
+				else {
+					//we are in a rare situation where 200k puzzles passed the hitting filter for a single 8-givens subgrid
+					fertile9++;
+					//solve the cached puzzles
+					for(dead_clues_type * i = passedFinalUA; i < passedFinalUA_ptr; i++) {
+						solvePuzzle(*i);
+					}
+					//continue from the start of the buffer
+					passedFinalUA_ptr = passedFinalUA;
+				}
 			}
 		}
 	}
@@ -492,6 +504,7 @@ void fastClueIterator::fastIterateLevel9(const dead_clues_type &deadClues10, con
 		const bm1_index_type &ua1_alive10, const fbm2_index_type &fua2_alive10, const fbm3_index_type &fua3_alive10,
 		const fbm4_index_type &fua4_alive10, const fbm5_index_type &fua5_alive10/*, const fbm6_index_type &fua6_alive10*/) {
 	int uaIndex10 = ua1_alive10.getMinIndex();
+	fertile9 = 0;
 	if(uaIndex10 != INT_MAX) {
 		clueNumber = 9;
 		dead_clues_type deadClues9(deadClues10);
@@ -534,8 +547,24 @@ void fastClueIterator::fastIterateLevel9(const dead_clues_type &deadClues10, con
 		//clueNumber = 10;
 	}
 	else {
-		//printf("UA exhausted after placing clue number 9\n");
+		printf("UA exhausted when 9 clues are still to be placed\n");
 	}
+	if(fertile9) {
+		//a rare situation worth to be reported
+		char clues[88];
+		for(int i = 0; i < 81; i++) {
+			int actualCell = mapIteratorToGrid[i];
+			if(setClues10.isBitSet(i)) {	//given
+				clues[actualCell] = g.digits[actualCell];
+			}
+			else {
+				clues[actualCell] = 0;
+			}
+		}
+		ch81 puz;
+		puz.toString(clues, puz.chars);
+		fprintf(stderr, "Fertile subgrid:\t%81.81s\t%d\n", puz.chars, (int)(sizeof(passedFinalUA) * fertile9 + (passedFinalUA_ptr - passedFinalUA)));
+}
 	//solve the cached puzzles
 	for(dead_clues_type * i = passedFinalUA; i < passedFinalUA_ptr; i++) {
 		solvePuzzle(*i);
@@ -944,7 +973,7 @@ fastClueIterator::fastClueIterator(grid &g) :
 				0), fua5ActualSize(0)/*, fua6ActualSize(0)*/, uaActualSize(0), ua2ActualSize(
 				0), ua3ActualSize(0), ua4ActualSize(0), ua5ActualSize(0)/*, ua6ActualSize(
 				0)*/, clueNumber(0), nClues(opt.scanOpt->nClues), nPuzzles(0), nChecked(
-				0), actualInitialUa(0), g(g) {
+				0), actualInitialUa(0), g(g), fertile9(0) {
 	//nClues = 16;
 }
 
