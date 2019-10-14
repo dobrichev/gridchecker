@@ -1510,7 +1510,7 @@ extern int doSimilarPuzzles () {
 		}
 	}
 	else if(opt.similarOpt->clusterize) { //--similar --clusterize < puz.txt > clusters.txt
-		clusterize();
+		clusterize(5);
 	}
 	else if(msFName) { //--similar --mspuzzles 36MS_new_ordered.txt --knownpuzzles puzAll_can.txt [--puzzles puzzles_new.txt]
 		hiClueNoMSCache(msFName, knownsfname, pFName); //apply {+} to mspuzzles, add new to knownpuzzles and puzzles

@@ -2491,8 +2491,12 @@ int processUA() {
 			//nSol = solve(puz, maxSol, sol); //this is when we are searching for multi-valency UA
 			//nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
 			if(opt.uaOpt->minuasize) {
-				nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
-				if(nSol < maxSol) {
+				//nSol = solve(puz, 1, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
+				nSol = solve(puz, maxSol, sol); //this is when we are searching for UA strictly within the erased cells of the given puzzle
+				if(nSol == maxSol) {
+					printf("Maximum solutions reached!\n");
+				}
+				else {
 					findUaBySolutions(sol, (int)nSol);
 				}
 			}

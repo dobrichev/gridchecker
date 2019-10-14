@@ -35,11 +35,22 @@ void setCluster (const ch81 * theCluster, ch81RefList &references) {
 	}
 }
 
-void clusterize () {
+void clusterize(int sz) {
+	struct adder { //just a macro
+		static void add(const ch81& puz, ch81WithReferences& m1, ch81WithReferences::iterator& p) {
+			ch81 puzCanon;
+			subcanon(puz.chars, puzCanon.chars);
+			ch81RefList &puzInChildren = m1[puzCanon]; //add canonicalized puzzle in children
+			puzInChildren.insert(&(p->second)); //add reference to source
+			p->second.insert(&puzInChildren); //in source, add reference to child
+		}
+	};
 	puzzleSet m0; //given list, using old code to read, then copied to list.
 	ch81WithReferences list, m1; //given & minusN list
 	clusters cl; //clusters' details
 	clSizes cs; //cluster sizes
+
+	if(sz < 1 || sz > 6) return; //can't handle this
 	
 	//load the whole list
 	m0.loadFromFile(stdin); //load puzzles
@@ -51,55 +62,76 @@ void clusterize () {
 	//first pass: do {-1} and store references
 	for(ch81WithReferences::iterator p = list.begin(); p != list.end(); p++) {
 		ch81 puz = p->first; //structure copy
-		int t;
+		const char* pp = p->first.chars;
+		//apply {-1}
 		for(int i = 0; i < 81; i++) {
-			//apply {-1}
-			if(0 != (t = puz.chars[i])) {
-				puz.chars[i] = 0; //clear the given
+			if(puz.chars[i] == 0) continue;
+			puz.chars[i] = 0; //clear the given
+			if(sz == 1) {
+				adder::add(puz, m1, p);
+			}
+			else {
 				//apply {-2}
 				for(int j = i + 1; j < 81; j++) {
-					int tt = puz.chars[j];
-					if(tt) {
-						puz.chars[j] = 0;
+					if(puz.chars[j] == 0) continue;
+					puz.chars[j] = 0;
+					if(sz == 2) {
+						adder::add(puz, m1, p);
+					}
+					else {
 						//apply {-3}
 						for(int k = j + 1; k < 81; k++) {
-							int ttt = puz.chars[k];
-							if(ttt) {
-								puz.chars[k] = 0;
+							if(puz.chars[k] == 0) continue;
+							puz.chars[k] = 0;
+							if(sz == 3) {
+								adder::add(puz, m1, p);
+							}
+							else {
 								//apply {-4}
 								for(int l = k + 1; l < 81; l++) {
-									int tttt = puz.chars[l];
-									if(tttt) {
-										puz.chars[l] = 0;
+									if(puz.chars[l] == 0) continue;
+									puz.chars[l] = 0;
+									if(sz == 4) {
+										adder::add(puz, m1, p);
+									}
+									else {
 										//apply {-5}
 										for(int m = l + 1; m < 81; m++) {
-											int ttttt = puz.chars[m];
-											if(ttttt) {
-												puz.chars[m] = 0;
-												/////
-												ch81 puzCanon;
-												subcanon(puz.chars, puzCanon.chars);
-												ch81RefList &puzInChildren = m1[puzCanon]; //add canonicalized puzzle in children
-												puzInChildren.insert(&(p->second)); //add reference to source
-												p->second.insert(&puzInChildren); //in source, add reference to child
-												/////
-												puz.chars[m] = ttttt; // restore the {-5} given
+											if(puz.chars[m] == 0) continue;
+											puz.chars[m] = 0;
+											if(sz == 5) {
+												adder::add(puz, m1, p);
+											}
+											else {
+												//apply {-6}
+												for(int n = m + 1; n < 81; n++) {
+													if(puz.chars[n] == 0) continue;
+													puz.chars[n] = 0;
+													//if(sz == 6) {
+														adder::add(puz, m1, p);
+													//}
+													//else {
+													//	adder::add(puz, m1, p);
+													//}
+													puz.chars[n] = pp[n]; // restore the {-6} given
+												}
+												puz.chars[m] = pp[m]; // restore the {-5} given
 											}
 										}
-										puz.chars[l] = tttt; // restore the {-4} given
+										puz.chars[l] = pp[l]; // restore the {-4} given
 									}
 								}
-								puz.chars[k] = ttt; // restore the {-3} given
+								puz.chars[k] = pp[k]; // restore the {-3} given
 							}
 						}
-						puz.chars[j] = tt; // restore the {-2} given
+						puz.chars[j] = pp[j]; // restore the {-2} given
 					}
 				}
-				puz.chars[i] = t; //restore the {-1} given
-			}
-		}
-	}
-	printf("pass {-4}, src=%d, children=%d\n", (int)list.size(), (int)m1.size());
+				puz.chars[i] = pp[i]; //restore the {-1} given
+			} //sz > 1
+		} //for i
+	} //for p
+	printf("pass {-6}, src=%d, children=%d\n", (int)list.size(), (int)m1.size());
 	//second pass: obtain clusters
 	for(ch81WithReferences::iterator p = m1.begin(); p != m1.end(); p++) {
 		ch81RefList &parents = p->second;
