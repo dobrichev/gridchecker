@@ -131,7 +131,7 @@ void clusterize(int sz) {
 			} //sz > 1
 		} //for i
 	} //for p
-	printf("pass {-6}, src=%d, children=%d\n", (int)list.size(), (int)m1.size());
+	printf("pass {-%d}, src=%d, children=%d\n", sz, (int)list.size(), (int)m1.size());
 	//second pass: obtain clusters
 	for(ch81WithReferences::iterator p = m1.begin(); p != m1.end(); p++) {
 		ch81RefList &parents = p->second;
