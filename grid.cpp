@@ -1132,25 +1132,26 @@ void grid::getUA6counts(int* fourCounts) const {
 	// *** *** ***
 	// *** *** ***
 	char digitRow[9][9], digitCol[9][9];
-	int row, col, col2, col3, row2, row3, rowband;
+	int row, col, col2, col3, row2, row3;
+	//int rowband;
 	char a, b;
 	for(row = 0; row < 9; row++) {
 		for(col = 0; col < 9; col++) {
 			a = (*m)[row][col] - 1;
-			digitRow[a][col] = row;
-			digitCol[a][row] = col;
+			digitRow[(int)a][col] = row;
+			digitCol[(int)a][row] = col;
 		}
 	}
 	for(row = 0; row < 9; row++) {
-		rowband = band[row];
+		//rowband = band[row];
 		for(col = 0; col < 9; col++) {
 			a = (*m)[row][col] - 1;
 			b = (*m)[row][col2 = adjacent[col]] - 1;
-			row2 = digitRow[a][col2];
-			col3 = digitCol[b][row2];
+			row2 = digitRow[(int)a][col2];
+			col3 = digitCol[(int)b][row2];
 			if(band[col3] != band[col]) {
-				row3 = digitRow[a][col3];
-				if(row3 == digitRow[b][col]) {
+				row3 = digitRow[(int)a][col3];
+				if(row3 == digitRow[(int)b][col]) {
 					if(band[row2] == band[row3]) {
 						n4++;
 					}
@@ -2241,7 +2242,7 @@ void grid::setBM() {
 
 
 extern void subcanon(const char* puz, char* can);
-void singleClueSpecialUA(char *puz, const char *sol, const int nClues) {
+void singleClueSpecialUA(char *puz, const char *sol) {
 	bool maxValency = opt.uaOpt->findvalency;
 	grid g;
 	char buf[100];
@@ -2455,7 +2456,7 @@ int processUA() {
 			unsigned long long nSol;
 			nSol = solve(puz.chars, 1, sol.chars);
 			if(nSol) {
-				singleClueSpecialUA(puz.chars, sol.chars, nClues);
+				singleClueSpecialUA(puz.chars, sol.chars);
 			}
 			else { //invalid puzzle
 				printf("\tInvalid puzzle\n");

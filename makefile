@@ -1,25 +1,27 @@
 GCXX = g++ 
-#CXX = /opt/intel/bin/icc 
-CXXFLAGS = -m64 -fopenmp -O3 -march=native -msse4.2 -mavx -g3 -gdwarf-2 -Wall
-#CXXFLAGS = -m64 -fopenmp -O0 -march=native -g
+ICXX = /opt/intel/bin/icc 
+CLXX = clang++
 
-LDFLAGS = -lgomp
+GCXXFLAGS = -m64 -fopenmp -O3 -funsafe-loop-optimizations -fno-guess-branch-probability -falign-functions=16 -falign-jumps=16 -falign-loops=16 -falign-labels=16 -g -pedantic -march=native -msse4.2 -mavx -g3 -gdwarf-2 -Wall -Wextra -MMD -MP -static -fuse-ld=gold -fuse-linker-plugin -flto-partition=none -std=c++11
+ICXXFLAGS = -m64 -fopenmp -O0 -march=native -g
+CLXXFLAGS = -m64 -fopenmp -O3 -march=native -msse4.2 -mavx -g3 -gdwarf-2 -Wall -std=gnu++11
 
-FILELIST = anchor5.cpp anyoption.cpp clueIterator.cpp clusterize.cpp fClueIterator.cpp grid.cpp grids.cpp incrSolver.cpp main.cpp minimizer.cpp neighbourGrid.cpp options.cpp patterns.cpp patminlex.cpp rowminlex.cpp similarPuzzles.cpp solver.cpp subcanon.cpp tables.cpp templates.cpp t_128.cpp unav12.cpp uset.cpp 
+#LDFLAGS = -lgomp
+
+FILELIST = anchor5.cpp anyoption.cpp catalog.cpp clueIterator.cpp clusterize.cpp fClueIterator.cpp grid.cpp grids.cpp incrSolver.cpp main.cpp minimizer.cpp neighbourGrid.cpp options.cpp patminlex.cpp patterns.cpp rowminlex.cpp similarPuzzles.cpp solver.cpp subcanon.cpp t_128.cpp tables.cpp templates.cpp unav12.cpp uset.cpp 
 TARGET = gridchecker
 
 all: $(PFILES)
-	$(GCXX) $(CXXFLAGS) -o gridchecker $(FILELIST)
+	$(GCXX) $(GCXXFLAGS) -o $(TARGET) $(FILELIST)
 
-profiling:
-	@echo 'Building target $(TARGET) using Gnu C++ Profile Generate settings'
-	$(GCXX) $(CXXFLAGS) -fprofile-generate -o $(TARGET) $(FILELIST)
-	@echo 'Done'
+gnu: $(PFILES)
+	$(GCXX) $(GCXXFLAGS) -o $(TARGET) $(FILELIST)
+	
+icc: $(PFILES)
+	$(ICXX) $(ICXXFLAGS) -o $(TARGET) $(FILELIST)
 
-release:
-	@echo 'Building target $(TARGET) using Gnu C++ Profile Use settings'
-	$(GCXX) $(CXXFLAGS) -fprofile-use -o $(TARGET) $(FILELIST)
-	@echo 'Done'
+clang: $(PFILES)
+	$(CLXX) $(CLXXFLAGS) -o $(TARGET) $(FILELIST)
 
 clean:
 	rm -f *.o *.gcda *.dyn pgopti.*

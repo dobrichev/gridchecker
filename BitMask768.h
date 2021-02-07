@@ -536,7 +536,7 @@ public:
 		}
 		return true;
 	}
-	int copyAlive(const sizedUset *original, sizedUset *target, int target_size, __restrict const dead_clues_type &deadClues) const {
+	int copyAlive(const sizedUset *original, sizedUset *target, int target_size, const dead_clues_type& __restrict deadClues) const {
 		int num_inserted = 0;
 		for(int i = 0; i < getNumWords(); i++) {
 			for(int j = 0; j < 4; j++) {
@@ -559,7 +559,7 @@ public:
 		}
 		return num_inserted;
 	}
-	int getShortestAliveIndex(const sizedUset *original, __restrict const dead_clues_type &deadClues) const {
+	int getShortestAliveIndex(const sizedUset *original, const dead_clues_type& __restrict deadClues) const {
 		int min_size = 100;
 		int bestIndex = INT_MAX;
 		int to_check = 13; //how deep to go forward (8)

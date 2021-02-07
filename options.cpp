@@ -247,9 +247,9 @@ options::options() {
 	anyopt.setFlag("patcanon");
 	anyopt.addUsage("   --settle <pattern>    Converts non-minimal puzzles from stdin to minimals in pattern");
 	anyopt.setOption("settle");
-	anyopt.addUsage("   --pg depth,er,ER,ep,EP,ed,ED,maxPasses,noSingles  Re-labels stdin to stdout, related to Patterns Game");
-	anyopt.addUsage("   --pg s<pattern> < grids.txt > puzzles.txt          Scans grids for puzzles having the given pattern");
-	anyopt.setOption("pg");
+//	anyopt.addUsage("   --pg depth,er,ER,ep,EP,ed,ED,maxPasses,noSingles   Re-labels stdin to stdout, related to Patterns Game");
+//	anyopt.addUsage("   --pg s<pattern> < grids.txt > puzzles.txt          Scans grids for puzzles having the given pattern");
+//	anyopt.setOption("pg");
 
 	anyopt.addUsage(" --template          Template/rookery related commands");
 	anyopt.setCommandFlag("template");

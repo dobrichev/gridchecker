@@ -1663,7 +1663,7 @@ extern bool isDifficultD(const char *puzzle) { //return whether any given constr
 		fastEliminations(g);
 		if(g.mode & MODE_STOP_PROCESSING) //invalid or solved by singles
 			return false; //puzzle solves even with this given removed
-		if(0 == g.cellPossibilities[testGivenPosition] & ~Digit2Bitmap[(int)puzzle[testGivenPosition]])
+		if(0 == (g.cellPossibilities[testGivenPosition] & ~Digit2Bitmap[(int)puzzle[testGivenPosition]]))
 			return false; //the removed given is solved (i.e. it is redundant)
 		//test whether some of the non-givens is resolved
 		for(int testNonGivenCell = 0; testNonGivenCell < 81; testNonGivenCell++) { //loop over non-given cells

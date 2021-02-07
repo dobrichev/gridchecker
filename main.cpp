@@ -4,7 +4,7 @@
 #include <time.h>
 #include "options.h"
 
-const char *versionString = "GridChecker v1.33 (2018-07-28)";
+const char *versionString = "GridChecker v1.34 (2021-02-07)";
 
 //#define DIRTY_TEST
 

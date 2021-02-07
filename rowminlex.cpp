@@ -50,13 +50,20 @@ void inline sort3desc(const int* s, int *t) {
 
 void transformer::byGrid(const char* sol)
 {
-	register int			b;
-	register int			d;
-	register int			i;
-	register int			j;
-	register int			k;
-	register int			l;
-	register unsigned int	v;
+//	register int			b;
+//	register int			d;
+//	register int			i;
+//	register int			j;
+//	register int			k;
+//	register int			l;
+//	register unsigned int	v;
+	int			b;
+	int			d;
+	int			i;
+	int			j;
+	int			k;
+	int			l;
+	unsigned int	v;
 
 	int				pr;
 	int				pc;
@@ -793,13 +800,20 @@ void transformer::byPuzzle(const char* sol) {}
 
 void transformer::byBand(const char* sol, const int band)
 {
-	register int			b;
-	register int			d;
-	register int			i;
-	register int			j;
-	register int			k;
-	register int			l;
-	register unsigned int	v;
+//	register int			b;
+//	register int			d;
+//	register int			i;
+//	register int			j;
+//	register int			k;
+//	register int			l;
+//	register unsigned int	v;
+	int			b;
+	int			d;
+	int			i;
+	int			j;
+	int			k;
+	int			l;
+	unsigned int	v;
 
 	int				pr;
 	int				pc;

@@ -118,37 +118,37 @@ private:
 //			__restrict const fbm1_index_type fua1_alive1);
 	inline void fastIterateLevel0(const dead_clues_type deadClues1, const dead_clues_type &setClues1,
 			const fbm1_index_type fua1_alive1);
-	inline void fastIterateLevel1(__restrict const dead_clues_type deadClues2, __restrict const dead_clues_type &setClues2,
-			__restrict const fbm1_index_type fua1_alive2, __restrict const fbm2_index_type &fua2_alive2);
-	void fastIterateLevel2(__restrict const dead_clues_type deadClues3, __restrict const dead_clues_type &setClues3,
-			__restrict const fbm1_index_type fua1_alive3, __restrict const fbm2_index_type &fua2_alive3, __restrict const fbm3_index_type &fua3_alive3);
-	void fastIterateLevel3(__restrict const dead_clues_type deadClues4, __restrict const dead_clues_type &setClues4,
-			__restrict const fbm1_index_type fua1_alive4, __restrict const fbm2_index_type &fua2_alive4, __restrict const fbm3_index_type &fua3_alive4,
-			__restrict const fbm4_index_type &fua4_alive4);
-	void fastIterateLevel4(__restrict const dead_clues_type &deadClues5, __restrict const dead_clues_type &setClues5,
-			__restrict const fbm1_index_type fua1_alive5, __restrict const fbm2_index_type &fua2_alive5, __restrict const fbm3_index_type &fua3_alive5,
-			__restrict const fbm4_index_type &fua4_alive5, __restrict const fbm5_index_type &fua5_alive5);
-	void fastIterateLevel5(__restrict const dead_clues_type &deadClues6, __restrict const dead_clues_type &setClues6,
-			__restrict const fbm1_index_type &fua1_alive6, __restrict const fbm2_index_type &fua2_alive6, __restrict const fbm3_index_type &fua3_alive6,
-			__restrict const fbm4_index_type &fua4_alive6, __restrict const fbm5_index_type &fua5_alive6/*, __restrict const fbm6_index_type &fua6_alive6*/);
-	void fastIterateLevel8to6(__restrict const dead_clues_type &deadClues_old, __restrict const dead_clues_type &setClues_old,
-			__restrict const fbm1_index_type &fua1_alive_old, __restrict const fbm2_index_type &fua2_alive_old, __restrict const fbm3_index_type &fua3_alive_old,
-			__restrict const fbm4_index_type &fua4_alive_old, __restrict const fbm5_index_type &fua5_alive_old/*, __restrict const fbm6_index_type &fua6_alive_old*/) /*__attribute__((noinline))*/;
-	void fastIterateLevel9(const dead_clues_type &deadClues10, __restrict const dead_clues_type &setClues10,
-			__restrict const bm1_index_type &ua1_alive10, __restrict const fbm2_index_type &fua2_alive10, __restrict const fbm3_index_type &fua3_alive10,
-			__restrict const fbm4_index_type &fua4_alive10, __restrict const fbm5_index_type &fua5_alive10/*, __restrict const fbm6_index_type &fua6_alive10*/) /*__attribute__((noinline))*/;
-	void fastIterateLevel10(const dead_clues_type &deadClues11, __restrict const dead_clues_type &setClues11,
-			__restrict const bm1_index_type &ua1_alive11, __restrict const bm2_index_type &ua2_alive11, __restrict const bm3_index_type &ua3_alive11,
-			__restrict const fbm4_index_type &fua4_alive11, __restrict const fbm5_index_type &fua5_alive11/*, __restrict const fbm6_index_type &fua6_alive11*/) /*__attribute__((noinline))*/;
-	void fastIterateLevel11(const dead_clues_type &deadClues12, __restrict const dead_clues_type &setClues12,
-			__restrict const bm1_index_type &ua1_alive12, __restrict const bm2_index_type &ua2_alive12, __restrict const bm3_index_type &ua3_alive12,
-			__restrict const bm4_index_type &ua4_alive12, __restrict const fbm5_index_type &fua5_alive12/*, __restrict const fbm6_index_type &fua6_alive12*/) /*__attribute__((noinline))*/;
-	void fastIterateLevel12(const dead_clues_type &deadClues13, __restrict const dead_clues_type &setClues13,
-			__restrict const bm1_index_type &ua1_alive13, __restrict const bm2_index_type &ua2_alive13, __restrict const bm3_index_type &ua3_alive13,
-			__restrict const bm4_index_type &ua4_alive13, __restrict const bm5_index_type &ua5_alive13/*, __restrict const bm6_index_type &ua6_alive13*/) /*__attribute__((noinline))*/;
-	void fastIterateLevel(const dead_clues_type &deadClues_old, __restrict const dead_clues_type &setClues_old,
-			__restrict const bm1_index_type &ua1_alive_old, __restrict const bm2_index_type &ua2_alive_old, __restrict const bm3_index_type &ua3_alive_old,
-			__restrict const bm4_index_type &ua4_alive_old, __restrict const bm5_index_type &ua5_alive_old/*, __restrict const bm6_index_type &ua6_alive_old*/) /*__attribute__((noinline))*/;
+	inline void fastIterateLevel1(const dead_clues_type& __restrict deadClues2, const dead_clues_type& __restrict setClues2,
+			const fbm1_index_type& __restrict fua1_alive2, const fbm2_index_type& __restrict fua2_alive2);
+	void fastIterateLevel2(const dead_clues_type& __restrict deadClues3, const dead_clues_type& __restrict setClues3,
+			const fbm1_index_type& __restrict fua1_alive3, const fbm2_index_type& __restrict fua2_alive3, const fbm3_index_type& __restrict fua3_alive3);
+	void fastIterateLevel3(const dead_clues_type& __restrict deadClues4, const dead_clues_type& __restrict setClues4,
+			const fbm1_index_type& __restrict fua1_alive4, const fbm2_index_type& __restrict fua2_alive4, const fbm3_index_type& __restrict fua3_alive4,
+			const fbm4_index_type& __restrict fua4_alive4);
+	void fastIterateLevel4(const dead_clues_type& __restrict deadClues5, const dead_clues_type& __restrict setClues5,
+			const fbm1_index_type& __restrict fua1_alive5, const fbm2_index_type& __restrict fua2_alive5, const fbm3_index_type& __restrict fua3_alive5,
+			const fbm4_index_type& __restrict fua4_alive5, const fbm5_index_type& __restrict fua5_alive5);
+	void fastIterateLevel5(const dead_clues_type& __restrict deadClues6, const dead_clues_type& __restrict setClues6,
+			const fbm1_index_type& __restrict fua1_alive6, const fbm2_index_type& __restrict fua2_alive6, const fbm3_index_type& __restrict fua3_alive6,
+			const fbm4_index_type& __restrict fua4_alive6, const fbm5_index_type& __restrict fua5_alive6/*, const fbm6_index_type& __restrict fua6_alive6*/);
+	void fastIterateLevel8to6(const dead_clues_type& __restrict deadClues_old, const dead_clues_type& __restrict setClues_old,
+			const fbm1_index_type& __restrict fua1_alive_old, const fbm2_index_type& __restrict fua2_alive_old, const fbm3_index_type& __restrict fua3_alive_old,
+			const fbm4_index_type& __restrict fua4_alive_old, const fbm5_index_type& __restrict fua5_alive_old/*, const fbm6_index_type& __restrict fua6_alive_old*/) /*__attribute__((noinline))*/;
+	void fastIterateLevel9(const dead_clues_type& __restrict deadClues10, const dead_clues_type& __restrict setClues10,
+			const bm1_index_type& __restrict ua1_alive10, const fbm2_index_type& __restrict fua2_alive10, const fbm3_index_type& __restrict fua3_alive10,
+			const fbm4_index_type& __restrict fua4_alive10, const fbm5_index_type& __restrict fua5_alive10/*, const fbm6_index_type& __restrict fua6_alive10*/) /*__attribute__((noinline))*/;
+	void fastIterateLevel10(const dead_clues_type& __restrict deadClues11, const dead_clues_type& __restrict setClues11,
+			const bm1_index_type& __restrict ua1_alive11, const bm2_index_type& __restrict ua2_alive11, const bm3_index_type& __restrict ua3_alive11,
+			const fbm4_index_type& __restrict fua4_alive11, const fbm5_index_type& __restrict fua5_alive11/*, const fbm6_index_type& __restrict fua6_alive11*/) /*__attribute__((noinline))*/;
+	void fastIterateLevel11(const dead_clues_type& __restrict deadClues12, const dead_clues_type& __restrict setClues12,
+			const bm1_index_type& __restrict ua1_alive12, const bm2_index_type& __restrict ua2_alive12, const bm3_index_type& __restrict ua3_alive12,
+			const bm4_index_type& __restrict ua4_alive12, const fbm5_index_type& __restrict fua5_alive12/*, const fbm6_index_type& __restrict fua6_alive12*/) /*__attribute__((noinline))*/;
+	void fastIterateLevel12(const dead_clues_type& __restrict deadClues13, const dead_clues_type& __restrict setClues13,
+			const bm1_index_type& __restrict ua1_alive13, const bm2_index_type& __restrict ua2_alive13, const bm3_index_type& __restrict ua3_alive13,
+			const bm4_index_type& __restrict ua4_alive13, const bm5_index_type& __restrict ua5_alive13/*, const bm6_index_type& __restrict ua6_alive13*/) /*__attribute__((noinline))*/;
+	void fastIterateLevel(const dead_clues_type& __restrict deadClues_old, const dead_clues_type& __restrict setClues_old,
+			const bm1_index_type& __restrict ua1_alive_old, const bm2_index_type& __restrict ua2_alive_old, const bm3_index_type& __restrict ua3_alive_old,
+			const bm4_index_type& __restrict ua4_alive_old, const bm5_index_type& __restrict ua5_alive_old/*, const bm6_index_type& __restrict ua6_alive_old*/) /*__attribute__((noinline))*/;
 	void buildComposites();
 	void checkPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc);
 	void expandPuzzle(int clueNumber, const dead_clues_type &setClues, const dead_clues_type & dc, int startPos = 0);
@@ -295,8 +295,8 @@ void fastClueIterator::fastIterateLevel0(const dead_clues_type deadClues1, const
 		checkPuzzle(1, setClues1, deadClues1);
 	}
 }
-void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const dead_clues_type &setClues2,
-		const fbm1_index_type fua1_alive2, const fbm2_index_type & fua2_alive2) {
+void fastClueIterator::fastIterateLevel1(const dead_clues_type& deadClues2, const dead_clues_type &setClues2,
+		const fbm1_index_type & fua1_alive2, const fbm2_index_type & fua2_alive2) {
 	int uaIndex2 = fua1_alive2.getMinIndex();
 	if(uaIndex2 != INT_MAX) {
 		dead_clues_type deadClues1(deadClues2);
@@ -331,8 +331,8 @@ void fastClueIterator::fastIterateLevel1(const dead_clues_type deadClues2, const
 	}
 }
 
-void fastClueIterator::fastIterateLevel2(const dead_clues_type deadClues3, const dead_clues_type &setClues3,
-		const fbm1_index_type fua1_alive3, const fbm2_index_type & fua2_alive3, const fbm3_index_type & fua3_alive3) {
+void fastClueIterator::fastIterateLevel2(const dead_clues_type& deadClues3, const dead_clues_type& setClues3,
+		const fbm1_index_type& fua1_alive3, const fbm2_index_type& fua2_alive3, const fbm3_index_type& fua3_alive3) {
 	int uaIndex3 = fua1_alive3.getMinIndex();
 	if(uaIndex3 != INT_MAX) {
 		dead_clues_type deadClues2(deadClues3);
@@ -360,9 +360,9 @@ void fastClueIterator::fastIterateLevel2(const dead_clues_type deadClues3, const
 		checkPuzzle(3, setClues3, deadClues3);
 	}
 }
-void fastClueIterator::fastIterateLevel3(const dead_clues_type deadClues4, const dead_clues_type &setClues4,
-		const fbm1_index_type fua1_alive4, const fbm2_index_type & fua2_alive4, const fbm3_index_type & fua3_alive4,
-		const fbm4_index_type & fua4_alive4) {
+void fastClueIterator::fastIterateLevel3(const dead_clues_type& deadClues4, const dead_clues_type& setClues4,
+		const fbm1_index_type& fua1_alive4, const fbm2_index_type& fua2_alive4, const fbm3_index_type& fua3_alive4,
+		const fbm4_index_type& fua4_alive4) {
 	int uaIndex4 = fua1_alive4.getMinIndex();
 	if(uaIndex4 != INT_MAX) {
 		dead_clues_type deadClues3(deadClues4);
@@ -391,9 +391,9 @@ void fastClueIterator::fastIterateLevel3(const dead_clues_type deadClues4, const
 		checkPuzzle(4, setClues4, deadClues4);
 	}
 }
-void fastClueIterator::fastIterateLevel4(const dead_clues_type & deadClues5, const dead_clues_type &setClues5,
-		const fbm1_index_type fua1_alive5, const fbm2_index_type & fua2_alive5, const fbm3_index_type & fua3_alive5,
-		const fbm4_index_type & fua4_alive5, const fbm5_index_type & fua5_alive5) {
+void fastClueIterator::fastIterateLevel4(const dead_clues_type& deadClues5, const dead_clues_type& setClues5,
+		const fbm1_index_type& fua1_alive5, const fbm2_index_type& fua2_alive5, const fbm3_index_type& fua3_alive5,
+		const fbm4_index_type& fua4_alive5, const fbm5_index_type& fua5_alive5) {
 	int uaIndex5 = fua1_alive5.getMinIndex();
 	if(uaIndex5 != INT_MAX) {
 		dead_clues_type deadClues4(deadClues5);
